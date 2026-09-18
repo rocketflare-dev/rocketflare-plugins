@@ -56,14 +56,8 @@ Where each kind of call site went:
 - `Database` and `Logger` stayed nameable as types (`@/plugins/api`), which is what lets this
   plugin's own `(db, tenantId, …)` services keep the kit's service shape.
 
-**Three consequences worth knowing, because they are visible in the code rather than only in the
+**Two consequences worth knowing, because they are visible in the code rather than only in the
 imports.**
-
-*The four cubes and the fact-table registry became memoised FACTORIES.* They name three kit tables —
-`activity_events`, `tenant_users`, `group_types` — that `@/db/schema/kit` does not export, so those
-arrive through `allTables()`, which must not be called at module scope. `kit-tables.ts` is the one
-file that widens beyond the schema kit, and it is where this goes away the day those tables join it.
-The cube definitions themselves are unchanged; the join thunks were already lazy.
 
 *Writing a dashboard's visibility is the plugin's own code now.* The kit publishes what it takes to
 DECLARE a restrictable resource, and reads that declaration for the predicate and the 409
@@ -78,23 +72,41 @@ learned about a visibility change on its next fetch. It emits `ANALYTICS_DASHBOA
 the same constant the UI and `SharedPlugin.realtimeRoots` use, which is the kit's convention and
 the whole reason the socket wiring is free.
 
-### Four things the contract does not carry yet
+### What this migration found, and what the kit changed
 
-Reported to the kit rather than worked around. None blocks this release; each costs something small
-and visible, described where it bites.
+Four gaps were reported while porting. **Three were fixed in the kit before this release**, so
+nothing here works around them:
 
-1. **`@/db/schema/kit` exports three kit tables** (`tenants`, `users`, `groups`) and analytics needs
-   three more at module scope. `kit-tables.ts` and the factory conversion are the cost.
-2. **No group TYPE names on the auth context.** `AccessScope` carries group ids;
+- **A second installed plugin could not call `createRouter()` at module scope.** `@/plugins/api`
+  re-exports it through `./http`, which imported `api/services/access` — a module that reads the
+  plugin barrel — sixteen lines before it imported `api/utils/routes/router`. So every installed
+  plugin was evaluated from inside `@/plugins/api`'s own dependency graph while `createRouter` was
+  still an uninitialised binding: `createRouter is not a function`, at import time, from whichever
+  entry loaded a plugin index first. It needed TWO plugins to show, and two plugins is the kit's
+  own default state. Analytics never hit it before because it imported `router.ts` directly; the
+  declared entry cannot. Fixed by moving `accessScopeOf` into the leaf `api/services/access-sql.ts`,
+  re-exporting it from `access.ts` so no core importer moved, and pointing `plugins/api/http.ts` at
+  the leaf — that third edit is the one that breaks the cycle.
+- **`@/db/schema/kit` now exports `activity_events`, `tenant_users` and `group_types`**, so the
+  cubes and the fact-table registry are ordinary module-scope consts naming ordinary kit tables.
+- **`notifyUnauthorized` and `setUnauthorizedHandler` are on `@/plugins/api/ui`**, so a cube 401
+  reaches the kit's global handler directly.
+
+Three remain, and each costs something small and visible:
+
+1. **No group TYPE names on the auth context.** `AccessScope` carries group ids;
    `groupFilter(ctx, 'Department', column)` narrows by type. `cubes/security.ts` resolves them with
    one query per cube request, skipped entirely for an admin-level reader, who is never narrowed.
-3. **`@testkit` publishes no cron dispatcher.** `scheduled-facts.test.ts` proved the task and the
+2. **`@testkit` publishes no cron dispatcher.** `scheduled-facts.test.ts` proved the task and the
    expression met by dispatching through the host's own `SCHEDULED_TASKS`. It now asserts the
    registered expression equals the one `plugin.json` declares, and drives the task through
    `makeCronCtx`. The half it can no longer see is the host actually dispatching it.
-4. **`notifyUnauthorized` / `setUnauthorizedHandler` are not on `@/plugins/api/ui`.** A cube 401 has
-   to reach the kit's global handler; the provider routes it through the declared `api` client,
-   which calls that handler itself. One extra request, on the 401 path only.
+3. **The visibility write helpers are on no declared entry** — `grantsForResources`,
+   `setResourceGroups` and `resolveRequestedVisibility`. `services/visibility.ts` reimplements them
+   over this plugin's own registry entry; publishing them as they stand would reintroduce the cycle
+   above, since `services/access.ts` reads the plugin barrel, so they need the same leaf treatment
+   first. Minor, same family: `group_members` is not on the schema kit, so one test reads it through
+   `allTables()`.
 
 ## How to apply
 
@@ -115,18 +127,12 @@ the suite" rule are all unchanged.
 Every file in the plugin changed its imports, so a copy that has edited any of them will reject.
 The ones with more than an import change, and worth reading rather than re-applying blind:
 
-- `apps/web/src/plugins/analytics/cubes/*.ts` — each cube is a memoised factory
-  (`activityEventsCube()`), and `cubes/index.ts` exports `analyticsCubes()` where it exported the
-  `ANALYTICS_CUBES` const. `allCubes()` and `cubesFor()` are unchanged.
 - `apps/web/src/plugins/analytics/cubes/security.ts` — `extractSecurityContext(c)` is gone;
   `buildSecurityContext(detached)` and the pure `analyticsSecurityContext(reader, memberships)`
   replace it.
-- `apps/web/src/plugins/analytics/services/fact-tables/registry.ts` — `ANALYTICS_FACT_TABLES` is
-  `analyticsFactTables()`.
 - `apps/web/src/plugins/analytics/services/dashboard-templates.ts` — `resetToTemplate(ctx, pageId)`
   takes the request context, because the errors it throws come off it.
 - `apps/web/src/plugins/analytics/services/visibility.ts` is new.
-- `apps/web/src/plugins/analytics/kit-tables.ts` is new.
 - The tests moved to `@testkit`, `tests/config/permissions.test.ts` became
   `tests/api/permissions.test.ts` (the declared ability check needs the harness's database), and
   `tests/api/scheduled-facts.test.ts` no longer dispatches the cron.
@@ -135,7 +141,7 @@ The ones with more than an import change, and worth reading rather than re-apply
 
 ```bash
 pnpm plugin check            # exits 0, and is now STRICT: requires.pluginApi is declared
-pnpm typecheck && pnpm test && pnpm build
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
 The two tests to watch are the ones that carry this plugin's reason for existing, and both are

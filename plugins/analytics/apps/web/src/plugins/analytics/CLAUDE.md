@@ -39,14 +39,13 @@ everything else as injected context* (`docs/plugin-api.md`). In practice:
 | the CLI half | `../api` |
 
 Three escapes, each deliberate and each in one file: `extensions()` / `extensionSources()` and
-`allTables()` from `@/plugins/api/peers` (`extensions.ts`, `cube-api.ts`, `kit-tables.ts`), and
-`ctx.detached()` for the cube security context, which drizzle-cube calls where no request exists.
+`allTables()` from `@/plugins/api/peers` (`extensions.ts`, `cube-api.ts`), and `ctx.detached()` for
+the cube security context, which drizzle-cube calls where no request exists.
 
-**`kit-tables.ts` is the one place this plugin widens beyond `@/db/schema/kit`.** That module
-exports `tenants`, `users` and `groups`; analytics also needs `activity_events`, `tenant_users` and
-`group_types`, which come through `allTables()` — and therefore only ever from inside a function.
-That is why the four cubes and the fact-table registry are memoised FACTORIES rather than consts.
-The day those three join the schema kit, this file is the only one that changes.
+Every kit table this plugin names — `tenants`, `users`, `groups`, `group_types`, `activity_events`,
+`tenant_users` — comes from `@/db/schema/kit`, so the cubes and the fact-table registry are plain
+module-scope consts. The one exception is `group_members`, which the schema kit does not export and
+which one test reads through `allTables()`, inside a hook.
 
 **`services/visibility.ts` is the plugin's own half of D29.** The kit publishes what it takes to
 DECLARE a restrictable resource and reads that declaration; it does not publish
@@ -67,13 +66,13 @@ plugin's `extensions` for `analytics:{cubes,factTables,dashboardTemplates,cubeIs
 zod-narrows each, and THROWS naming the contributing plugin when it cannot. `unknown[]` at the core
 boundary is the point (D31 decision 6): the kit stays ignorant of what a "cube" is.
 
-**Registries are FUNCTIONS, not consts, and that is load-bearing.** `allCubes()`, `factTables()`,
-`DASHBOARD_TEMPLATES()` — and now each individual cube and `analyticsFactTables()` — read something
-that reads the server plugin barrel, which imports this plugin. Evaluated at module scope one side
-finds the barrel still `undefined`, and the failure is `undefined.flatMap` at IMPORT time: the
+**Three registries are FUNCTIONS, not consts, and that is load-bearing.** `allCubes()`,
+`factTables()` and `DASHBOARD_TEMPLATES()` compose in what other plugins contributed, which means
+reading the server plugin barrel — and that barrel imports this plugin. Evaluated at module scope
+one side finds it still `undefined`, and the failure is `undefined.flatMap` at IMPORT time: the
 Worker never starts, and which entry point loses the race depends on nothing a reader can see. Read
 at call time, live bindings are always resolved; each memoises. The same rule put
-`sharedWithMyGroups` in the kit's leaf `api/services/access-sql.ts` and made its
+`sharedWithMyGroups` and `accessScopeOf` in the kit's leaf `api/services/access-sql.ts` and made its
 `visibilityResources()` a function.
 
 ## Bundle boundaries

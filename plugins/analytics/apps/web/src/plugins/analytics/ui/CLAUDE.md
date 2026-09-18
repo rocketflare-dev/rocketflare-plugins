@@ -33,11 +33,9 @@ Paths below are relative to `apps/web/src/plugins/analytics/`.
   library's `CubeClient` forwards both to every `fetch` (it defaults to `include` anyway; the
   header is the kit's marker). No token. drizzle-cube runs its queries on a BUNDLED TanStack Query
   (separate React context), so the app's `QueryCache.onError` never sees a cube failure: the
-  provider hands it `createCubeQueryClient()`, whose `onError` detects a `status === 401`
-  (`CubeQueryError`) and routes it back through the declared `api` client — one `GET /api/me`, which
-  calls the kit's own `notifyUnauthorized` and lands the D20 redirect. `notifyUnauthorized` and
-  `setUnauthorizedHandler` are not published by `@/plugins/api/ui`; that is reported to the kit, and
-  the probe is the in-contract route to the same outcome (one extra request, on the 401 path only). Our hooks
+  provider hands it `createCubeQueryClient()`, whose `onError` maps a `status === 401`
+  (`CubeQueryError`) to `notifyUnauthorized(new ApiError(...))` → the global D20 handler. Both that
+  and `setUnauthorizedHandler` come off `@/plugins/api/ui`. Our hooks
   rendered inside `CubeProvider` still resolve the APP client (different context) — that is why
   `DashboardLoader` can call `useAutosaveDashboardConfig` from inside it.
 - **Bundle discipline**: nothing under `pages/analytics/**` or `components/analytics/**` may be
