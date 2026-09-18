@@ -8,7 +8,7 @@
  */
 import type { FactTableStatus } from '@rocketflare/shared/plugins/analytics/index'
 import { sql } from 'drizzle-orm'
-import type { Database } from '../../../../db/client'
+import type { Database } from '@/plugins/api'
 import { type FactTableDefinition, factTables } from './registry'
 
 function toDate(value: unknown): Date | null {

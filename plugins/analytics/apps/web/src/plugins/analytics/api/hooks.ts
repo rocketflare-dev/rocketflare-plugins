@@ -2,13 +2,17 @@
  * The analytics plugin's two host hooks (D31): what a NEW organisation gets, and what the demo
  * seed adds. Both are post-commit, idempotent and best-effort, exactly like the kit's own — a
  * plugin hook must never be able to break somebody's sign-up.
+ *
+ * Note what `HookCtx` does NOT carry: a logger, an `env`, a way to enqueue or nudge. A hook runs at
+ * somebody else's transaction boundary and has no business doing any of that — if it needs to, it
+ * is not a hook. `SeedCtx`'s `demoId` arrives already namespaced with this plugin's id.
  */
 import { and, eq, ne } from 'drizzle-orm'
-import type { Database } from '../../../db/client'
-import { activityEvents, groups, tenants } from '../../../db/schema'
-import type { PluginSeedContext } from '../../types'
+import { tenants } from '@/db/schema/kit'
+import type { HookCtx, SeedCtx } from '@/plugins/api'
 import { analyticsPageGroups } from '../db/schema/analytics-page-groups'
 import { analyticsPages } from '../db/schema/analytics-pages'
+import { kitTables } from '../kit-tables'
 import { ensureDefaultDashboards } from '../services/dashboard-templates'
 import { refreshAllFactTables } from '../services/fact-tables'
 
@@ -24,41 +28,43 @@ import { refreshAllFactTables } from '../services/fact-tables'
  * does not exist yet — and its page arrives on that tenant's first `GET /api/analytics/pages`
  * instead, through the same lazy path.
  */
-export async function onTenantCreated(
-  db: Database,
-  tenantId: string,
-  userId: string,
-  features: readonly string[] = []
-) {
+export async function onTenantCreated({ db, tenantId, userId, features }: HookCtx): Promise<void> {
   await ensureDefaultDashboards(db, tenantId, userId, features)
 }
 
 /**
- * The demo workspace's analytics (`pnpm seed --demo`). Fixed ids through `demoId` (already
- * namespaced with the plugin's id by the host) and `onConflictDoNothing`, so re-running adds
- * nothing.
+ * The demo workspace's analytics (`pnpm seed --demo`). Fixed ids through `demoId` and
+ * `onConflictDoNothing`, so re-running adds nothing.
  *
  * It reads the kit's demo rows rather than being handed them: the Finance group by NAME, the
  * sibling organisations as "every other tenant". A hook is given `{ tenantId, ownerId }` and has
  * to find the rest itself, which is the right way round — the host cannot carry every plugin's
  * dependencies in one context object, and a query that finds nothing simply seeds less.
  */
-export async function seedDemo(db: Database, ctx: PluginSeedContext) {
-  const { tenantId, ownerId, demoId, log } = ctx
+export async function seedDemo(ctx: SeedCtx): Promise<void> {
+  const { db, tenantId, ownerId, demoId, log } = ctx
+  // Called inside the function, never at module scope: `kitTables()` reads the plugin barrel's
+  // neighbourhood, and a module-scope read closes a cycle that fails at IMPORT time.
+  const { groups, activityEvents } = kitTables()
 
   await ensureDefaultDashboards(db, tenantId, ownerId)
   const siblings = await db.select({ id: tenants.id }).from(tenants).where(ne(tenants.id, tenantId))
   for (const sibling of siblings) await ensureDefaultDashboards(db, sibling.id, null)
 
-  const overview = await db.query.analyticsPages.findFirst({
-    where: and(eq(analyticsPages.tenantId, tenantId), eq(analyticsPages.slug, 'tenant-overview')),
-  })
+  const [overview] = await db
+    .select()
+    .from(analyticsPages)
+    .where(and(eq(analyticsPages.tenantId, tenantId), eq(analyticsPages.slug, 'tenant-overview')))
+    .limit(1)
 
   // A user-created page restricted to Finance. Template pages stay tenant-wide on purpose — they
   // are seeded for every tenant and resetting one must never change who can see it.
-  const finance = await db.query.groups.findFirst({
-    where: and(eq(groups.tenantId, tenantId), eq(groups.name, 'Finance')),
-  })
+  const [finance] = await db
+    .select({ id: groups.id })
+    .from(groups)
+    .where(and(eq(groups.tenantId, tenantId), eq(groups.name, 'Finance')))
+    .limit(1)
+
   const financePageId = demoId('page:finance')
   if (finance) {
     await db

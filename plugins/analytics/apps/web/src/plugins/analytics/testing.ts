@@ -7,7 +7,7 @@
  * `tests/api/cube-isolation.test.ts` compares the case keys to the whole registry, this plugin's
  * cubes and every contributed one together. A contributed cube with no case fails the host's suite.
  */
-import type { Database } from '../../db/client'
+import type { Database } from '@/plugins/api'
 
 export type IsolationSide = 'a' | 'b'
 export type IsolationRows = Array<Record<string, unknown>>

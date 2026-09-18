@@ -4,10 +4,8 @@
  * are never the decision (`analytics_pages.visibility` is).
  */
 import { index, pgTable, primaryKey, uuid } from 'drizzle-orm/pg-core'
-import { tenantRef } from '../../../../db/schema/_helpers'
-import { groups } from '../../../../db/schema/groups'
-import { tenantIsolation } from '../../../../db/schema/rls'
-import { tenants } from '../../../../db/schema/tenants'
+// The schema kit (D31) — relative, because drizzle-kit bundles this file and resolves no alias.
+import { groups, tenantIsolation, tenantRef, tenants } from '../../../../db/schema/kit'
 import { analyticsPages } from './analytics-pages'
 
 export const analyticsPageGroups = pgTable(

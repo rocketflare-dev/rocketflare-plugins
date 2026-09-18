@@ -1,71 +1,77 @@
 /**
- * `TenantActivityDaily` cube (D19) — over the FACT table `analytics_tenant_activity_daily_facts`, rebuilt
- * hourly by `services/fact-tables`. Same direct `tenant_id` scoping as any tenant table; the point
- * is that a dashboard over a year of events reads a few hundred pre-aggregated rows. Joins `Users`
- * (belongsTo). Member names are frozen: dashboard JSON references them.
+ * `TenantActivityDaily` cube (D19) — over the FACT table `analytics_tenant_activity_daily_facts`,
+ * rebuilt hourly by `services/fact-tables`. Same direct `tenant_id` scoping as any tenant table;
+ * the point is that a dashboard over a year of events reads a few hundred pre-aggregated rows.
+ * Joins `Users` (belongsTo). Member names are frozen: dashboard JSON references them.
  *
- * EXAMPLE (surface `example-cube-tenant-activity-daily`): the cube, its fact table and its query
- * are one deletable unit — `docs/ADAPTING.md` §2 lists what that touches.
+ * A memoised factory for symmetry with the other three — its own table is the plugin's, but the
+ * join names `users` and the registry treats every cube the same way.
  */
 import type { BaseQueryDefinition, Cube, QueryContext } from 'drizzle-cube/server'
 import { defineCube } from 'drizzle-cube/server'
 import { eq } from 'drizzle-orm'
-import { users } from '../../../db/schema'
+import { users } from '@/db/schema/kit'
 import { tenantActivityDailyFacts } from '../db/schema/facts'
 import { tenantIdOf } from './security'
 import { usersCube } from './users'
 
-export const tenantActivityDailyCube: Cube = defineCube('TenantActivityDaily', {
-  title: 'Daily Activity',
-  description: 'Activity events per day and user, pre-aggregated hourly (fact table)',
+let memo: Cube | null = null
 
-  sql: (ctx: QueryContext): BaseQueryDefinition => ({
-    from: tenantActivityDailyFacts,
-    where: eq(tenantActivityDailyFacts.tenantId, tenantIdOf(ctx)),
-  }),
+export function tenantActivityDailyCube(): Cube {
+  if (memo) return memo
+  memo = defineCube('TenantActivityDaily', {
+    title: 'Daily Activity',
+    description: 'Activity events per day and user, pre-aggregated hourly (fact table)',
 
-  joins: {
-    Users: {
-      targetCube: () => usersCube,
-      relationship: 'belongsTo',
-      on: [{ source: tenantActivityDailyFacts.userId, target: users.id }],
-    },
-  },
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
+      from: tenantActivityDailyFacts,
+      where: eq(tenantActivityDailyFacts.tenantId, tenantIdOf(ctx)),
+    }),
 
-  dimensions: {
-    day: { name: 'day', title: 'Day', type: 'time', sql: tenantActivityDailyFacts.day },
-    userId: {
-      name: 'userId',
-      title: 'User ID',
-      type: 'string',
-      sql: tenantActivityDailyFacts.userId,
+    joins: {
+      Users: {
+        targetCube: () => usersCube(),
+        relationship: 'belongsTo',
+        on: [{ source: tenantActivityDailyFacts.userId, target: users.id }],
+      },
     },
-    factRefreshedAt: {
-      name: 'factRefreshedAt',
-      title: 'Fact Refreshed At',
-      type: 'time',
-      sql: tenantActivityDailyFacts.factRefreshedAt,
-    },
-  },
 
-  measures: {
-    eventCount: {
-      name: 'eventCount',
-      title: 'Events',
-      type: 'sum',
-      sql: tenantActivityDailyFacts.eventCount,
+    dimensions: {
+      day: { name: 'day', title: 'Day', type: 'time', sql: tenantActivityDailyFacts.day },
+      userId: {
+        name: 'userId',
+        title: 'User ID',
+        type: 'string',
+        sql: tenantActivityDailyFacts.userId,
+      },
+      factRefreshedAt: {
+        name: 'factRefreshedAt',
+        title: 'Fact Refreshed At',
+        type: 'time',
+        sql: tenantActivityDailyFacts.factRefreshedAt,
+      },
     },
-    activeUsers: {
-      name: 'activeUsers',
-      title: 'Active Users',
-      type: 'countDistinct',
-      sql: tenantActivityDailyFacts.userId,
+
+    measures: {
+      eventCount: {
+        name: 'eventCount',
+        title: 'Events',
+        type: 'sum',
+        sql: tenantActivityDailyFacts.eventCount,
+      },
+      activeUsers: {
+        name: 'activeUsers',
+        title: 'Active Users',
+        type: 'countDistinct',
+        sql: tenantActivityDailyFacts.userId,
+      },
+      activeDays: {
+        name: 'activeDays',
+        title: 'Active Days',
+        type: 'countDistinct',
+        sql: tenantActivityDailyFacts.day,
+      },
     },
-    activeDays: {
-      name: 'activeDays',
-      title: 'Active Days',
-      type: 'countDistinct',
-      sql: tenantActivityDailyFacts.day,
-    },
-  },
-})
+  })
+  return memo
+}

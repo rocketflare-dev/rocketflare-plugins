@@ -11,17 +11,17 @@
  * for an admin-level scope (`bypass`), so owner, admin, support and global admins are not narrowed.
  * A page the reader may not see answers the same 404 as one that does not exist.
  *
- * The kit held these two as `analyticsPageVisibility` in `services/access.ts` beside documents'.
- * They are the plugin's now, contributed through `ServerPlugin.visibilityResources`, so
- * `setResourceGroups`, `grantsForResources` and the 409 `group_in_use` count stay ONE dispatch and
- * the kit keeps no knowledge of a table it no longer ships.
+ * `sharedWithMyGroups` comes from `@/plugins/api`, which re-exports the LEAF half of the kit's
+ * access module for exactly this import: a visibility resource needs the SQL at module scope, and
+ * the composing module reads the plugin barrel.
  */
 import { and, count, eq, inArray, type SQL, sql } from 'drizzle-orm'
-import type { VisibilityResource } from '../../api/services/access'
-import { type AccessScope, sharedWithMyGroups } from '../../api/services/access-sql'
-import { groups, groupTypes } from '../../db/schema'
+import { groups } from '@/db/schema/kit'
+import type { AccessScope, VisibilityResource } from '@/plugins/api'
+import { sharedWithMyGroups } from '@/plugins/api'
 import { analyticsPageGroups } from './db/schema/analytics-page-groups'
 import { analyticsPages } from './db/schema/analytics-pages'
+import { groupTypesTable } from './kit-tables'
 
 /** The registry key. `<id>:<thing>`, so two plugins can never claim one kind. */
 export const ANALYTICS_PAGE_VISIBILITY = 'analytics:page'
@@ -60,17 +60,19 @@ export const analyticsPageVisibility: VisibilityResource = {
         .onConflictDoNothing()
     }
   },
+  // `group_types` is one of the three kit tables `@/db/schema/kit` does not carry, so it is read
+  // through `kitTables()` — inside the function, which is the rule that keeps the cycle shut.
   grantRows: (db, tenantId, resourceIds) =>
     db
       .select({
         resourceId: analyticsPageGroups.pageId,
         id: groups.id,
         name: groups.name,
-        typeName: groupTypes.name,
+        typeName: groupTypesTable().name,
       })
       .from(analyticsPageGroups)
       .innerJoin(groups, eq(groups.id, analyticsPageGroups.groupId))
-      .innerJoin(groupTypes, eq(groupTypes.id, groups.groupTypeId))
+      .innerJoin(groupTypesTable(), eq(groupTypesTable().id, groups.groupTypeId))
       .where(
         and(
           eq(analyticsPageGroups.tenantId, tenantId),

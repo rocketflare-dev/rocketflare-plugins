@@ -9,7 +9,7 @@ export {
   refreshFactTableForTenant,
 } from './refresh'
 export {
-  ANALYTICS_FACT_TABLES,
+  analyticsFactTables,
   type FactTableDefinition,
   factTables,
   getFactTable,
