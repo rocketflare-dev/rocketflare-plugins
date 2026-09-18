@@ -6,6 +6,8 @@ breaking: false
 requires_kit: ">=0.7.0 <1.0.0"
 migrations: []
 areas: [api, ui, cli, tests, config]
+touches_surfaces: []
+requires_surfaces: []
 touches_registries: []
 manual: false
 ---
