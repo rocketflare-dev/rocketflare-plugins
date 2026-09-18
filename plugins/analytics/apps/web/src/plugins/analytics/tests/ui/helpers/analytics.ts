@@ -2,7 +2,7 @@
  * Fixtures for the analytics UI tests (D19): wire-shaped `analytics_pages` rows (ISO strings, as
  * the server sends them) — a template page and a user-created page.
  */
-import { IDS } from '../../../../../../tests/ui/helpers/renderWithProviders'
+import { IDS } from '@testkit/integration'
 
 export const PAGE_IDS = {
   template: '77777777-7777-4777-8777-777777777777',

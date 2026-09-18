@@ -16,9 +16,8 @@
  */
 import { relations } from 'drizzle-orm'
 import { date, index, integer, pgTable, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
-import { tenantRef } from '../../../../../db/schema/_helpers'
-import { tenantIsolation } from '../../../../../db/schema/rls'
-import { tenants } from '../../../../../db/schema/tenants'
+// The schema kit (D31) — relative, because drizzle-kit bundles this file and resolves no alias.
+import { tenantIsolation, tenantRef, tenants } from '../../../../../db/schema/kit'
 
 export const tenantActivityDailyFacts = pgTable(
   'analytics_tenant_activity_daily_facts',

@@ -4,8 +4,10 @@ Dashboards, the semantic layer, the drizzle-cube API and one example fact table.
 §8 until 0.6.0; it is now a plugin, and the kit knows nothing about drizzle-cube.
 `docs/CONCEPTS.md` §8 is the pointer, this directory is the reference.
 
-Install: `pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugin-analytics.git@1.0.2 --apply`
+Install: `pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git --subdir plugins/analytics --apply`
 — it is in `.rocketflare.json` `defaultPlugins`, so `bash scripts/bootstrap.sh` installs it for you.
+Requires kit `>=0.7.0` and declares `requires.pluginApi: "1"`, which is what holds it STRICTLY to
+the import rule below rather than merely warning about it.
 
 ## The four published entries, and nothing else
 
@@ -18,6 +20,38 @@ Install: `pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugin-
 
 Everything else here is private. Core reaching past those four, or another plugin doing it, is a
 `tests/config/plugins.test.ts` failure rather than a convention.
+
+## Where this plugin reaches the host
+
+**One sentence, and it is checked**: *a plugin imports only from declared entries, and receives
+everything else as injected context* (`docs/plugin-api.md`). In practice:
+
+| Layer | Entry |
+|---|---|
+| routes | `const ctx: RequestCtx = requestCtx(c)` — **the annotation is required**, or `ctx.notFound(...)` does not narrow |
+| the cron task | `CronCtx` via `cronCtx(raw)`, adapted once in `api/scheduled.ts` |
+| the refresh job | `JobCtx` via `jobCtx(raw)`, adapted once in `jobs/refresh-facts.ts` |
+| hooks | `HookCtx` / `SeedCtx` |
+| table files | `@/db/schema/kit`, **by relative path** — drizzle-kit bundles them and resolves no alias |
+| `ui/index.ts` | `@/plugins/api/ui-wiring` only (it ships in the MAIN bundle) |
+| pages and their components | `@/plugins/api/ui` |
+| tests | `@testkit/integration` (the harness) and `@testkit/unit` (the context builders) |
+| the CLI half | `../api` |
+
+Three escapes, each deliberate and each in one file: `extensions()` / `extensionSources()` and
+`allTables()` from `@/plugins/api/peers` (`extensions.ts`, `cube-api.ts`), and `ctx.detached()` for
+the cube security context, which drizzle-cube calls where no request exists.
+
+Every kit table this plugin names — `tenants`, `users`, `groups`, `group_types`, `activity_events`,
+`tenant_users` — comes from `@/db/schema/kit`, so the cubes and the fact-table registry are plain
+module-scope consts. The one exception is `group_members`, which the schema kit does not export and
+which one test reads through `allTables()`, inside a hook.
+
+**`services/visibility.ts` is the plugin's own half of D29.** The kit publishes what it takes to
+DECLARE a restrictable resource and reads that declaration; it does not publish
+`grantsForResources`, `setResourceGroups` or `resolveRequestedVisibility`, so they live here, over
+this plugin's own registry entry, keeping both rules: a group id is checked against the tenant
+before it is stored, and a member may share only with groups they are in (403 `group_not_yours`).
 
 ## The three rules this plugin exists to demonstrate
 
@@ -33,11 +67,13 @@ zod-narrows each, and THROWS naming the contributing plugin when it cannot. `unk
 boundary is the point (D31 decision 6): the kit stays ignorant of what a "cube" is.
 
 **Three registries are FUNCTIONS, not consts, and that is load-bearing.** `allCubes()`,
-`factTables()` and `DASHBOARD_TEMPLATES()` read the server plugin barrel, which imports this
-plugin — so evaluated at module scope one side finds `serverPlugins` still `undefined` and the
-Worker fails at import, not at request. Read at call time, live bindings are always resolved; each
-memoises. The same rule put `sharedWithMyGroups` in the leaf `api/services/access-sql.ts` and made
-the kit's `visibilityResources()` a function.
+`factTables()` and `DASHBOARD_TEMPLATES()` compose in what other plugins contributed, which means
+reading the server plugin barrel — and that barrel imports this plugin. Evaluated at module scope
+one side finds it still `undefined`, and the failure is `undefined.flatMap` at IMPORT time: the
+Worker never starts, and which entry point loses the race depends on nothing a reader can see. Read
+at call time, live bindings are always resolved; each memoises. The same rule put
+`sharedWithMyGroups` and `accessScopeOf` in the kit's leaf `api/services/access-sql.ts` and made its
+`visibilityResources()` a function.
 
 ## Bundle boundaries
 
@@ -60,7 +96,7 @@ the list:
 - `apps/web/vite.config.ts`: `/cubejs-api` and `/mcp` in the dev proxy, `'@nivo/heatmap'` aliased to
   `./src/plugins/analytics/ui/lib/nivo-heatmap.tsx` (drizzle-cube's heat-map chunk names that
   optional peer and Rollup fails without it), and `'recharts'` in `dedupe`.
-- `pnpm db:generate --name plugin-analytics-1.0.2`, then `pnpm db:migrate`.
+- `pnpm db:generate --name plugin-analytics-<version>`, then `pnpm db:migrate`.
 
 ## Things that moved and are not coming back
 

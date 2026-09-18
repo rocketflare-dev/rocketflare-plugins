@@ -7,24 +7,32 @@
  * lived in the kit's `tests/api/access-visibility.test.ts` beside documents until analytics became
  * a plugin; a plugin tests its own behaviour, and this is that.
  *
- * The two shapes that matter most are at the bottom. An EMPTY grant list — what deleting the last
+ * The last block is the plain cross-tenant case: another organisation's dashboard is not in your
+ * list and answers 404 by id, whatever its visibility says. `cube-isolation.test.ts` proves the
+ * same property for every CUBE; this proves it for the table those dashboards live in, and it is
+ * what `pnpm plugin check` looks for when it asks whether a plugin owning tenant tables has a test
+ * that creates a second organisation and drives the real mount as it.
+ *
+ * The two shapes that matter most are in the middle. An EMPTY grant list — what deleting the last
  * group a page was shared with leaves — must narrow to the creator and admins rather than publish
  * to the organisation, because `visibility` is a COLUMN and the grants are only grants. And a page
  * the reader may not see must answer the SAME 404 as one that does not exist, so the API is not an
  * existence oracle.
  */
-import { eq } from 'drizzle-orm'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { groupMembers, groups, groupTypes } from '@/db/schema'
+
 import {
   createTestSession,
   createTestTenant,
   createTestUser,
+  json,
   linkUserToTenant,
+  request,
   sessionCookieHeader,
-} from '../../../../../tests/helpers/auth'
-import { setupTestDatabase } from '../../../../../tests/helpers/db'
-import { json, request } from '../../../../../tests/helpers/request'
+  setupTestDatabase,
+} from '@testkit/integration'
+import { eq } from 'drizzle-orm'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { groupMembers, groups, groupTypes } from '@/db/schema/kit'
 import { analyticsPageGroups } from '../../db/schema/analytics-page-groups'
 import { analyticsPages } from '../../db/schema/analytics-pages'
 
@@ -50,7 +58,10 @@ const EMPTY_CONFIG = { layoutMode: 'rows', rows: [], portlets: [] } as never
 async function member(role: 'owner' | 'admin' | 'member' | 'support'): Promise<Reader> {
   const user = await createTestUser(db)
   await linkUserToTenant(db, user.id, tenantId, role)
-  return { userId: user.id, cookie: sessionCookieHeader(await createTestSession(db, user.id, tenantId)) }
+  return {
+    userId: user.id,
+    cookie: sessionCookieHeader(await createTestSession(db, user.id, tenantId)),
+  }
 }
 
 async function page(
@@ -179,5 +190,54 @@ describe('changing who may see one', () => {
         )
       ).status
     ).toBe(200)
+  })
+})
+
+describe('tenant isolation', () => {
+  it('never lets one organisation see or read another’s dashboards', async () => {
+    // A SECOND organisation, with its own owner and its own tenant-wide dashboard.
+    const otherTenant = await createTestTenant(db)
+    const otherUser = await createTestUser(db)
+    await linkUserToTenant(db, otherUser.id, otherTenant.id, 'owner')
+    const otherCookie = sessionCookieHeader(
+      await createTestSession(db, otherUser.id, otherTenant.id)
+    )
+    const [otherPage] = await db
+      .insert(analyticsPages)
+      .values({
+        tenantId: otherTenant.id,
+        slug: `page-${crypto.randomUUID()}`,
+        name: 'Their dashboard',
+        config: EMPTY_CONFIG,
+        createdByUserId: otherUser.id,
+        visibility: 'tenant',
+      })
+      .returning()
+
+    // Neither direction: our owner cannot see theirs, and theirs cannot see ours — including the
+    // one that is tenant-WIDE, so this is the tenant predicate rather than the visibility one.
+    const ours = await json<{ items: { id: string }[] }>(
+      await request('/api/analytics/pages', { headers: creator.cookie })
+    )
+    expect(ours.items.map(p => p.id)).not.toContain(otherPage?.id)
+    expect(
+      (await request(`/api/analytics/pages/${otherPage?.id}`, { headers: creator.cookie })).status
+    ).toBe(404)
+
+    const theirs = await json<{ items: { id: string }[] }>(
+      await request('/api/analytics/pages', { headers: otherCookie })
+    )
+    expect(theirs.items.map(p => p.id)).not.toContain(openPageId)
+    expect(
+      (await request(`/api/analytics/pages/${openPageId}`, { headers: otherCookie })).status
+    ).toBe(404)
+
+    // A write across the boundary is the same 404, not a 403 — the row is not theirs to know about.
+    const hijack = await request(
+      `/api/analytics/pages/${openPageId}`,
+      { method: 'PATCH', headers: { ...otherCookie, Origin: 'http://localhost:3001' } },
+      { json: { name: 'hijacked' } }
+    )
+    expect(hijack.status).toBe(404)
   })
 })

@@ -6,11 +6,12 @@
  * both directions — while a `hasMany` declared on this side would make every ungrouped
  * (`recordsTable`) query that mixes the two cubes invalid. Member names are frozen: dashboard JSON
  * references them.
+
  */
 import type { BaseQueryDefinition, Cube, QueryContext } from 'drizzle-cube/server'
 import { defineCube } from 'drizzle-cube/server'
 import { inArray, sql } from 'drizzle-orm'
-import { tenantUsers, users } from '../../../db/schema'
+import { tenantUsers, users } from '@/db/schema/kit'
 import { tenantIdOf } from './security'
 
 export const usersCube: Cube = defineCube('Users', {

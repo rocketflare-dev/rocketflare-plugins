@@ -2,11 +2,12 @@
  * `TenantUsers` cube (D19) — the direct `tenant_id` scoping pattern over the membership table.
  * Filtered role counts show `filters` on a measure. Joins: `Users` (belongsTo). Member names are
  * frozen: dashboard JSON references them.
+
  */
 import type { BaseQueryDefinition, Cube, QueryContext } from 'drizzle-cube/server'
 import { defineCube } from 'drizzle-cube/server'
 import { eq, sql } from 'drizzle-orm'
-import { tenantUsers, users } from '../../../db/schema'
+import { tenantUsers, users } from '@/db/schema/kit'
 import { tenantIdOf } from './security'
 import { usersCube } from './users'
 

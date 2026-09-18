@@ -12,8 +12,7 @@ import type { GroupRef } from '@rocketflare/shared/groups'
 import type { AnalyticsPage as AnalyticsPageDto } from '@rocketflare/shared/plugins/analytics/index'
 import { slugify } from '@rocketflare/shared/tenants'
 import { and, eq } from 'drizzle-orm'
-import { BadRequestError, NotFoundError } from '../../../api/utils/core/errors'
-import type { Database } from '../../../db/client'
+import type { Database, RequestCtx } from '@/plugins/api'
 import { getTemplate, listTemplates } from '../dashboards'
 import { type AnalyticsPage, analyticsPages } from '../db/schema/analytics-pages'
 
@@ -69,21 +68,20 @@ export async function ensureDefaultDashboards(
 }
 
 /** Overwrite a template page's name/description/config/order from its template. */
-export async function resetToTemplate(
-  db: Database,
-  tenantId: string,
-  pageId: string
-): Promise<AnalyticsPage> {
-  const page = await db.query.analyticsPages.findFirst({
-    where: and(eq(analyticsPages.id, pageId), eq(analyticsPages.tenantId, tenantId)),
-  })
-  if (!page) throw new NotFoundError('Dashboard not found')
+export async function resetToTemplate(ctx: RequestCtx, pageId: string): Promise<AnalyticsPage> {
+  const { db, tenantId } = ctx
+  const [page] = await db
+    .select()
+    .from(analyticsPages)
+    .where(and(eq(analyticsPages.id, pageId), eq(analyticsPages.tenantId, tenantId)))
+    .limit(1)
+  if (!page) ctx.notFound('Dashboard not found')
   if (!page.templateKey) {
-    throw new BadRequestError('Only template dashboards can be reset', 'not_a_template_page')
+    ctx.badRequest('Only template dashboards can be reset', 'not_a_template_page')
   }
   const template = getTemplate(page.templateKey)
   if (!template) {
-    throw new NotFoundError(`Template "${page.templateKey}" no longer exists`, 'template_not_found')
+    ctx.notFound(`Template "${page.templateKey}" no longer exists`, 'template_not_found')
   }
   const [row] = await db
     .update(analyticsPages)
@@ -95,7 +93,7 @@ export async function resetToTemplate(
     })
     .where(and(eq(analyticsPages.id, pageId), eq(analyticsPages.tenantId, tenantId)))
     .returning()
-  if (!row) throw new NotFoundError('Dashboard not found')
+  if (!row) ctx.notFound('Dashboard not found')
   return row
 }
 

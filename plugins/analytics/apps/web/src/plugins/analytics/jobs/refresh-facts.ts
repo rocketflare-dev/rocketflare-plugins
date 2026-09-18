@@ -9,19 +9,22 @@
  *
  * **One tenant, always.** The payload carries the tenant the route resolved from the caller's auth
  * context; a job a tenant API key can enqueue must never rebuild somebody else's rows. The
- * cross-tenant rebuild is the cron, which has no request behind it.
+ * cross-tenant rebuild is the cron, which has no request behind it — and it is why `JobCtx`
+ * carries no `tenantId` of its own: a job's tenant comes from its PAYLOAD.
  *
- * Handler contract (`.claude/rules/api.md`): everything is awaited, there is no `waitUntil` in a
- * consumer, a throw is retried with backoff and a return is an `ack`.
+ * Handler contract: everything is awaited, there is no `waitUntil` in a consumer (which is why
+ * `JobCtx` has no `defer`, where `RequestCtx` does), a throw is retried with backoff and a return
+ * is an `ack`. `jobCtx` adapts the kit's context once, at the registration boundary below.
  */
 import type { JobOf } from '@rocketflare/shared/jobs'
 import type { ANALYTICS_REFRESH_FACTS_JOB } from '@rocketflare/shared/plugins/analytics/index'
-import type { JobContext } from '../../../api/queues/jobs'
+import type { JobCtx, JobHandler } from '@/plugins/api'
+import { jobCtx } from '@/plugins/api'
 import { refreshAllFactTables, refreshFactTable } from '../services/fact-tables'
 
-export async function handleAnalyticsRefreshFacts(
+export async function refreshFactsForTenant(
   job: JobOf<typeof ANALYTICS_REFRESH_FACTS_JOB>,
-  { db, logger }: JobContext
+  { db, logger }: JobCtx
 ): Promise<void> {
   const { tenantId, table } = job.payload
   if (table) {
@@ -34,3 +37,9 @@ export async function handleAnalyticsRefreshFacts(
     throw new Error(`fact refresh failed for ${summary.failed} table(s) in tenant ${tenantId}`)
   }
 }
+
+/** What `ServerPlugin.jobHandlers` registers — the adapter, and the whole of the boundary. */
+export const handleAnalyticsRefreshFacts: JobHandler<typeof ANALYTICS_REFRESH_FACTS_JOB> = (
+  job,
+  ctx
+) => refreshFactsForTenant(job, jobCtx(ctx))

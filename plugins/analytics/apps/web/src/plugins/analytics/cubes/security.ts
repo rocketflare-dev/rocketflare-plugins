@@ -1,15 +1,20 @@
 /**
- * The cube security context (D19) — the ONLY bridge between the request's `AuthContext` and cube
- * SQL. `createCubeApp` calls `extractSecurityContext` for every `/cubejs-api` and `/mcp` request;
- * every cube's `sql()` then scopes its base query with `tenantIdOf(ctx)`. The route is mounted
- * behind `authMiddleware`, so a missing auth here is a wiring bug, not an expected path — it throws.
+ * The cube security context (D19, D31) — the ONLY bridge between the request and cube SQL.
+ *
+ * **It is built in the ROUTE and passed down, and that is the migration's one real shape change.**
+ * `createCubeApp` calls `extractSecurityContext` per query, from inside drizzle-cube, where no Hono
+ * context exists — so the old spelling (`c.get('auth')` in a library callback) was reaching for a
+ * request that had already gone. `RequestCtx` is deliberately not widened to work outside a
+ * handler; `ctx.detached()` is the kit's answer, and this file consumes it.
+ *
+ * Every cube's `sql()` then scopes its base query with `tenantIdOf(ctx)`. The route is mounted
+ * behind the kit's auth middleware, so a missing tenant here is a wiring bug, not an expected
+ * path — it throws.
  */
 import type { QueryContext, SecurityContext } from 'drizzle-cube/server'
 import { inArray, type SQL, sql } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
-import type { Context } from 'hono'
-import { isAdminLevel } from '../../../api/middleware/permissions'
-import type { AppEnv, AuthContext } from '../../../api/types'
+import type { DetachedCtx } from '@/plugins/api'
 
 export interface AnalyticsSecurityContext extends SecurityContext {
   tenantId: string
@@ -33,25 +38,57 @@ export class AnalyticsAuthError extends Error {
   }
 }
 
-/** `c.get('auth')` → `{ tenantId, userId, role }`; throws without an authenticated tenant member. */
-export function extractSecurityContext(c: Pick<Context<AppEnv>, 'get'>): AnalyticsSecurityContext {
-  const auth = c.get('auth') as AuthContext | undefined
-  if (!auth?.tenantId) throw new AnalyticsAuthError()
-  const groups: Record<string, string[]> = {}
+/**
+ * One of the reader's groups, with the name of the TYPE it belongs to — structurally the kit's
+ * `GroupRef`, named here because it is what the pure builder below takes.
+ */
+export interface GroupTypeRef {
+  id: string
+  name: string
+  typeName: string
+}
+
+/** What the context carries about who is asking — the half of `DetachedCtx` a cube may read. */
+export type CubeReader = Pick<DetachedCtx, 'tenantId' | 'userId' | 'role' | 'isAdmin'>
+
+/**
+ * Build the security context from a detached context and the reader's resolved groups. Pure, so
+ * the shape is unit-tested without a database or a request.
+ */
+export function analyticsSecurityContext(
+  reader: CubeReader,
+  memberships: readonly GroupTypeRef[] = []
+): AnalyticsSecurityContext {
+  if (!reader.tenantId) throw new AnalyticsAuthError()
+  const groupNames: Record<string, string[]> = {}
   const groupIdsByType: Record<string, string[]> = {}
-  for (const group of auth.groups) {
-    groups[group.typeName] = [...(groups[group.typeName] ?? []), group.name]
+  for (const group of memberships) {
+    groupNames[group.typeName] = [...(groupNames[group.typeName] ?? []), group.name]
     groupIdsByType[group.typeName] = [...(groupIdsByType[group.typeName] ?? []), group.id]
   }
   return {
-    tenantId: auth.tenantId,
-    userId: auth.user.id,
-    role: auth.tenantUser?.role ?? null,
-    groupIds: auth.groups.map(g => g.id),
-    groups,
+    tenantId: reader.tenantId,
+    userId: reader.userId,
+    role: reader.role,
+    groupIds: memberships.map(g => g.id),
+    groups: groupNames,
     groupIdsByType,
-    isAdmin: isAdminLevel(auth),
+    isAdmin: reader.isAdmin,
   }
+}
+
+/**
+ * The whole bridge, for the route: a detached context in, a security context out. **Pure, and no
+ * longer a query.**
+ *
+ * `groupFilter` narrows by group TYPE, so the names have to come from somewhere, and `AccessScope`
+ * carries ids alone. This used to resolve them with one query per cube request; kit 0.7.0 puts them
+ * on the context as `ctx.groups`, already resolved in the session's own LATERAL query, so there is
+ * nothing left to read. An admin-level reader is never narrowed by `groupFilter` at all, so their
+ * memberships are not even mapped.
+ */
+export function buildSecurityContext(ctx: DetachedCtx): AnalyticsSecurityContext {
+  return analyticsSecurityContext(ctx, ctx.isAdmin ? [] : ctx.groups)
 }
 
 /**

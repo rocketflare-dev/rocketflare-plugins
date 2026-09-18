@@ -1,17 +1,17 @@
 /**
- * `CubeClientProvider` (D19, D20): the REAL drizzle-cube `CubeProvider` is mounted so what is
+ * `CubeClientProvider` (D19, D20, D31): the REAL drizzle-cube `CubeProvider` is mounted so what is
  * asserted is the library's own fetch — same-origin cookie credentials and the kit's
- * `X-Requested-With` marker on `/cubejs-api/v1/meta` — and that a 401 from the cube API reaches
- * the kit's global unauthorized handler through the QueryClient we hand the library. The
- * `createCubeQueryClient` unit test covers the same routing without the library in the loop.
+ * `X-Requested-With` marker on `/cubejs-api/v1/meta` — and that a 401 from the cube API still ends
+ * up in the kit's global unauthorized handling.
+ *
+ * Both halves of that come off the declared UI entry — `setUnauthorizedHandler` to register the
+ * spy, `notifyUnauthorized` inside the provider — so what is asserted is the kit's real handler
+ * rather than a stand-in for it.
  */
 import { render, screen, waitFor } from '@testing-library/react'
+import { stubFetch, unauthorizedResponse } from '@testkit/integration'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { setUnauthorizedHandler } from '@/ui/lib/api-client'
-import {
-  stubFetch,
-  unauthorizedResponse,
-} from '../../../../../tests/ui/helpers/renderWithProviders'
+import { setUnauthorizedHandler } from '@/plugins/api/ui'
 import {
   CubeClientProvider,
   createCubeQueryClient,

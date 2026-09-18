@@ -24,10 +24,10 @@ import {
   PageHeader,
   SectionPanel,
   SkeletonRows,
+  useGroups,
+  usePermissions,
   VisibilityModal,
-} from '@/ui/components/shared'
-import { useGroups } from '@/ui/hooks/useGroups'
-import { usePermissions } from '@/ui/hooks/usePermissions'
+} from '@/plugins/api/ui'
 import { CubeClientProvider } from '../components/CubeClientProvider'
 import { DashboardFormModal, type DashboardFormValues } from '../components/DashboardFormModal'
 import { DashboardLoader } from '../components/DashboardLoader'

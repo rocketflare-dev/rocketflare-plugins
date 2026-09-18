@@ -8,9 +8,9 @@
  * Service signature `(db, …)`; the logger is optional so scripts and tests can omit it.
  */
 import { getTableColumns, sql } from 'drizzle-orm'
-import type { Logger } from '../../../../api/utils/core/logger'
-import type { Database } from '../../../../db/client'
-import { tenants } from '../../../../db/schema'
+import { tenants } from '@/db/schema/kit'
+import type { Database, PluginLogger } from '@/plugins/api'
+import { transaction } from '@/plugins/api'
 import { type FactTableDefinition, factTables, getFactTable } from './registry'
 
 export interface TenantRefreshError {
@@ -38,7 +38,7 @@ export interface FactRefreshSummary {
 export interface RefreshOptions {
   /** Only this tenant; default = every row of `tenants`. */
   tenantId?: string
-  logger?: Pick<Logger, 'info' | 'warn' | 'error'>
+  logger?: PluginLogger
 }
 
 /** The INSERT target list, derived from the mirror so it cannot drift from the schema. */
@@ -56,7 +56,7 @@ export async function refreshFactTableForTenant(
     factTableColumnNames(def).map(name => sql.identifier(name)),
     sql`, `
   )
-  return db.transaction(async tx => {
+  return transaction(db, async tx => {
     await tx.execute(sql`delete from ${def.table} where tenant_id = ${tenantId}`)
     const inserted = await tx.execute(
       sql`insert into ${def.table} (${columns}) ${def.selectForTenant(tenantId)}`

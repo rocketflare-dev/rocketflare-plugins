@@ -9,7 +9,7 @@
  */
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
-import { api } from '@/ui/lib/api-client'
+import { api } from '@/plugins/api/ui'
 import { analyticsKeys } from '../query-keys'
 
 const cubeMemberSchema = z

@@ -11,15 +11,14 @@
  * for an admin-level scope (`bypass`), so owner, admin, support and global admins are not narrowed.
  * A page the reader may not see answers the same 404 as one that does not exist.
  *
- * The kit held these two as `analyticsPageVisibility` in `services/access.ts` beside documents'.
- * They are the plugin's now, contributed through `ServerPlugin.visibilityResources`, so
- * `setResourceGroups`, `grantsForResources` and the 409 `group_in_use` count stay ONE dispatch and
- * the kit keeps no knowledge of a table it no longer ships.
+ * `sharedWithMyGroups` comes from `@/plugins/api`, which re-exports the LEAF half of the kit's
+ * access module for exactly this import: a visibility resource needs the SQL at module scope, and
+ * the composing module reads the plugin barrel.
  */
 import { and, count, eq, inArray, type SQL, sql } from 'drizzle-orm'
-import type { VisibilityResource } from '../../api/services/access'
-import { type AccessScope, sharedWithMyGroups } from '../../api/services/access-sql'
-import { groups, groupTypes } from '../../db/schema'
+import { groups, groupTypes } from '@/db/schema/kit'
+import type { AccessScope, VisibilityResource } from '@/plugins/api'
+import { sharedWithMyGroups } from '@/plugins/api'
 import { analyticsPageGroups } from './db/schema/analytics-page-groups'
 import { analyticsPages } from './db/schema/analytics-pages'
 

@@ -2,7 +2,7 @@
   "id": "analytics",
   "label": "Analytics",
   "version": "1.0.2",
-  "repo": "https://github.com/rocketflare-dev/rocketflare-plugin-analytics.git",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "anchor": "apps/web/src/plugins/analytics/plugin.json",
   "paths": [
     "apps/web/src/plugins/analytics/**",
@@ -16,13 +16,18 @@
     "packages/shared/src/plugins/index.ts",
     "apps/cli/src/plugins/index.ts"
   ],
-  "requires": { "kit": ">=0.6.1 <1.0.0", "surfaces": [], "plugins": [] },
+  "requires": {
+    "kit": ">=0.7.0 <1.0.0",
+    "pluginApi": "1",
+    "surfaces": [],
+    "plugins": []
+  },
   "dependencies": {
     "apps/web": {
       "d3": "^7.9.0",
       "drizzle-cube": "0.8.3",
       "react-grid-layout": "^2.2.4",
-      "react-is": "^19.2.8",
+      "react-is": "^19.3.0",
       "recharts": "^3.10.1"
     },
     "packages/shared": {},
@@ -52,8 +57,9 @@
     "rlsExcluded": []
   },
   "migrations": [
-    "analytics_pages — one dashboard per row, tenant-scoped, jsonb config, RLS policy",
-    "analytics_page_groups — which groups a `visibility: 'groups'` dashboard is shared with",
-    "analytics_tenant_activity_daily_facts — activity pre-aggregated to (tenant, day, user), UNIQUE NULLS NOT DISTINCT, RLS policy"
-  ]
+    "analytics_pages \u2014 one dashboard per row, tenant-scoped, jsonb config, RLS policy",
+    "analytics_page_groups \u2014 which groups a `visibility: 'groups'` dashboard is shared with",
+    "analytics_tenant_activity_daily_facts \u2014 activity pre-aggregated to (tenant, day, user), UNIQUE NULLS NOT DISTINCT, RLS policy"
+  ],
+  "subdir": "plugins/analytics"
 }

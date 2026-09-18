@@ -6,8 +6,8 @@
  * is `Record<string, readonly unknown[]>` — `unknown[]` AT THE CORE BOUNDARY deliberately, because
  * the host cannot know what anybody means by a "cube" and should not pretend to. The OWNING plugin
  * narrows, and **fails loudly**: an extension this file cannot parse throws at registry build time
- * with the contributing plugin named, rather than producing a cube that silently returns nobody's
- * rows or a template that silently does not appear.
+ * naming the plugins that contributed under that key, rather than producing a cube that silently
+ * returns nobody's rows or a template that silently does not appear.
  *
  * A contributor writes:
  *
@@ -20,16 +20,17 @@
  * and declares `requires: { plugins: ['analytics'] }` in its `plugin.json`, so installing it
  * without this plugin is refused rather than quietly doing nothing.
  *
- * **Everything here is read LAZILY, inside a function.** `plugins/server.ts` imports this plugin's
- * entry, which reaches these readers — so evaluating `serverPlugins` at module scope here would
- * close a cycle and leave one side holding `undefined` at module evaluation. Live bindings make
- * the call-time read safe; the memo below makes it cheap.
+ * **Everything here is read LAZILY, inside a function**, through the kit's `extensions(key)`
+ * accessor. That accessor reads the server barrel, and the barrel imports this plugin — so
+ * evaluating it at module scope here would close a cycle and leave one side holding `undefined` at
+ * module evaluation, which takes the Worker down at IMPORT time rather than failing one request.
+ * Live bindings make the call-time read safe; the memo below makes it cheap.
  */
 
 import { ANALYTICS_PLUGIN_ID } from '@rocketflare/shared/plugins/analytics/index'
 import type { Cube } from 'drizzle-cube/server'
 import { z } from 'zod'
-import { serverPlugins } from '../server'
+import { extensionSources, extensions } from '@/plugins/api/peers'
 import type { DashboardTemplate } from './dashboards'
 import type { FactTableDefinition } from './services/fact-tables'
 import type { CubeIsolationCase } from './testing'
@@ -113,20 +114,26 @@ const cubeIsolationCaseSchema = z
   .object({ cube: z.string().min(1), query: obj, expect: fn, seed: fn.optional() })
   .passthrough()
 
+/**
+ * Narrow every contribution under one key, or throw naming the plugins that contributed it.
+ *
+ * `extensions(key)` flattens across plugins, so the contributor of a bad entry is not in the value
+ * itself — `extensionSources(key)` is what names them. A list rather than the one culprit is the
+ * honest answer to what the accessor can tell us, and it is still a name to go and look at rather
+ * than "an extension failed to parse".
+ */
 function narrow<T>(key: string, schema: z.ZodType<unknown>): T[] {
   const out: T[] = []
-  for (const plugin of serverPlugins) {
-    if (plugin.shared.id === ANALYTICS_PLUGIN_ID) continue
-    for (const [index, value] of (plugin.extensions?.[key] ?? []).entries()) {
-      const parsed = schema.safeParse(value)
-      if (!parsed.success) {
-        throw new Error(
-          `plugin '${plugin.shared.id}' contributed an unusable ${key}[${index}]: ` +
-            parsed.error.issues.map(i => `${i.path.join('.') || '<root>'} ${i.message}`).join('; ')
-        )
-      }
-      out.push(value as T)
+  for (const [index, value] of extensions(key).entries()) {
+    const parsed = schema.safeParse(value)
+    if (!parsed.success) {
+      const from = extensionSources(key).join(', ') || 'an installed plugin'
+      throw new Error(
+        `${key}[${index}] from ${from} is unusable: ` +
+          parsed.error.issues.map(i => `${i.path.join('.') || '<root>'} ${i.message}`).join('; ')
+      )
     }
+    out.push(value as T)
   }
   return out
 }

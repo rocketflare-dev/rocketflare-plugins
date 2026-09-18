@@ -4,13 +4,13 @@
  * unlocks funnel / flow / retention modes in the query builder. Direct `tenant_id` scoping; joins
  * `Users` (belongsTo, the actor). Member names are frozen: dashboard JSON references them.
  *
- * EXAMPLE (surface `example-cube-activity-events` in .rocketflare.json): here to document the
- * pattern. Delete it once you have cubes of your own — `docs/ADAPTING.md` §2 lists what that touches.
+ * `activity_events` is the KIT's table — the audit log stayed core when analytics left (§8) — and it
+ * comes from `@/db/schema/kit` like every other kit table this plugin names.
  */
 import type { BaseQueryDefinition, Cube, QueryContext } from 'drizzle-cube/server'
 import { defineCube } from 'drizzle-cube/server'
 import { eq } from 'drizzle-orm'
-import { activityEvents, users } from '../../../db/schema'
+import { activityEvents, users } from '@/db/schema/kit'
 import { tenantIdOf } from './security'
 import { usersCube } from './users'
 
@@ -40,7 +40,13 @@ export const activityEventsCube: Cube = defineCube('ActivityEvents', {
   },
 
   dimensions: {
-    id: { name: 'id', title: 'Event ID', type: 'string', sql: activityEvents.id, primaryKey: true },
+    id: {
+      name: 'id',
+      title: 'Event ID',
+      type: 'string',
+      sql: activityEvents.id,
+      primaryKey: true,
+    },
     type: {
       name: 'type',
       title: 'Event Type',

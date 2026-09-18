@@ -10,6 +10,8 @@
  * `enabled` and callers gate it on the ability. Contracts: `@rocketflare/shared/plugins/analytics/index`; the cube data
  * behind a page is fetched by drizzle-cube's own client (see components/analytics).
  */
+
+import type { SetVisibilityRequest } from '@rocketflare/shared/groups'
 import {
   type AnalyticsPage,
   analyticsPageListResponseSchema,
@@ -23,9 +25,18 @@ import {
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
-import type { SetVisibilityInput } from '@/ui/hooks/useGroups'
-import { api } from '@/ui/lib/api-client'
+import { api } from '@/plugins/api/ui'
 import { analyticsKeys } from '../query-keys'
+
+/**
+ * The body `PUT /pages/:id/visibility` takes, plus the id (D29).
+ *
+ * Restated from the shared contract rather than imported: the kit's `SetVisibilityInput` lives in
+ * `ui/hooks/useGroups.ts` and is not among the names `@/plugins/api/ui` re-exports. Building it out
+ * of `SetVisibilityRequest` — the schema the ROUTE validates with — is the better dependency
+ * anyway: the picker and this hook cannot disagree about the body, because both are the contract.
+ */
+export type SetPageVisibilityInput = SetVisibilityRequest & { id: string }
 
 /** Edits are saved this long after the last change (and immediately on `flush()`). */
 export const DASHBOARD_AUTOSAVE_MS = 1500
@@ -233,7 +244,7 @@ export function useAutosaveDashboardConfig(pageId: string, delayMs = DASHBOARD_A
 export function useSetPageVisibility() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: SetVisibilityInput) =>
+    mutationFn: ({ id, ...body }: SetPageVisibilityInput) =>
       api.put(`/api/analytics/pages/${id}/visibility`, body, { schema: analyticsPageSchema }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: analyticsKeys.all }),
   })

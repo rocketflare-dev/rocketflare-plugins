@@ -3,7 +3,12 @@
 One file per cube, `defineCube('Name', …)` from `drizzle-cube/server`, registered in `index.ts`
 (`allCubes`). Served per request by `routes/cube-api.ts` (`createCubeApp` from
 `drizzle-cube/adapters/hono`) at `/cubejs-api/v1/{load,meta,sql,batch,dry-run}` and `/mcp`, both
-mounted behind `authMiddleware` + `guardPermission(c, 'read', 'Analytics')`.
+mounted behind the kit's auth middleware + `ctx.guard('read', 'Analytics')`.
+
+**The security context is built in the ROUTE and passed down.** `createCubeApp` calls
+`extractSecurityContext` per query, from inside drizzle-cube, where no Hono context exists — so the
+route builds it from `ctx.detached()` (`buildSecurityContext`) and hands it over as a closure.
+`RequestCtx` is deliberately not widened to work outside a handler; half of it is about a request.
 
 ## The invariant — every cube MUST scope its base query to the active tenant
 
@@ -14,8 +19,11 @@ took from `c.get('auth')`. A table without `tenant_id` (`users`) is scoped THROU
 `inArray(users.id, select user_id from tenant_users where tenant_id = …)`. There is no second line
 of defence at the cube layer — drizzle-cube joins whatever a query asks for, so an unscoped cube
 leaks every tenant's rows to every member. **`tests/api/cubes/cube-isolation.test.ts` enforces
-this**: it seeds two tenants, runs every cube in `allCubes` through `POST /cubejs-api/v1/load` as
+this**: it seeds two tenants, runs every cube in `allCubes()` through `POST /cubejs-api/v1/load` as
 each tenant and asserts only that tenant's rows come back. A new cube must be added to its seed.
+It lives at `tests/api/cube-isolation.test.ts` and drives the REAL mount through `request(...)` from
+`@testkit/integration` — a context builder can prove a branch, only the real mount proves a
+predicate.
 
 ## Conventions
 
@@ -48,8 +56,10 @@ each tenant and asserts only that tenant's rows come back. A new cube must be ad
   that type → `column in (…their ids)`; **no group of that type → `false`**, so a person outside the
   dimension sees nothing rather than everything. It matches on IDS — the context carries names
   (`groups`, keyed by type name) for labels only, because matching on a name means renaming a group
-  silently moves rows. Its unit test is `tests/api/cubes/security.test.ts`; `cube-isolation.test.ts`
-  is unchanged, since the kit's cubes are scoped by tenant alone.
+  silently moves rows. The type NAMES are not on the auth context — `AccessScope` carries group ids
+  — so `buildSecurityContext` resolves them with ONE query per cube request, skipped entirely for an
+  admin-level reader, who is never narrowed. Its unit test is `tests/config/cube-security.test.ts`;
+  `cube-isolation.test.ts` is unchanged, since this plugin's cubes are scoped by tenant alone.
 - The compiler is rebuilt per request (4 cubes — cheap; the Hyperdrive-backed `db` only exists
   inside a request). The scaling path is `SemanticLayerCompiler` + cube sets, and
   `cache: MemoryCacheProvider` is per-isolate on Workers — a KV provider would be an extension.

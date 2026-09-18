@@ -1,14 +1,13 @@
 /**
- * The SELECT that builds `analytics_tenant_activity_daily_facts` for ONE tenant (D19): `activity_events`
- * grouped by UTC day and actor. Column ORDER must match the fact table's declaration order —
- * `refresh.ts` names the INSERT's target columns from `getTableColumns`, so a drift fails loudly
- * ("INSERT has more target columns than expressions") instead of shifting values silently.
- * Parameterised (`${tenantId}` is a bound value), never string-interpolated.
+ * The SELECT that builds `analytics_tenant_activity_daily_facts` for ONE tenant (D19):
+ * `activity_events` grouped by UTC day and actor. Column ORDER must match the fact table's
+ * declaration order — `refresh.ts` names the INSERT's target columns from `getTableColumns`, so a
+ * drift fails loudly ("INSERT has more target columns than expressions") instead of shifting
+ * values silently. Parameterised (`${tenantId}` is a bound value), never string-interpolated.
  *
- * EXAMPLE (surface `example-cube-tenant-activity-daily`): deletable with its fact table and cube.
  */
 import { type SQL, sql } from 'drizzle-orm'
-import { activityEvents } from '../../../../../db/schema'
+import { activityEvents } from '@/db/schema/kit'
 
 export function tenantActivityDailySelect(tenantId: string): SQL {
   const e = activityEvents

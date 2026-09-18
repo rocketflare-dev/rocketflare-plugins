@@ -5,17 +5,18 @@
  * every dashboard-template portlet query actually executes against Postgres.
  */
 import { ERROR_CODES } from '@rocketflare/shared/errors'
-import { describe, expect, it } from 'vitest'
-import { activityEvents } from '@/db/schema'
 import {
   createTestSession,
   createTestTenantWithUser,
   createTestUser,
+  json,
   linkUserToTenant,
+  request,
   sessionCookieHeader,
-} from '../../../../../tests/helpers/auth'
-import { setupTestDatabase } from '../../../../../tests/helpers/db'
-import { json, request } from '../../../../../tests/helpers/request'
+  setupTestDatabase,
+} from '@testkit/integration'
+import { describe, expect, it } from 'vitest'
+import { activityEvents } from '@/db/schema/kit'
 import { allCubes } from '../../cubes'
 import { listTemplates } from '../../dashboards'
 import { contributedCubeIsolationCases } from '../../extensions'

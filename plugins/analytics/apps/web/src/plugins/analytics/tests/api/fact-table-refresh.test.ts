@@ -3,11 +3,12 @@
  * per-tenant DELETE+INSERT leaves other tenants alone, refresh is idempotent, the grain handles
  * NULL user ids, and freshness flags stale vs fresh.
  */
+
+import { createTestTenantWithUser, createTestUser, setupTestDatabase } from '@testkit/integration'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { activityEvents, tenantActivityDailyFacts } from '@/db/schema'
-import { createTestTenantWithUser, createTestUser } from '../../../../../tests/helpers/auth'
-import { setupTestDatabase } from '../../../../../tests/helpers/db'
+import { activityEvents } from '@/db/schema/kit'
+import { tenantActivityDailyFacts } from '../../db/schema/facts'
 import {
   checkFactTableFreshness,
   computeFreshness,

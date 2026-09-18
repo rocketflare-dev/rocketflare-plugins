@@ -10,6 +10,13 @@
  * prefixes they need, the fact-refresh job, the hourly cron, the two CASL subjects with their
  * grants, dashboards as a restrictable resource, and what a new organisation and the demo seed get.
  *
+ * **It is also the boundary.** The registration slots below are the KIT's shapes — a `JobHandler`,
+ * a `ScheduledTask`, the hook signatures — while everything the plugin's own code is written
+ * against is the plugin surface. So the adapters (`jobCtx`, `cronCtx`, and the two hook spreads)
+ * are called here, once each, and nowhere else. That is the sentence the whole contract makes
+ * true: *a plugin imports only from declared entries, and receives everything else as injected
+ * context.*
+ *
  * **Everything here was core until 0.6.0.** `Dashboard` and `Analytics` left `CORE_SUBJECTS` and
  * the kit's ability matrix; `/cubejs-api` and `/mcp` left `CORE_API_PREFIXES`; the `15 * * * *`
  * entry left `CORE_SCHEDULED_TASKS` and both tomls' `[triggers]`; `ensureDefaultDashboards` left
@@ -22,8 +29,7 @@ import {
   analyticsShared,
   DASHBOARD_SUBJECT,
 } from '@rocketflare/shared/plugins/analytics/index'
-import type { Tenant } from '../../db/schema'
-import type { ServerPlugin } from '../types'
+import type { ServerPlugin } from '@/plugins/api'
 import { onTenantCreated, seedDemo } from './api/hooks'
 import { analyticsPagesRouter } from './api/routes/analytics-pages'
 import { cubeApiRouter } from './api/routes/cube-api'
@@ -39,6 +45,7 @@ export const analyticsServer = {
    * forwarded rather than a prefix-stripped one, and mounting one router twice is how both
    * prefixes reach it. No `requireFeature` here: analytics is a whole plugin, and not installing
    * it is how a deployment ships without it.
+   *
    */
   mounts: [
     ['/api/analytics', analyticsPagesRouter],
@@ -83,10 +90,21 @@ export const analyticsServer = {
   },
   /** Dashboards are restrictable to groups (D29) — see `./visibility.ts`. */
   visibilityResources: [analyticsPageVisibility],
+  /**
+   * Post-commit, idempotent, best-effort — each try/caught by the host, so neither may ever break
+   * sign-up. The kit hands them its own shapes; `HookCtx` / `SeedCtx` is what the bodies read.
+   */
   hooks: {
-    onTenantCreated: (db, tenant: Tenant, userId: string, features: readonly string[]) =>
-      onTenantCreated(db, tenant.id, userId, features),
-    seedDemo,
+    onTenantCreated: (db, tenant, userId, features) =>
+      onTenantCreated({ db, tenant, tenantId: tenant.id, userId, features }),
+    seedDemo: (db, ctx) =>
+      seedDemo({
+        db,
+        tenantId: ctx.tenantId,
+        ownerId: ctx.ownerId,
+        demoId: ctx.demoId,
+        log: ctx.log,
+      }),
   },
 } satisfies ServerPlugin<typeof analyticsShared>
 

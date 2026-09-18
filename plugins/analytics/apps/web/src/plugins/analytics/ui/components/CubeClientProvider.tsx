@@ -15,7 +15,7 @@ import { QueryCache, QueryClient } from '@tanstack/react-query'
 import type { CubeApiOptions, FeaturesConfig } from 'drizzle-cube/client'
 import { CubeProvider } from 'drizzle-cube/client/providers'
 import { type ReactNode, useEffect, useState } from 'react'
-import { ApiError, notifyUnauthorized } from '@/ui/lib/api-client'
+import { ApiError, notifyUnauthorized } from '@/plugins/api/ui'
 
 export const CUBE_API_URL = '/cubejs-api/v1'
 
