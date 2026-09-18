@@ -27,13 +27,6 @@
  * `const ctx = requestCtx(c)` is inferred, and the guard would still throw while the compiler went
  * on believing the row may be undefined.
  *
- * **The router is built on FIRST READ, not at module scope.** `@/plugins/api` re-exports
- * `createRouter` through `./http`, and `./http` imports `api/services/access`, which reads the
- * server plugin barrel — so a SECOND installed plugin is evaluated from inside `@/plugins/api`'s own
- * dependency graph, before `api/utils/routes/router` has run, and `createRouter` is still an
- * uninitialised binding. Deferring the call until the host reads `mounts` puts it after every module
- * has evaluated. Reported to the kit; the fix belongs there rather than in every plugin.
- *
  * Group membership grants READ only: editing a dashboard stays `manage Dashboard` (admin+), exactly
  * as before Groups existed. The cube data behind a page is served by `/cubejs-api` with its own
  * `read Analytics` guard.
@@ -51,7 +44,7 @@ import {
 } from '@rocketflare/shared/plugins/analytics/index'
 import type { DashboardConfig } from 'drizzle-cube/client'
 import { and, asc, eq } from 'drizzle-orm'
-import type { AppRouter, RequestCtx } from '@/plugins/api'
+import type { RequestCtx } from '@/plugins/api'
 import { createRouter, recordActivity, requestCtx, validate } from '@/plugins/api'
 import { listTemplates } from '../../dashboards'
 import { analyticsPages } from '../../db/schema'
@@ -77,89 +70,86 @@ const EMPTY_DASHBOARD: DashboardConfig = { layoutMode: 'rows', rows: [], portlet
 function guardFactTables(ctx: RequestCtx, action: string): void {
   if (!ctx.isAdmin) ctx.forbidden(`Only admins can ${action}`)
 }
+export const analyticsPagesRouter = createRouter()
 
-let memo: AppRouter | null = null
+analyticsPagesRouter.get('/pages', async c => {
+  const ctx: RequestCtx = requestCtx(c)
+  await ensureDefaultDashboards(ctx.db, ctx.tenantId, ctx.userId, ctx.features)
+  const rows = await ctx.db
+    .select()
+    .from(analyticsPages)
+    .where(and(eq(analyticsPages.tenantId, ctx.tenantId), visibleAnalyticsPages(ctx.scope)))
+    .orderBy(asc(analyticsPages.sortOrder), asc(analyticsPages.name))
+  const grants = await pageGrants(
+    ctx.db,
+    ctx.tenantId,
+    rows.map(r => r.id)
+  )
+  return c.json({ items: rows.map(row => toAnalyticsPageDto(row, grants.get(row.id) ?? [])) })
+})
 
-/** Built on first read — see the header. */
-export function analyticsPagesRouter(): AppRouter {
-  if (memo) return memo
-  const router = createRouter()
+analyticsPagesRouter.post('/pages', validate('json', createAnalyticsPageRequestSchema), async c => {
+  const ctx: RequestCtx = requestCtx(c)
+  ctx.guard('manage', DASHBOARD_SUBJECT)
+  const body = ctx.valid<CreateAnalyticsPageRequest>('json')
+  const [row] = await ctx.db
+    .insert(analyticsPages)
+    .values({
+      tenantId: ctx.tenantId,
+      slug: await uniquePageSlug(ctx.db, ctx.tenantId, body.name),
+      name: body.name,
+      description: body.description ?? null,
+      templateKey: null,
+      config: (body.config as unknown as DashboardConfig | undefined) ?? EMPTY_DASHBOARD,
+      sortOrder: body.order ?? 100,
+      createdByUserId: ctx.userId,
+    })
+    .returning()
+  if (!row) throw new Error('analytics page insert returned no row')
+  ctx.defer(() =>
+    recordActivity(ctx.db, {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      type: 'dashboard.created',
+      subjectType: 'Dashboard',
+      subjectId: row.id,
+      metadata: { name: row.name },
+    })
+  )
+  return c.json(toAnalyticsPageDto(row), 201)
+})
 
-  router.get('/pages', async c => {
-    const ctx: RequestCtx = requestCtx(c)
-    await ensureDefaultDashboards(ctx.db, ctx.tenantId, ctx.userId, ctx.features)
-    const rows = await ctx.db
-      .select()
-      .from(analyticsPages)
-      .where(and(eq(analyticsPages.tenantId, ctx.tenantId), visibleAnalyticsPages(ctx.scope)))
-      .orderBy(asc(analyticsPages.sortOrder), asc(analyticsPages.name))
-    const grants = await pageGrants(
-      ctx.db,
-      ctx.tenantId,
-      rows.map(r => r.id)
-    )
-    return c.json({ items: rows.map(row => toAnalyticsPageDto(row, grants.get(row.id) ?? [])) })
-  })
-
-  router.post('/pages', validate('json', createAnalyticsPageRequestSchema), async c => {
-    const ctx: RequestCtx = requestCtx(c)
-    ctx.guard('manage', DASHBOARD_SUBJECT)
-    const body = ctx.valid<CreateAnalyticsPageRequest>('json')
-    const [row] = await ctx.db
-      .insert(analyticsPages)
-      .values({
-        tenantId: ctx.tenantId,
-        slug: await uniquePageSlug(ctx.db, ctx.tenantId, body.name),
-        name: body.name,
-        description: body.description ?? null,
-        templateKey: null,
-        config: (body.config as unknown as DashboardConfig | undefined) ?? EMPTY_DASHBOARD,
-        sortOrder: body.order ?? 100,
-        createdByUserId: ctx.userId,
-      })
-      .returning()
-    if (!row) throw new Error('analytics page insert returned no row')
-    ctx.defer(() =>
-      recordActivity(ctx.db, {
-        tenantId: ctx.tenantId,
-        userId: ctx.userId,
-        type: 'dashboard.created',
-        subjectType: 'Dashboard',
-        subjectId: row.id,
-        metadata: { name: row.name },
-      })
-    )
-    return c.json(toAnalyticsPageDto(row), 201)
-  })
-
-  router.get('/pages/:id', async c => {
-    const ctx: RequestCtx = requestCtx(c)
-    const id = ctx.uuid('id')
-    // `select()`, not the relational query builder: it renames the table it selects from, and the
-    // visibility predicate is raw SQL naming `analytics_pages`.
-    const [row] = await ctx.db
-      .select()
-      .from(analyticsPages)
-      .where(
-        and(
-          eq(analyticsPages.id, id),
-          eq(analyticsPages.tenantId, ctx.tenantId),
-          visibleAnalyticsPages(ctx.scope)
-        )
+analyticsPagesRouter.get('/pages/:id', async c => {
+  const ctx: RequestCtx = requestCtx(c)
+  const id = ctx.uuid('id')
+  // `select()`, not the relational query builder: it renames the table it selects from, and the
+  // visibility predicate is raw SQL naming `analytics_pages`.
+  const [row] = await ctx.db
+    .select()
+    .from(analyticsPages)
+    .where(
+      and(
+        eq(analyticsPages.id, id),
+        eq(analyticsPages.tenantId, ctx.tenantId),
+        visibleAnalyticsPages(ctx.scope)
       )
-      .limit(1)
-    // A dashboard this reader may not see is the SAME 404 as one that does not exist.
-    if (!row) ctx.notFound('Dashboard not found')
-    return c.json(
-      toAnalyticsPageDto(row, (await pageGrants(ctx.db, ctx.tenantId, [id])).get(id) ?? [])
     )
-  })
+    .limit(1)
+  // A dashboard this reader may not see is the SAME 404 as one that does not exist.
+  if (!row) ctx.notFound('Dashboard not found')
+  return c.json(
+    toAnalyticsPageDto(row, (await pageGrants(ctx.db, ctx.tenantId, [id])).get(id) ?? [])
+  )
+})
 
-  /**
-   * Who may read this dashboard. `manage Dashboard` (admin+), like every other write here — group
-   * membership grants READ only, so a member who can see a page still cannot re-share it.
-   */
-  router.put('/pages/:id/visibility', validate('json', setVisibilityRequestSchema), async c => {
+/**
+ * Who may read this dashboard. `manage Dashboard` (admin+), like every other write here — group
+ * membership grants READ only, so a member who can see a page still cannot re-share it.
+ */
+analyticsPagesRouter.put(
+  '/pages/:id/visibility',
+  validate('json', setVisibilityRequestSchema),
+  async c => {
     const ctx: RequestCtx = requestCtx(c)
     ctx.guard('manage', DASHBOARD_SUBJECT)
     const id = ctx.uuid('id')
@@ -193,9 +183,13 @@ export function analyticsPagesRouter(): AppRouter {
     return c.json(
       toAnalyticsPageDto(updated, (await pageGrants(ctx.db, ctx.tenantId, [id])).get(id) ?? [])
     )
-  })
+  }
+)
 
-  router.patch('/pages/:id', validate('json', updateAnalyticsPageRequestSchema), async c => {
+analyticsPagesRouter.patch(
+  '/pages/:id',
+  validate('json', updateAnalyticsPageRequestSchema),
+  async c => {
     const ctx: RequestCtx = requestCtx(c)
     ctx.guard('manage', DASHBOARD_SUBJECT)
     const id = ctx.uuid('id')
@@ -223,98 +217,95 @@ export function analyticsPagesRouter(): AppRouter {
       })
     )
     return c.json(toAnalyticsPageDto(row))
-  })
+  }
+)
 
-  router.delete('/pages/:id', async c => {
-    const ctx: RequestCtx = requestCtx(c)
-    ctx.guard('manage', DASHBOARD_SUBJECT)
-    const id = ctx.uuid('id')
-    const [row] = await ctx.db
-      .select({
-        id: analyticsPages.id,
-        name: analyticsPages.name,
-        templateKey: analyticsPages.templateKey,
-      })
-      .from(analyticsPages)
-      .where(and(eq(analyticsPages.id, id), eq(analyticsPages.tenantId, ctx.tenantId)))
-      .limit(1)
-    if (!row) ctx.notFound('Dashboard not found')
-    if (row.templateKey) {
-      ctx.forbidden('Template dashboards cannot be deleted — reset them instead', 'template_page')
-    }
-    await ctx.db.delete(analyticsPages).where(eq(analyticsPages.id, id))
-    ctx.defer(() =>
-      recordActivity(ctx.db, {
-        tenantId: ctx.tenantId,
-        userId: ctx.userId,
-        type: 'dashboard.deleted',
-        subjectType: 'Dashboard',
-        subjectId: id,
-        metadata: { name: row.name },
-      })
-    )
-    return c.body(null, 204)
-  })
-
-  router.post('/pages/:id/reset', async c => {
-    const ctx: RequestCtx = requestCtx(c)
-    ctx.guard('manage', DASHBOARD_SUBJECT)
-    const row = await resetToTemplate(ctx, ctx.uuid('id'))
-    ctx.defer(() =>
-      recordActivity(ctx.db, {
-        tenantId: ctx.tenantId,
-        userId: ctx.userId,
-        type: 'dashboard.reset',
-        subjectType: 'Dashboard',
-        subjectId: row.id,
-        metadata: { templateKey: row.templateKey },
-      })
-    )
-    return c.json(toAnalyticsPageDto(row))
-  })
-
-  router.get('/templates', c => {
-    const ctx: RequestCtx = requestCtx(c)
-    return c.json({
-      items: listTemplates(ctx.features).map(t => ({
-        key: t.key,
-        name: t.name,
-        description: t.description,
-      })),
+analyticsPagesRouter.delete('/pages/:id', async c => {
+  const ctx: RequestCtx = requestCtx(c)
+  ctx.guard('manage', DASHBOARD_SUBJECT)
+  const id = ctx.uuid('id')
+  const [row] = await ctx.db
+    .select({
+      id: analyticsPages.id,
+      name: analyticsPages.name,
+      templateKey: analyticsPages.templateKey,
     })
-  })
-
-  router.post('/templates/recreate', async c => {
-    const ctx: RequestCtx = requestCtx(c)
-    ctx.guard('manage', DASHBOARD_SUBJECT)
-    return c.json(await recreateTemplates(ctx.db, ctx.tenantId, ctx.userId, ctx.features))
-  })
-
-  router.get('/facts/status', async c => {
-    const ctx: RequestCtx = requestCtx(c)
-    guardFactTables(ctx, 'read fact-table status')
-    return c.json({ items: await checkFactTableFreshness(ctx.db) })
-  })
-
-  /**
-   * Rebuild this organisation's fact tables now, out of band (D31). It ENQUEUES — a route never runs
-   * long work, and a rebuild is a full DELETE+INSERT per table per tenant. The `:15` cron is still
-   * the normal path; this is what `pnpm web db:refresh-facts` used to be before analytics left the
-   * kit and took its scripts with it, and what `rocketflare analytics refresh-facts` calls.
-   *
-   * Admin-level, and scoped to the CALLER's tenant by the context rather than by anything in the
-   * body: the cross-tenant rebuild has no request behind it and lives in the cron.
-   */
-  router.post('/facts/refresh', async c => {
-    const ctx: RequestCtx = requestCtx(c)
-    guardFactTables(ctx, 'rebuild fact tables')
-    const job = await ctx.enqueue({
-      type: ANALYTICS_REFRESH_FACTS_JOB,
-      payload: { tenantId: ctx.tenantId },
+    .from(analyticsPages)
+    .where(and(eq(analyticsPages.id, id), eq(analyticsPages.tenantId, ctx.tenantId)))
+    .limit(1)
+  if (!row) ctx.notFound('Dashboard not found')
+  if (row.templateKey) {
+    ctx.forbidden('Template dashboards cannot be deleted — reset them instead', 'template_page')
+  }
+  await ctx.db.delete(analyticsPages).where(eq(analyticsPages.id, id))
+  ctx.defer(() =>
+    recordActivity(ctx.db, {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      type: 'dashboard.deleted',
+      subjectType: 'Dashboard',
+      subjectId: id,
+      metadata: { name: row.name },
     })
-    return c.json({ jobId: job.id, type: job.type, enqueuedAt: job.enqueuedAt }, 202)
-  })
+  )
+  return c.body(null, 204)
+})
 
-  memo = router
-  return router
-}
+analyticsPagesRouter.post('/pages/:id/reset', async c => {
+  const ctx: RequestCtx = requestCtx(c)
+  ctx.guard('manage', DASHBOARD_SUBJECT)
+  const row = await resetToTemplate(ctx, ctx.uuid('id'))
+  ctx.defer(() =>
+    recordActivity(ctx.db, {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      type: 'dashboard.reset',
+      subjectType: 'Dashboard',
+      subjectId: row.id,
+      metadata: { templateKey: row.templateKey },
+    })
+  )
+  return c.json(toAnalyticsPageDto(row))
+})
+
+analyticsPagesRouter.get('/templates', c => {
+  const ctx: RequestCtx = requestCtx(c)
+  return c.json({
+    items: listTemplates(ctx.features).map(t => ({
+      key: t.key,
+      name: t.name,
+      description: t.description,
+    })),
+  })
+})
+
+analyticsPagesRouter.post('/templates/recreate', async c => {
+  const ctx: RequestCtx = requestCtx(c)
+  ctx.guard('manage', DASHBOARD_SUBJECT)
+  return c.json(await recreateTemplates(ctx.db, ctx.tenantId, ctx.userId, ctx.features))
+})
+
+analyticsPagesRouter.get('/facts/status', async c => {
+  const ctx: RequestCtx = requestCtx(c)
+  guardFactTables(ctx, 'read fact-table status')
+  return c.json({ items: await checkFactTableFreshness(ctx.db) })
+})
+
+/**
+ * Rebuild this organisation's fact tables now, out of band (D31). It ENQUEUES — a route never runs
+ * long work, and a rebuild is a full DELETE+INSERT per table per tenant. The `:15` cron is still
+ * the normal path; this is what `pnpm web db:refresh-facts` used to be before analytics left the
+ * kit and took its scripts with it, and what `rocketflare analytics refresh-facts` calls.
+ *
+ * Admin-level, and scoped to the CALLER's tenant by the context rather than by anything in the
+ * body: the cross-tenant rebuild has no request behind it and lives in the cron.
+ */
+analyticsPagesRouter.post('/facts/refresh', async c => {
+  const ctx: RequestCtx = requestCtx(c)
+  guardFactTables(ctx, 'rebuild fact tables')
+  const job = await ctx.enqueue({
+    type: ANALYTICS_REFRESH_FACTS_JOB,
+    payload: { tenantId: ctx.tenantId },
+  })
+  return c.json({ jobId: job.id, type: job.type, enqueuedAt: job.enqueuedAt }, 202)
+})

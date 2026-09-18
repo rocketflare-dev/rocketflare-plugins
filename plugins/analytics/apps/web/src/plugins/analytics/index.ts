@@ -29,15 +29,13 @@ import {
   analyticsShared,
   DASHBOARD_SUBJECT,
 } from '@rocketflare/shared/plugins/analytics/index'
-import type { PluginMount, ServerPlugin } from '@/plugins/api'
+import type { ServerPlugin } from '@/plugins/api'
 import { onTenantCreated, seedDemo } from './api/hooks'
 import { analyticsPagesRouter } from './api/routes/analytics-pages'
 import { cubeApiRouter } from './api/routes/cube-api'
 import { refreshFactTablesTask } from './api/scheduled'
 import { handleAnalyticsRefreshFacts } from './jobs/refresh-facts'
 import { analyticsPageVisibility } from './visibility'
-
-let mountsMemo: readonly PluginMount[] | null = null
 
 export const analyticsServer = {
   shared: analyticsShared,
@@ -48,22 +46,12 @@ export const analyticsServer = {
    * prefixes reach it. No `requireFeature` here: analytics is a whole plugin, and not installing
    * it is how a deployment ships without it.
    *
-   * **A getter, because the routers are built on first READ rather than at module scope.**
-   * `@/plugins/api` re-exports `createRouter` through `./http`, which imports
-   * `api/services/access`, which reads the server plugin barrel — so a second installed plugin is
-   * evaluated from inside `@/plugins/api`'s own dependency graph, before
-   * `api/utils/routes/router` has run. Calling `createRouter()` there gets `undefined`. The host
-   * reads `mounts` when it assembles its mount table, by which time every module has evaluated.
-   * Reported to the kit; the fix belongs there rather than in every plugin that owns a route.
    */
-  get mounts(): readonly PluginMount[] {
-    mountsMemo ??= [
-      ['/api/analytics', analyticsPagesRouter()],
-      ['/cubejs-api', cubeApiRouter()],
-      ['/mcp', cubeApiRouter()],
-    ]
-    return mountsMemo
-  },
+  mounts: [
+    ['/api/analytics', analyticsPagesRouter],
+    ['/cubejs-api', cubeApiRouter],
+    ['/mcp', cubeApiRouter],
+  ],
   /**
    * The two prefixes the kit's own router table does not already own (`/api` does). They matter in
    * three places: the SPA catch-all answers a JSON 404 under them instead of `index.html`, the
