@@ -1,0 +1,31 @@
+# Compatibility, proved from this end (D31, decision 5).
+#
+# The steps live in the KIT — `.github/workflows/plugin-ci.yml` — so that a change to how
+# compatibility is proved reaches every plugin through one file. For each plugin below it reads
+# that plugin's own `requires.kit`, resolves the OLDEST and the NEWEST kit release inside the
+# range, and for each clones that kit, installs this checkout as a plugin, generates and applies
+# the migrations the host owns, and runs the full gate. Both ends of the range rather than a
+# midpoint: the floor an adopter may still be on, and the ceiling the kit has just reached.
+#
+# Failing at the FLOOR means the plugin has started using something the kit only gained later —
+# raise its `requires.kit` and cut a release. Failing at the CEILING means the kit has moved under
+# it: port the plugin (`pnpm plugin upgrade` is the adopter's side of the same change) and widen
+# the range.
+#
+# One job per plugin. A plugin added to `plugins/` adds a job here and nothing else.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: # re-run against a kit release cut after the last push
+
+jobs:
+  analytics:
+    uses: rocketflare-dev/rocketflare/.github/workflows/plugin-ci.yml@main
+    with:
+      plugin_subdir: plugins/analytics
+    # kit_repo: https://github.com/rocketflare-dev/rocketflare.git  # the default
+    # kit_range: "=0.6.1"   # override the plugin's own requires.kit
+    # secrets:
+    #   kit_token: ${{ secrets.KIT_READ_TOKEN }}   # only if the kit repository is private

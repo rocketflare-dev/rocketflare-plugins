@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+*.rej
+*.orig
+.upgrade/
+.env
+.env.*
+.dev.vars
+.provision.env
