@@ -31,7 +31,7 @@ cubeApiRouter.all('*', async c => {
   // routes do.
   const ctx: RequestCtx = requestCtx(c)
   ctx.guard('read', ANALYTICS_SUBJECT)
-  const securityContext = await buildSecurityContext(ctx.detached())
+  const securityContext = buildSecurityContext(ctx.detached())
   const cubeApp = createCubeApp({
     // Filtered per request rather than at module scope (D30): `allCubes` stays whole so the
     // isolation test can prove every cube's tenant scoping even while its feature ships dark.

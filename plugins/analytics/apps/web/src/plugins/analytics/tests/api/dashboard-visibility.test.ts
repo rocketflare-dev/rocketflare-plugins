@@ -32,8 +32,7 @@ import {
 } from '@testkit/integration'
 import { eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { groups, groupTypes } from '@/db/schema/kit'
-import { allTables } from '@/plugins/api/peers'
+import { groupMembers, groups, groupTypes } from '@/db/schema/kit'
 import { analyticsPageGroups } from '../../db/schema/analytics-page-groups'
 import { analyticsPages } from '../../db/schema/analytics-pages'
 
@@ -89,9 +88,6 @@ async function page(
 }
 
 beforeAll(async () => {
-  // `group_members` is the one kit table the schema kit still does not export, so it comes through
-  // the declared `allTables()` accessor — called inside a hook, never at module scope (D31).
-  const { groupMembers } = allTables()
   const tenant = await createTestTenant(db)
   tenantId = tenant.id
 

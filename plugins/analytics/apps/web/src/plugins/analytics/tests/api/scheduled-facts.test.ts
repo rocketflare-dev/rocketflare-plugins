@@ -6,21 +6,28 @@
  * `ServerPlugin.scheduledTasks`. What has to be true is that the two met: a task registered under
  * an expression no toml declares never runs, and nothing else would notice.
  *
- * **It used to prove that by dispatching the cron through the host's own `SCHEDULED_TASKS` and
- * `dispatchScheduled`, and it cannot any more**: `@/api/scheduled` is a kit internal, and
- * `@testkit` publishes no cron dispatcher. Reported to the kit as a missing member. What is left is
- * still worth having, and is asserted in two halves:
+ * **Both halves are provable now.** `@testkit/integration` publishes the host's dispatcher (kit
+ * 0.7.0), so this file asserts the whole handshake rather than the plugin's side of it:
  *
  *   1. the expression this plugin REGISTERS the task under is the one its `plugin.json` declares —
- *      which is the file `pnpm provision cloudflare <env>` copies into both tomls, so this is the
- *      whole of the plugin's side of the handshake;
- *   2. the task itself rebuilds the fact table, driven through `makeCronCtx` — the same `CronCtx`
- *      the host's dispatcher would hand it, built by the kit's own `cronCtx` adapter.
+ *      which is the file `pnpm provision cloudflare <env>` copies into both tomls;
+ *   2. dispatching THAT expression through the host runs this plugin's task, which is the half no
+ *      amount of checking the plugin's own registry could ever see;
+ *   3. the task itself rebuilds the fact table.
  *
- * What neither half can see is the host actually dispatching it. That gap is the kit's to close.
+ * Note that (2) asserts `status: 'ok'` rather than that nothing threw. The dispatcher try/catches
+ * each task on its own — so one plugin's failure cannot stop the kit's nightly prune — and a task
+ * that threw comes back as `'failed'` rather than as a rejected promise.
  */
 import { readFileSync } from 'node:fs'
-import { createTestTenantWithUser, setupTestDatabase } from '@testkit/integration'
+import {
+  createExecutionContext,
+  createTestEnv,
+  createTestTenantWithUser,
+  dispatchScheduled,
+  setupTestDatabase,
+  waitOnExecutionContext,
+} from '@testkit/integration'
 import { makeCronCtx } from '@testkit/unit'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
@@ -43,6 +50,15 @@ describe('scheduled: fact-table refresh', () => {
     expect(analyticsServer.scheduledTasks['15 * * * *']?.map(t => t.name)).toEqual([
       'analytics.refreshFactTables',
     ])
+  })
+
+  it('is actually dispatched by the host when that expression fires', async () => {
+    const ctx = createExecutionContext()
+    const reports = await dispatchScheduled(manifest.crons[0] ?? '', createTestEnv(), ctx)
+    await waitOnExecutionContext(ctx)
+    expect(reports).toContainEqual(
+      expect.objectContaining({ task: 'analytics.refreshFactTables', status: 'ok' })
+    )
   })
 
   it('rebuilds the fact table for seeded activity when the task runs', async () => {

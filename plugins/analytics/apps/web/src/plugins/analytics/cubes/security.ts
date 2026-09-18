@@ -12,10 +12,9 @@
  * path — it throws.
  */
 import type { QueryContext, SecurityContext } from 'drizzle-cube/server'
-import { and, eq, inArray, type SQL, sql } from 'drizzle-orm'
+import { inArray, type SQL, sql } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
-import { groups, groupTypes } from '@/db/schema/kit'
-import type { Database, DetachedCtx } from '@/plugins/api'
+import type { DetachedCtx } from '@/plugins/api'
 
 export interface AnalyticsSecurityContext extends SecurityContext {
   tenantId: string
@@ -39,32 +38,14 @@ export class AnalyticsAuthError extends Error {
   }
 }
 
-/** One of the reader's groups, with the name of the TYPE it belongs to. */
+/**
+ * One of the reader's groups, with the name of the TYPE it belongs to — structurally the kit's
+ * `GroupRef`, named here because it is what the pure builder below takes.
+ */
 export interface GroupTypeRef {
   id: string
   name: string
   typeName: string
-}
-
-/**
- * The reader's groups, with their type names.
- *
- * `AccessScope` carries group IDS and nothing else, which is all a visibility predicate needs — but
- * `groupFilter` below narrows by group TYPE, so the names have to come from somewhere. One query
- * per cube request, against ids the session already resolved; it is skipped entirely for an
- * admin-level reader, who is never narrowed.
- */
-export async function readerGroups(
-  db: Database,
-  tenantId: string,
-  groupIds: readonly string[]
-): Promise<GroupTypeRef[]> {
-  if (groupIds.length === 0) return []
-  return db
-    .select({ id: groups.id, name: groups.name, typeName: groupTypes.name })
-    .from(groups)
-    .innerJoin(groupTypes, eq(groupTypes.id, groups.groupTypeId))
-    .where(and(eq(groups.tenantId, tenantId), inArray(groups.id, [...groupIds])))
 }
 
 /** What the context carries about who is asking — the half of `DetachedCtx` a cube may read. */
@@ -97,16 +78,17 @@ export function analyticsSecurityContext(
 }
 
 /**
- * The whole bridge, for the route: a detached context in, a security context out.
+ * The whole bridge, for the route: a detached context in, a security context out. **Pure, and no
+ * longer a query.**
  *
- * An admin-level reader is never narrowed by `groupFilter`, so their memberships are not read at
- * all — one query saved on the path most cube requests take.
+ * `groupFilter` narrows by group TYPE, so the names have to come from somewhere, and `AccessScope`
+ * carries ids alone. This used to resolve them with one query per cube request; kit 0.7.0 puts them
+ * on the context as `ctx.groups`, already resolved in the session's own LATERAL query, so there is
+ * nothing left to read. An admin-level reader is never narrowed by `groupFilter` at all, so their
+ * memberships are not even mapped.
  */
-export async function buildSecurityContext(ctx: DetachedCtx): Promise<AnalyticsSecurityContext> {
-  const memberships = ctx.isAdmin
-    ? []
-    : await readerGroups(ctx.db, ctx.tenantId, ctx.scope.groupIds)
-  return analyticsSecurityContext(ctx, memberships)
+export function buildSecurityContext(ctx: DetachedCtx): AnalyticsSecurityContext {
+  return analyticsSecurityContext(ctx, ctx.isAdmin ? [] : ctx.groups)
 }
 
 /**

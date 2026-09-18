@@ -59,12 +59,10 @@ Where each kind of call site went:
 **Two consequences worth knowing, because they are visible in the code rather than only in the
 imports.**
 
-*Writing a dashboard's visibility is the plugin's own code now.* The kit publishes what it takes to
-DECLARE a restrictable resource, and reads that declaration for the predicate and the 409
-`group_in_use` count — but not `grantsForResources`, `setResourceGroups` or
-`resolveRequestedVisibility`. `services/visibility.ts` reimplements those three over this plugin's
-own registry entry, keeping both rules they carry: a group id is checked against the tenant before
-it is stored, and a member may share only with groups they are in (403 `group_not_yours`).
+*Writing a dashboard's visibility goes through the kit.* `ctx.visibility.resolve`, `.set` and
+`.grantsFor` dispatch through the registry entry this plugin declares, so the two rules they carry
+are the kit's own rather than a restatement: a group id is checked against the tenant before it is
+stored, and a member may share only with groups they are in (403 `group_not_yours`).
 
 *The visibility nudge now names the query-key root.* It emitted `entity: 'analytics'` while the
 query-key family root is `analytics:dashboards`, so the invalidation never matched and an open tab
@@ -74,8 +72,9 @@ the whole reason the socket wiring is free.
 
 ### What this migration found, and what the kit changed
 
-Four gaps were reported while porting. **Three were fixed in the kit before this release**, so
-nothing here works around them:
+Seven gaps were reported while porting, and **every one of them was fixed in the kit before this
+release** — which is the point of migrating a real plugin rather than the reference one. Nothing
+here works around anything:
 
 - **A second installed plugin could not call `createRouter()` at module scope.** `@/plugins/api`
   re-exports it through `./http`, which imported `api/services/access` — a module that reads the
@@ -92,21 +91,23 @@ nothing here works around them:
 - **`notifyUnauthorized` and `setUnauthorizedHandler` are on `@/plugins/api/ui`**, so a cube 401
   reaches the kit's global handler directly.
 
-Three remain, and each costs something small and visible:
-
-1. **No group TYPE names on the auth context.** `AccessScope` carries group ids;
-   `groupFilter(ctx, 'Department', column)` narrows by type. `cubes/security.ts` resolves them with
-   one query per cube request, skipped entirely for an admin-level reader, who is never narrowed.
-2. **`@testkit` publishes no cron dispatcher.** `scheduled-facts.test.ts` proved the task and the
-   expression met by dispatching through the host's own `SCHEDULED_TASKS`. It now asserts the
-   registered expression equals the one `plugin.json` declares, and drives the task through
-   `makeCronCtx`. The half it can no longer see is the host actually dispatching it.
-3. **The visibility write helpers are on no declared entry** — `grantsForResources`,
-   `setResourceGroups` and `resolveRequestedVisibility`. `services/visibility.ts` reimplements them
-   over this plugin's own registry entry; publishing them as they stand would reintroduce the cycle
-   above, since `services/access.ts` reads the plugin barrel, so they need the same leaf treatment
-   first. Minor, same family: `group_members` is not on the schema kit, so one test reads it through
-   `allTables()`.
+- **The visibility write helpers are published as `ctx.visibility`.** `grantsForResources`,
+  `setResourceGroups` and `resolveRequestedVisibility` were on no declared entry, and this plugin
+  briefly carried a `services/visibility.ts` reimplementing all three. They could not simply be
+  exported — they dispatch through `VISIBILITY_RESOURCES`, which reads the plugin barrel, so a
+  plugin importing that module reintroduces the cycle above. The kit INJECTS them instead, reaching
+  the composing module through a function-scope `await import(...)`. **That file is deleted here**,
+  which is the only proof that the published helpers are equivalent to what it reimplemented.
+- **`ctx.groups` carries the reader's groups with their TYPE names.** `groupFilter(ctx,
+  'Department', column)` narrows by type and `AccessScope` carries ids alone, so
+  `cubes/security.ts` was resolving the names with one query per cube request. They were already on
+  the session; `buildSecurityContext` is now pure and does no I/O at all.
+- **`@testkit/integration` publishes the cron dispatcher.** `scheduled-facts.test.ts` had been
+  reduced to asserting that the task existed and separately that it worked, with a comment saying
+  the half it could no longer see was the host dispatching it. It dispatches `'15 * * * *'` through
+  the host again, and asserts the report says `status: 'ok'`.
+- **`group_members` is on `@/db/schema/kit`**, so `dashboard-visibility.test.ts` names it instead of
+  digging it out of `allTables()`.
 
 ## How to apply
 
@@ -128,14 +129,12 @@ Every file in the plugin changed its imports, so a copy that has edited any of t
 The ones with more than an import change, and worth reading rather than re-applying blind:
 
 - `apps/web/src/plugins/analytics/cubes/security.ts` — `extractSecurityContext(c)` is gone;
-  `buildSecurityContext(detached)` and the pure `analyticsSecurityContext(reader, memberships)`
-  replace it.
+  the pure `buildSecurityContext(detached)` and `analyticsSecurityContext(reader, memberships)`
+  replace it, and `readerGroups` is deleted with the query it ran.
 - `apps/web/src/plugins/analytics/services/dashboard-templates.ts` — `resetToTemplate(ctx, pageId)`
   takes the request context, because the errors it throws come off it.
-- `apps/web/src/plugins/analytics/services/visibility.ts` is new.
-- The tests moved to `@testkit`, `tests/config/permissions.test.ts` became
-  `tests/api/permissions.test.ts` (the declared ability check needs the harness's database), and
-  `tests/api/scheduled-facts.test.ts` no longer dispatches the cron.
+- The tests moved to `@testkit`, and `tests/config/permissions.test.ts` became
+  `tests/api/permissions.test.ts` (the declared ability check needs the harness's database).
 
 ## Verify
 

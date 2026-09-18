@@ -56,12 +56,7 @@ import {
   uniquePageSlug,
 } from '../../services/dashboard-templates'
 import { checkFactTableFreshness } from '../../services/fact-tables'
-import {
-  pageGrants,
-  resolveRequestedVisibility,
-  setPageVisibility,
-} from '../../services/visibility'
-import { visibleAnalyticsPages } from '../../visibility'
+import { ANALYTICS_PAGE_VISIBILITY, visibleAnalyticsPages } from '../../visibility'
 
 /** What a user-created page starts as: an empty rows-mode dashboard the editor can fill. */
 const EMPTY_DASHBOARD: DashboardConfig = { layoutMode: 'rows', rows: [], portlets: [] }
@@ -80,9 +75,8 @@ analyticsPagesRouter.get('/pages', async c => {
     .from(analyticsPages)
     .where(and(eq(analyticsPages.tenantId, ctx.tenantId), visibleAnalyticsPages(ctx.scope)))
     .orderBy(asc(analyticsPages.sortOrder), asc(analyticsPages.name))
-  const grants = await pageGrants(
-    ctx.db,
-    ctx.tenantId,
+  const grants = await ctx.visibility.grantsFor(
+    ANALYTICS_PAGE_VISIBILITY,
     rows.map(r => r.id)
   )
   return c.json({ items: rows.map(row => toAnalyticsPageDto(row, grants.get(row.id) ?? [])) })
@@ -138,7 +132,7 @@ analyticsPagesRouter.get('/pages/:id', async c => {
   // A dashboard this reader may not see is the SAME 404 as one that does not exist.
   if (!row) ctx.notFound('Dashboard not found')
   return c.json(
-    toAnalyticsPageDto(row, (await pageGrants(ctx.db, ctx.tenantId, [id])).get(id) ?? [])
+    toAnalyticsPageDto(row, (await ctx.visibility.grantsFor(ANALYTICS_PAGE_VISIBILITY, [id])).get(id) ?? [])
   )
 })
 
@@ -159,8 +153,11 @@ analyticsPagesRouter.put(
       .where(and(eq(analyticsPages.id, id), eq(analyticsPages.tenantId, ctx.tenantId)))
       .limit(1)
     if (!row) ctx.notFound('Dashboard not found')
-    const requested = await resolveRequestedVisibility(ctx, ctx.valid<SetVisibilityRequest>('json'))
-    await setPageVisibility(ctx, id, requested)
+    // The kit's own helpers, through the registry entry this plugin declared: `resolve` refuses a
+    // group outside this tenant and, for a plain member, one they are not in (403
+    // `group_not_yours`); `set` writes the column and replaces the grants in one transaction.
+    const requested = await ctx.visibility.resolve(ctx.valid<SetVisibilityRequest>('json'))
+    await ctx.visibility.set(ANALYTICS_PAGE_VISIBILITY, id, requested)
     ctx.defer(() =>
       recordActivity(ctx.db, {
         tenantId: ctx.tenantId,
@@ -181,7 +178,7 @@ analyticsPagesRouter.put(
       .limit(1)
     if (!updated) ctx.notFound('Dashboard not found')
     return c.json(
-      toAnalyticsPageDto(updated, (await pageGrants(ctx.db, ctx.tenantId, [id])).get(id) ?? [])
+      toAnalyticsPageDto(updated, (await ctx.visibility.grantsFor(ANALYTICS_PAGE_VISIBILITY, [id])).get(id) ?? [])
     )
   }
 )
