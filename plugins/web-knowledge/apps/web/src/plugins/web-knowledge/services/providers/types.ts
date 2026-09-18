@@ -49,6 +49,7 @@ export interface SearchAdapter {
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000
+const INVALID_KEY_RE = /token_invalid|invalid[ _-]?(api[ _-]?)?(key|token)|unauthori[sz]ed/i
 const SNIPPET_MAX_CHARS = 1_000
 
 /**
@@ -80,6 +81,12 @@ export async function providerJson(
     throw new WebSearchError('rate_limited', `${name} rate limit or quota reached`, res.status)
   }
   if (!res.ok) {
+    // Not every provider says "bad key" with a 401: Brave answers 422 `SUBSCRIPTION_TOKEN_INVALID`.
+    // The body is the only place that says so, and the hint the model gets depends on it.
+    const detail = await res.text().catch(() => '')
+    if (INVALID_KEY_RE.test(detail)) {
+      throw new WebSearchError('key_rejected', `${name} rejected the API key`, res.status)
+    }
     throw new WebSearchError('provider_error', `${name} answered HTTP ${res.status}`, res.status)
   }
   try {

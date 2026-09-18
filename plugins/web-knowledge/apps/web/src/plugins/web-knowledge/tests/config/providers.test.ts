@@ -105,6 +105,20 @@ describe('search adapters', () => {
     }
   })
 
+  it('reads a bad key from the body when the status does not say so (Brave: 422)', async () => {
+    const { fetch } = fakeFetch(
+      { error: { code: 'SUBSCRIPTION_TOKEN_INVALID', status: 422 }, type: 'ErrorResponse' },
+      422
+    )
+    await expect(
+      SEARCH_ADAPTERS.brave.search({ apiKey: 'k', fetch }, 'q', 1)
+    ).rejects.toMatchObject({ code: 'key_rejected' })
+    const other = fakeFetch({ error: { code: 'VALIDATION', detail: 'q too long' } }, 422)
+    await expect(
+      SEARCH_ADAPTERS.brave.search({ apiKey: 'k', fetch: other.fetch }, 'q', 1)
+    ).rejects.toMatchObject({ code: 'provider_error' })
+  })
+
   it('a network failure is provider_error', async () => {
     const fetch = (async () => {
       throw new TypeError('network')
