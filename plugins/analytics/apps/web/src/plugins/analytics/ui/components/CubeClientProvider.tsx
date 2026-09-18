@@ -15,7 +15,7 @@ import { QueryCache, QueryClient } from '@tanstack/react-query'
 import type { CubeApiOptions, FeaturesConfig } from 'drizzle-cube/client'
 import { CubeProvider } from 'drizzle-cube/client/providers'
 import { type ReactNode, useEffect, useState } from 'react'
-import { ApiError, notifyUnauthorized } from '@/ui/lib/api-client'
+import { api } from '@/plugins/api/ui'
 
 export const CUBE_API_URL = '/cubejs-api/v1'
 
@@ -40,12 +40,28 @@ export function isCubeUnauthorized(error: unknown): boolean {
   )
 }
 
+/**
+ * A cube 401 has to reach the kit's global unauthorized handler, and the plugin surface does not
+ * publish `notifyUnauthorized` / `setUnauthorizedHandler` (`@/plugins/api/ui` re-exports `api` and
+ * `ApiError` from `lib/api-client`, and nothing else). Reported to the kit as a missing member.
+ *
+ * Until it is published, the in-contract route to the same outcome is the declared client itself:
+ * `api` calls `notifyUnauthorized` internally on any 401, so one cheap request against a route the
+ * session must already satisfy re-runs the kit's own handling — the redirect to
+ * `/login?returnUrl=` lands exactly as it does everywhere else. It costs one extra request, on the
+ * 401 path only, and `probing` keeps a burst of failed cube queries from firing more than one.
+ */
+let probing = false
+
 function onCubeError(error: unknown) {
-  if (isCubeUnauthorized(error)) {
-    notifyUnauthorized(
-      new ApiError({ error: 'Unauthorized', statusCode: 401, code: 'unauthorized' })
-    )
-  }
+  if (!isCubeUnauthorized(error) || probing) return
+  probing = true
+  void api
+    .get('/api/me')
+    .catch(() => {})
+    .finally(() => {
+      probing = false
+    })
 }
 
 /** The client drizzle-cube runs its queries on. Never retries a definitive 4xx. */

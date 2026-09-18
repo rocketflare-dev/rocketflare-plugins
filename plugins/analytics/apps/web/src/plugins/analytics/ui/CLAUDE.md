@@ -5,9 +5,12 @@ the kit. Nothing about the UI changed when it moved — what changed is where it
 may import. Two rules the host enforces and this file assumes:
 
 - **`ui/index.ts` ships in the MAIN bundle**, so every page below arrives as
-  `lazy(() => import(...))` and the only runtime imports allowed in that file are `react`, the
-  heroicons set, `@rocketflare/shared/*` and the three kit UI modules a nav item needs.
-  `tests/config/plugins.test.ts` reads its source.
+  `lazy(() => import(...))` and the only host module it may import is `@/plugins/api/ui-wiring` —
+  the WIRING half of the UI kit (types, one helper, one hook). `tests/config/plugins.test.ts` reads
+  its source.
+- **Pages and their components import `@/plugins/api/ui`**, the COMPONENTS half: the whole
+  `components/shared` barrel, `LoadingIndicator`, `api`/`ApiError`, the formatters, `useAuth`,
+  `usePermissions`, `useGroups`, `showToast`. A page is lazy, so it ships in its own chunk.
 - **The browser may import `../dashboards/registry`, never `../dashboards`** — the second composes
   other plugins' templates and so reads the SERVER plugin barrel, which drags `postgres` into the
   UI bundle. Measured; the build says so.
@@ -30,8 +33,11 @@ Paths below are relative to `apps/web/src/plugins/analytics/`.
   library's `CubeClient` forwards both to every `fetch` (it defaults to `include` anyway; the
   header is the kit's marker). No token. drizzle-cube runs its queries on a BUNDLED TanStack Query
   (separate React context), so the app's `QueryCache.onError` never sees a cube failure: the
-  provider hands it `createCubeQueryClient()`, whose `onError` maps a `status === 401`
-  (`CubeQueryError`) to `notifyUnauthorized(new ApiError(...))` → the global D20 handler. Our hooks
+  provider hands it `createCubeQueryClient()`, whose `onError` detects a `status === 401`
+  (`CubeQueryError`) and routes it back through the declared `api` client — one `GET /api/me`, which
+  calls the kit's own `notifyUnauthorized` and lands the D20 redirect. `notifyUnauthorized` and
+  `setUnauthorizedHandler` are not published by `@/plugins/api/ui`; that is reported to the kit, and
+  the probe is the in-contract route to the same outcome (one extra request, on the 401 path only). Our hooks
   rendered inside `CubeProvider` still resolve the APP client (different context) — that is why
   `DashboardLoader` can call `useAutosaveDashboardConfig` from inside it.
 - **Bundle discipline**: nothing under `pages/analytics/**` or `components/analytics/**` may be
@@ -41,7 +47,7 @@ Paths below are relative to `apps/web/src/plugins/analytics/`.
   the largest thing the UI ships, which is exactly why it is lazy). `grep recharts
   dist/ui/assets/index-*.js` must stay at 0 — that check, not a byte count, is the guardrail.
   `vite.config.ts` dedupes `recharts` and aliases `@nivo/heatmap` (an OPTIONAL peer the heat-map chunk names an export of —
-  Rollup fails without it) to `lib/stubs/nivo-heatmap.tsx`, which renders a notice; install the
+  Rollup fails without it) to `ui/lib/nivo-heatmap.tsx`, which renders a notice; install the
   package and drop the alias to enable heat maps.
 - **Theme**: drizzle-cube styles itself from `--dc-*` variables; `index.css` re-points every one at
   a kit token under `:root[data-theme="rocketflare-light"], :root[data-theme="rocketflare-dark"]` (specificity

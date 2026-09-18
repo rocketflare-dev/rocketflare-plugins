@@ -7,6 +7,10 @@
  * drizzle-cube, recharts, d3 and react-grid-layout out of the shell and inside the analytics chunk
  * (`tests/config/plugins.test.ts` reads this file's SOURCE and enforces both halves).
  *
+ * The only host module it may import is `@/plugins/api/ui-wiring` — the WIRING half of the UI kit,
+ * which is types, one helper and one hook. The COMPONENTS half (`@/plugins/api/ui`) is deliberately
+ * unreachable from here; that is for a lazy PAGE, which ships in its own chunk.
+ *
  * The nav item, the Home quick link and all three routes share ONE guard object, so a link can
  * never point at a page its reader cannot open. `read Analytics` is every member's (§8): pages are
  * tenant-shared and row scoping is inside every cube; editing is gated per control by
@@ -15,8 +19,7 @@
 import { ChartBarIcon } from '@heroicons/react/24/outline'
 import { analyticsShared } from '@rocketflare/shared/plugins/analytics/index'
 import { lazy } from 'react'
-import type { UiPlugin } from '@/plugins/types'
-import type { NavGuard } from '@/ui/hooks/useNavGuard'
+import type { NavGuard, UiPlugin } from '@/plugins/api/ui-wiring'
 import { analyticsQueryKeys } from './query-keys'
 
 const DashboardListPage = lazy(() => import('./pages/DashboardListPage'))

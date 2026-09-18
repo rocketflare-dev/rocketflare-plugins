@@ -15,7 +15,7 @@ import type {
 } from '@rocketflare/shared/plugins/analytics/index'
 import { AnalyticsDashboard, type DashboardConfig } from 'drizzle-cube/client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { LoadingIndicator } from '@/ui/components/LoadingIndicator'
+import { LoadingIndicator } from '@/plugins/api/ui'
 import { useAutosaveDashboardConfig } from '../hooks/useAnalyticsPages'
 import { type DateRangeValue, dashboardDateFilters } from '../hooks/useDashboardDateFilter'
 

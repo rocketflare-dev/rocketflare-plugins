@@ -12,7 +12,7 @@ import {
   type DashboardTemplateSummary,
 } from '@rocketflare/shared/plugins/analytics/index'
 import { type FormEvent, useEffect, useState } from 'react'
-import { FieldError, fieldErrorFor, Modal } from '@/ui/components/shared'
+import { FieldError, fieldErrorFor, Modal } from '@/plugins/api/ui'
 
 export interface DashboardFormValues {
   name: string

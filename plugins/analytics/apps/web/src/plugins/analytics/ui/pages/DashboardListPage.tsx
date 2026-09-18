@@ -22,13 +22,14 @@ import {
   AccessBadge,
   ConfirmModal,
   EmptyState,
+  formatDate,
   PageHeader,
   SectionPanel,
   SkeletonRows,
-} from '@/ui/components/shared'
-import { usePermissions } from '@/ui/hooks/usePermissions'
-import { showToast } from '@/ui/lib/api-client'
-import { formatDate, timeAgo } from '@/ui/lib/format'
+  showToast,
+  timeAgo,
+  usePermissions,
+} from '@/plugins/api/ui'
 import { getTemplate } from '../../dashboards/registry'
 import { DashboardFormModal, type DashboardFormValues } from '../components/DashboardFormModal'
 import {

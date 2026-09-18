@@ -20,7 +20,8 @@
  *
  * The CLI never owns a second copy of the contract: every response is parsed with the same
  * `@rocketflare/shared` schema the server validated with, and it throws `CliError` rather than
- * printing an error or calling `process.exit`.
+ * printing an error or calling `process.exit` — it registers with the host's own `action()`
+ * wrapper, so it inherits one context, one error printer and one exit-code mapping (0 · 1 · 2 · 3).
  */
 import {
   ANALYTICS_PLUGIN_ID,
@@ -29,11 +30,9 @@ import {
   analyticsShared,
   factTableStatusListResponseSchema,
 } from '@rocketflare/shared/plugins/analytics/index'
-import type { CommandContext } from '../../context'
-import { requireClient } from '../../context'
-import { CliError, EXIT_ERROR } from '../../errors'
-import { formatDate, renderTable } from '../../utils/output'
-import type { CliPlugin } from '../types'
+// The CLI plugin API (D31) — one declared entry, rather than four reaches into the kit's internals.
+import type { CliPlugin, CommandContext } from '../api'
+import { CliError, EXIT_ERROR, formatDate, renderTable, requireClient } from '../api'
 
 export async function runAnalyticsPagesList(ctx: CommandContext): Promise<void> {
   const { data, raw } = await requireClient(ctx).request('GET', '/api/analytics/pages', {
