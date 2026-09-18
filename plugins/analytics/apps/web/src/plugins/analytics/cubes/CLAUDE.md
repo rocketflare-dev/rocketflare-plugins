@@ -5,11 +5,6 @@ One file per cube, `defineCube('Name', …)` from `drizzle-cube/server`, registe
 `drizzle-cube/adapters/hono`) at `/cubejs-api/v1/{load,meta,sql,batch,dry-run}` and `/mcp`, both
 mounted behind the kit's auth middleware + `ctx.guard('read', 'Analytics')`.
 
-**Every cube is a memoised FACTORY** (`activityEventsCube()`), not a module-scope const. Three of
-them name kit tables `@/db/schema/kit` does not export, which arrive through `kitTables()` — a call
-that must never happen at module scope (D31; see `../kit-tables.ts`). The definitions are otherwise
-unchanged, and the join thunks (`targetCube: () => usersCube()`) were already lazy.
-
 **The security context is built in the ROUTE and passed down.** `createCubeApp` calls
 `extractSecurityContext` per query, from inside drizzle-cube, where no Hono context exists — so the
 route builds it from `ctx.detached()` (`buildSecurityContext`) and hands it over as a closure.

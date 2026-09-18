@@ -8,11 +8,10 @@
  * is not a hook. `SeedCtx`'s `demoId` arrives already namespaced with this plugin's id.
  */
 import { and, eq, ne } from 'drizzle-orm'
-import { tenants } from '@/db/schema/kit'
+import { activityEvents, groups, tenants } from '@/db/schema/kit'
 import type { HookCtx, SeedCtx } from '@/plugins/api'
 import { analyticsPageGroups } from '../db/schema/analytics-page-groups'
 import { analyticsPages } from '../db/schema/analytics-pages'
-import { kitTables } from '../kit-tables'
 import { ensureDefaultDashboards } from '../services/dashboard-templates'
 import { refreshAllFactTables } from '../services/fact-tables'
 
@@ -43,9 +42,6 @@ export async function onTenantCreated({ db, tenantId, userId, features }: HookCt
  */
 export async function seedDemo(ctx: SeedCtx): Promise<void> {
   const { db, tenantId, ownerId, demoId, log } = ctx
-  // Called inside the function, never at module scope: `kitTables()` reads the plugin barrel's
-  // neighbourhood, and a module-scope read closes a cycle that fails at IMPORT time.
-  const { groups, activityEvents } = kitTables()
 
   await ensureDefaultDashboards(db, tenantId, ownerId)
   const siblings = await db.select({ id: tenants.id }).from(tenants).where(ne(tenants.id, tenantId))

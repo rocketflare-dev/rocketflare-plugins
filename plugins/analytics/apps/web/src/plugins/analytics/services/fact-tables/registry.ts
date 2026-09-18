@@ -4,15 +4,12 @@
  * `db/schema/facts/`, a `queries/<name>.ts` SELECT builder, and one entry here. Every table
  * carries `tenant_id` (rebuilt per tenant) and `fact_refreshed_at` (the freshness watermark).
  *
- * `analyticsFactTables()` is a memoised FUNCTION rather than a const because its one entry names
- * the kit's `activity_events` as its source, which reaches this plugin through `kitTables()` — a
- * call that must not happen at module scope (see `../../kit-tables.ts`).
  */
 import type { SQL } from 'drizzle-orm'
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core'
+import { activityEvents } from '@/db/schema/kit'
 import { tenantActivityDailyFacts } from '../../db/schema/facts'
 import { contributedFactTables } from '../../extensions'
-import { activityEventsTable } from '../../kit-tables'
 import { tenantActivityDailySelect } from './queries/tenant-activity-daily'
 
 export interface FactTableDefinition {
@@ -28,27 +25,20 @@ export interface FactTableDefinition {
   selectForTenant(tenantId: string): SQL
 }
 
-let memo: readonly FactTableDefinition[] | null = null
-
-/** This plugin's own fact tables. Memoised: the source table is read once per isolate. */
-export function analyticsFactTables(): readonly FactTableDefinition[] {
-  if (memo) return memo
-  const activityEvents = activityEventsTable()
-  memo = [
-    {
-      name: 'analytics_tenant_activity_daily_facts',
-      table: tenantActivityDailyFacts,
-      refreshIntervalMinutes: 60,
-      source: {
-        name: 'activity_events',
-        table: activityEvents,
-        timestampColumn: activityEvents.createdAt,
-      },
-      selectForTenant: tenantActivityDailySelect,
+/** This plugin's own fact tables. */
+export const ANALYTICS_FACT_TABLES: readonly FactTableDefinition[] = [
+  {
+    name: 'analytics_tenant_activity_daily_facts',
+    table: tenantActivityDailyFacts,
+    refreshIntervalMinutes: 60,
+    source: {
+      name: 'activity_events',
+      table: activityEvents,
+      timestampColumn: activityEvents.createdAt,
     },
-  ]
-  return memo
-}
+    selectForTenant: tenantActivityDailySelect,
+  },
+]
 
 /**
  * Every fact table this app has: this plugin's, plus every one another installed plugin
@@ -57,7 +47,7 @@ export function analyticsFactTables(): readonly FactTableDefinition[] {
  * `contributedFactTables` memoises, so the walk is paid once per isolate.
  */
 export function factTables(): readonly FactTableDefinition[] {
-  return [...analyticsFactTables(), ...contributedFactTables()]
+  return [...ANALYTICS_FACT_TABLES, ...contributedFactTables()]
 }
 
 export function getFactTable(name: string): FactTableDefinition {

@@ -16,15 +16,13 @@ import {
   setupTestDatabase,
 } from '@testkit/integration'
 import { describe, expect, it } from 'vitest'
+import { activityEvents } from '@/db/schema/kit'
 import { allCubes } from '../../cubes'
 import { listTemplates } from '../../dashboards'
 import { contributedCubeIsolationCases } from '../../extensions'
-import { kitTables } from '../../kit-tables'
 import { refreshFactTable } from '../../services/fact-tables'
 
 const db = setupTestDatabase()
-// The kit's audit log — the `ActivityEvents` cube's table and the fact table's source (D31).
-const { activityEvents } = kitTables()
 
 /** Cube.js v1 load shape: `{ queryType, results: [{ query, data, annotation, … }] }`. */
 interface LoadResponse {

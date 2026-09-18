@@ -4,11 +4,10 @@ Pre-aggregated, tenant-scoped tables that dashboards read instead of scanning ev
 example ships: `analytics_tenant_activity_daily_facts` (grain `tenant_id, day, user_id`) from `activity_events`,
 read by the `TenantActivityDaily` cube.
 
-- `registry.ts` — `analyticsFactTables()`, a memoised FUNCTION (its source is the kit's
-  `activity_events`, which reaches this plugin through `kitTables()` and so may not be read at
-  module scope): `{ name, table, refreshIntervalMinutes, source: { table, timestampColumn },
-  selectForTenant(tenantId) → SQL }`. `factTables()` composes in other plugins' contributions, and
-  everything else iterates that.
+- `registry.ts` — `ANALYTICS_FACT_TABLES`: `{ name, table, refreshIntervalMinutes, source: { table,
+  timestampColumn }, selectForTenant(tenantId) → SQL }`. `factTables()` composes in other plugins'
+  contributions — a FUNCTION, because that reads the plugin barrel — and everything else iterates
+  that.
 - `refresh.ts` — `refreshFactTable(db, name, { tenantId? })`: per tenant, one transaction,
   `DELETE … WHERE tenant_id = $1` then `INSERT INTO t (<columns from getTableColumns>) <select>`;
   errors isolated per tenant. `refreshAllFactTables(db)` = every table. Full rebuild, not

@@ -3,9 +3,7 @@
  * rebuilt hourly by `services/fact-tables`. Same direct `tenant_id` scoping as any tenant table;
  * the point is that a dashboard over a year of events reads a few hundred pre-aggregated rows.
  * Joins `Users` (belongsTo). Member names are frozen: dashboard JSON references them.
- *
- * A memoised factory for symmetry with the other three — its own table is the plugin's, but the
- * join names `users` and the registry treats every cube the same way.
+
  */
 import type { BaseQueryDefinition, Cube, QueryContext } from 'drizzle-cube/server'
 import { defineCube } from 'drizzle-cube/server'
@@ -15,63 +13,57 @@ import { tenantActivityDailyFacts } from '../db/schema/facts'
 import { tenantIdOf } from './security'
 import { usersCube } from './users'
 
-let memo: Cube | null = null
+export const tenantActivityDailyCube: Cube = defineCube('TenantActivityDaily', {
+  title: 'Daily Activity',
+  description: 'Activity events per day and user, pre-aggregated hourly (fact table)',
 
-export function tenantActivityDailyCube(): Cube {
-  if (memo) return memo
-  memo = defineCube('TenantActivityDaily', {
-    title: 'Daily Activity',
-    description: 'Activity events per day and user, pre-aggregated hourly (fact table)',
+  sql: (ctx: QueryContext): BaseQueryDefinition => ({
+    from: tenantActivityDailyFacts,
+    where: eq(tenantActivityDailyFacts.tenantId, tenantIdOf(ctx)),
+  }),
 
-    sql: (ctx: QueryContext): BaseQueryDefinition => ({
-      from: tenantActivityDailyFacts,
-      where: eq(tenantActivityDailyFacts.tenantId, tenantIdOf(ctx)),
-    }),
-
-    joins: {
-      Users: {
-        targetCube: () => usersCube(),
-        relationship: 'belongsTo',
-        on: [{ source: tenantActivityDailyFacts.userId, target: users.id }],
-      },
+  joins: {
+    Users: {
+      targetCube: () => usersCube,
+      relationship: 'belongsTo',
+      on: [{ source: tenantActivityDailyFacts.userId, target: users.id }],
     },
+  },
 
-    dimensions: {
-      day: { name: 'day', title: 'Day', type: 'time', sql: tenantActivityDailyFacts.day },
-      userId: {
-        name: 'userId',
-        title: 'User ID',
-        type: 'string',
-        sql: tenantActivityDailyFacts.userId,
-      },
-      factRefreshedAt: {
-        name: 'factRefreshedAt',
-        title: 'Fact Refreshed At',
-        type: 'time',
-        sql: tenantActivityDailyFacts.factRefreshedAt,
-      },
+  dimensions: {
+    day: { name: 'day', title: 'Day', type: 'time', sql: tenantActivityDailyFacts.day },
+    userId: {
+      name: 'userId',
+      title: 'User ID',
+      type: 'string',
+      sql: tenantActivityDailyFacts.userId,
     },
+    factRefreshedAt: {
+      name: 'factRefreshedAt',
+      title: 'Fact Refreshed At',
+      type: 'time',
+      sql: tenantActivityDailyFacts.factRefreshedAt,
+    },
+  },
 
-    measures: {
-      eventCount: {
-        name: 'eventCount',
-        title: 'Events',
-        type: 'sum',
-        sql: tenantActivityDailyFacts.eventCount,
-      },
-      activeUsers: {
-        name: 'activeUsers',
-        title: 'Active Users',
-        type: 'countDistinct',
-        sql: tenantActivityDailyFacts.userId,
-      },
-      activeDays: {
-        name: 'activeDays',
-        title: 'Active Days',
-        type: 'countDistinct',
-        sql: tenantActivityDailyFacts.day,
-      },
+  measures: {
+    eventCount: {
+      name: 'eventCount',
+      title: 'Events',
+      type: 'sum',
+      sql: tenantActivityDailyFacts.eventCount,
     },
-  })
-  return memo
-}
+    activeUsers: {
+      name: 'activeUsers',
+      title: 'Active Users',
+      type: 'countDistinct',
+      sql: tenantActivityDailyFacts.userId,
+    },
+    activeDays: {
+      name: 'activeDays',
+      title: 'Active Days',
+      type: 'countDistinct',
+      sql: tenantActivityDailyFacts.day,
+    },
+  },
+})

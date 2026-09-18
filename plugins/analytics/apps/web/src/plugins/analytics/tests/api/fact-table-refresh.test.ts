@@ -7,8 +7,8 @@
 import { createTestTenantWithUser, createTestUser, setupTestDatabase } from '@testkit/integration'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
+import { activityEvents } from '@/db/schema/kit'
 import { tenantActivityDailyFacts } from '../../db/schema/facts'
-import { kitTables } from '../../kit-tables'
 import {
   checkFactTableFreshness,
   computeFreshness,
@@ -19,9 +19,6 @@ import {
 } from '../../services/fact-tables'
 
 const db = setupTestDatabase()
-// `activity_events` is the KIT's table and is not one of the three `@/db/schema/kit` exports, so it
-// arrives through `kitTables()` — read inside a function, never at module scope (D31).
-const { activityEvents } = kitTables()
 const TABLE = 'analytics_tenant_activity_daily_facts'
 const DAY = 24 * 60 * 60 * 1000
 

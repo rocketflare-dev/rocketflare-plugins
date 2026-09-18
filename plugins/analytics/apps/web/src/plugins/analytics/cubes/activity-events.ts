@@ -5,87 +5,77 @@
  * `Users` (belongsTo, the actor). Member names are frozen: dashboard JSON references them.
  *
  * `activity_events` is the KIT's table — the audit log stayed core when analytics left (§8) — and it
- * is one of the three `@/db/schema/kit` does not export, so it arrives through `kitTables()` and
- * this cube is a memoised factory rather than a const.
+ * comes from `@/db/schema/kit` like every other kit table this plugin names.
  */
 import type { BaseQueryDefinition, Cube, QueryContext } from 'drizzle-cube/server'
 import { defineCube } from 'drizzle-cube/server'
 import { eq } from 'drizzle-orm'
-import { users } from '@/db/schema/kit'
-import { activityEventsTable } from '../kit-tables'
+import { activityEvents, users } from '@/db/schema/kit'
 import { tenantIdOf } from './security'
 import { usersCube } from './users'
 
-let memo: Cube | null = null
+export const activityEventsCube: Cube = defineCube('ActivityEvents', {
+  title: 'Activity Events',
+  description: 'Everything that happened in the organisation, one row per event',
 
-export function activityEventsCube(): Cube {
-  if (memo) return memo
-  const activityEvents = activityEventsTable()
+  sql: (ctx: QueryContext): BaseQueryDefinition => ({
+    from: activityEvents,
+    where: eq(activityEvents.tenantId, tenantIdOf(ctx)),
+  }),
 
-  memo = defineCube('ActivityEvents', {
-    title: 'Activity Events',
-    description: 'Everything that happened in the organisation, one row per event',
-
-    sql: (ctx: QueryContext): BaseQueryDefinition => ({
-      from: activityEvents,
-      where: eq(activityEvents.tenantId, tenantIdOf(ctx)),
-    }),
-
-    meta: {
-      eventStream: {
-        bindingKey: 'ActivityEvents.userId',
-        timeDimension: 'ActivityEvents.createdAt',
-        eventDimension: 'ActivityEvents.type',
-      },
+  meta: {
+    eventStream: {
+      bindingKey: 'ActivityEvents.userId',
+      timeDimension: 'ActivityEvents.createdAt',
+      eventDimension: 'ActivityEvents.type',
     },
+  },
 
-    joins: {
-      Users: {
-        targetCube: () => usersCube(),
-        relationship: 'belongsTo',
-        on: [{ source: activityEvents.userId, target: users.id }],
-      },
+  joins: {
+    Users: {
+      targetCube: () => usersCube,
+      relationship: 'belongsTo',
+      on: [{ source: activityEvents.userId, target: users.id }],
     },
+  },
 
-    dimensions: {
-      id: {
-        name: 'id',
-        title: 'Event ID',
-        type: 'string',
-        sql: activityEvents.id,
-        primaryKey: true,
-      },
-      type: {
-        name: 'type',
-        title: 'Event Type',
-        type: 'string',
-        sql: activityEvents.type,
-        description: 'Dotted event name, e.g. member.invited, api_key.created',
-      },
-      subjectType: {
-        name: 'subjectType',
-        title: 'Subject Type',
-        type: 'string',
-        sql: activityEvents.subjectType,
-      },
-      userId: { name: 'userId', title: 'Actor ID', type: 'string', sql: activityEvents.userId },
-      createdAt: {
-        name: 'createdAt',
-        title: 'Occurred At',
-        type: 'time',
-        sql: activityEvents.createdAt,
-      },
+  dimensions: {
+    id: {
+      name: 'id',
+      title: 'Event ID',
+      type: 'string',
+      sql: activityEvents.id,
+      primaryKey: true,
     },
+    type: {
+      name: 'type',
+      title: 'Event Type',
+      type: 'string',
+      sql: activityEvents.type,
+      description: 'Dotted event name, e.g. member.invited, api_key.created',
+    },
+    subjectType: {
+      name: 'subjectType',
+      title: 'Subject Type',
+      type: 'string',
+      sql: activityEvents.subjectType,
+    },
+    userId: { name: 'userId', title: 'Actor ID', type: 'string', sql: activityEvents.userId },
+    createdAt: {
+      name: 'createdAt',
+      title: 'Occurred At',
+      type: 'time',
+      sql: activityEvents.createdAt,
+    },
+  },
 
-    measures: {
-      count: { name: 'count', title: 'Events', type: 'count', sql: activityEvents.id },
-      activeUsers: {
-        name: 'activeUsers',
-        title: 'Active Users',
-        type: 'countDistinct',
-        sql: activityEvents.userId,
-      },
+  measures: {
+    count: { name: 'count', title: 'Events', type: 'count', sql: activityEvents.id },
+    activeUsers: {
+      name: 'activeUsers',
+      title: 'Active Users',
+      type: 'countDistinct',
+      sql: activityEvents.userId,
     },
-  })
-  return memo
-}
+  },
+})

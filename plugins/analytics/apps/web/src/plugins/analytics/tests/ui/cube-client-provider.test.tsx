@@ -4,16 +4,14 @@
  * `X-Requested-With` marker on `/cubejs-api/v1/meta` — and that a 401 from the cube API still ends
  * up in the kit's global unauthorized handling.
  *
- * **How that last assertion is made changed with the plugin contract.** It used to register a spy
- * through `setUnauthorizedHandler` from `@/ui/lib/api-client`; neither that nor `notifyUnauthorized`
- * is published by `@/plugins/api/ui`, and reaching for them directly is exactly the coupling the
- * contract removes (it is reported to the kit as a missing member). So the provider routes a cube
- * 401 back through the declared `api` client — which calls the kit's handler itself — and what this
- * file asserts is that ONE such probe is made, once, per burst of failures.
+ * Both halves of that come off the declared UI entry — `setUnauthorizedHandler` to register the
+ * spy, `notifyUnauthorized` inside the provider — so what is asserted is the kit's real handler
+ * rather than a stand-in for it.
  */
 import { render, screen, waitFor } from '@testing-library/react'
 import { stubFetch, unauthorizedResponse } from '@testkit/integration'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setUnauthorizedHandler } from '@/plugins/api/ui'
 import {
   CubeClientProvider,
   createCubeQueryClient,
@@ -35,6 +33,7 @@ describe('CubeClientProvider', () => {
     document.documentElement.setAttribute('data-theme', 'rocketflare-light')
   })
   afterEach(() => {
+    setUnauthorizedHandler(null)
     vi.unstubAllGlobals()
     document.documentElement.classList.remove('dark')
   })
@@ -69,27 +68,23 @@ describe('CubeClientProvider', () => {
     expect(headers.get('X-Requested-With')).toBe('fetch')
   })
 
-  it('a 401 from the cube API reaches the kit’s handling through the declared client', async () => {
-    const fetchMock = stubFetch({
-      '/cubejs-api/v1/meta': () => unauthorizedResponse(),
-      '/api/me': () => unauthorizedResponse(),
-    })
+  it('a 401 from the cube API fires the global unauthorized handler', async () => {
+    stubFetch({ '/cubejs-api/v1/meta': () => unauthorizedResponse() })
     render(
       <CubeClientProvider>
         <div>child</div>
       </CubeClientProvider>
     )
-    // The probe IS the notification: `api` calls the kit's `notifyUnauthorized` on any 401, and
-    // `/api/me` is a route the session must already satisfy.
-    await waitFor(() =>
-      expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/api/me'))).toBe(true)
-    )
-    const probes = fetchMock.mock.calls.filter(([input]) => String(input).includes('/api/me'))
-    expect(probes).toHaveLength(1)
+    // Registered after mount on purpose: the last registration wins (AuthProvider does the same)
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    await waitFor(() => expect(handler).toHaveBeenCalledTimes(1))
+    expect(handler.mock.calls[0][0]).toMatchObject({ status: 401 })
   })
 
-  it('createCubeQueryClient never retries a 4xx, and only a 401 probes', async () => {
-    const fetchMock = stubFetch({ '/api/me': () => unauthorizedResponse() })
+  it('createCubeQueryClient routes only 401s to the handler and never retries a 4xx', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
     const client = createCubeQueryClient()
     const fail = (status: number) =>
       client
@@ -98,13 +93,12 @@ describe('CubeClientProvider', () => {
           queryFn: () => Promise.reject(Object.assign(new Error('boom'), { status })),
         })
         .catch(() => undefined)
-    const probes = () => fetchMock.mock.calls.filter(([i]) => String(i).includes('/api/me')).length
     await fail(403)
     await flushMicrotasks()
-    expect(probes()).toBe(0)
+    expect(handler).not.toHaveBeenCalled()
     await fail(401)
     await flushMicrotasks()
-    await waitFor(() => expect(probes()).toBe(1))
+    expect(handler).toHaveBeenCalledTimes(1)
     expect(client.getQueryState(['t', 401])?.fetchFailureCount).toBe(1) // one attempt, no retry
     expect(isCubeUnauthorized({ status: 401 })).toBe(true)
     expect(isCubeUnauthorized(new Error('x'))).toBe(false)

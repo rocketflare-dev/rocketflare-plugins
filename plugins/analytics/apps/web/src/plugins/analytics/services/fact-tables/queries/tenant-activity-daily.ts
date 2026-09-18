@@ -5,13 +5,12 @@
  * drift fails loudly ("INSERT has more target columns than expressions") instead of shifting
  * values silently. Parameterised (`${tenantId}` is a bound value), never string-interpolated.
  *
- * `activity_events` is the kit's table and arrives through `kitTables()`, read INSIDE the function.
  */
 import { type SQL, sql } from 'drizzle-orm'
-import { activityEventsTable } from '../../../kit-tables'
+import { activityEvents } from '@/db/schema/kit'
 
 export function tenantActivityDailySelect(tenantId: string): SQL {
-  const e = activityEventsTable()
+  const e = activityEvents
   return sql`
     select
       ${e.tenantId}                                  as tenant_id,

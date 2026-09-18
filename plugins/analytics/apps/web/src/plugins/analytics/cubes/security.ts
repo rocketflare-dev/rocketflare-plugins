@@ -14,9 +14,8 @@
 import type { QueryContext, SecurityContext } from 'drizzle-cube/server'
 import { and, eq, inArray, type SQL, sql } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
-import { groups } from '@/db/schema/kit'
+import { groups, groupTypes } from '@/db/schema/kit'
 import type { Database, DetachedCtx } from '@/plugins/api'
-import { groupTypesTable } from '../kit-tables'
 
 export interface AnalyticsSecurityContext extends SecurityContext {
   tenantId: string
@@ -61,7 +60,6 @@ export async function readerGroups(
   groupIds: readonly string[]
 ): Promise<GroupTypeRef[]> {
   if (groupIds.length === 0) return []
-  const groupTypes = groupTypesTable()
   return db
     .select({ id: groups.id, name: groups.name, typeName: groupTypes.name })
     .from(groups)

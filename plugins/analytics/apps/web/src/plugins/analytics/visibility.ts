@@ -16,12 +16,11 @@
  * the composing module reads the plugin barrel.
  */
 import { and, count, eq, inArray, type SQL, sql } from 'drizzle-orm'
-import { groups } from '@/db/schema/kit'
+import { groups, groupTypes } from '@/db/schema/kit'
 import type { AccessScope, VisibilityResource } from '@/plugins/api'
 import { sharedWithMyGroups } from '@/plugins/api'
 import { analyticsPageGroups } from './db/schema/analytics-page-groups'
 import { analyticsPages } from './db/schema/analytics-pages'
-import { groupTypesTable } from './kit-tables'
 
 /** The registry key. `<id>:<thing>`, so two plugins can never claim one kind. */
 export const ANALYTICS_PAGE_VISIBILITY = 'analytics:page'
@@ -60,19 +59,17 @@ export const analyticsPageVisibility: VisibilityResource = {
         .onConflictDoNothing()
     }
   },
-  // `group_types` is one of the three kit tables `@/db/schema/kit` does not carry, so it is read
-  // through `kitTables()` — inside the function, which is the rule that keeps the cycle shut.
   grantRows: (db, tenantId, resourceIds) =>
     db
       .select({
         resourceId: analyticsPageGroups.pageId,
         id: groups.id,
         name: groups.name,
-        typeName: groupTypesTable().name,
+        typeName: groupTypes.name,
       })
       .from(analyticsPageGroups)
       .innerJoin(groups, eq(groups.id, analyticsPageGroups.groupId))
-      .innerJoin(groupTypesTable(), eq(groupTypesTable().id, groups.groupTypeId))
+      .innerJoin(groupTypes, eq(groupTypes.id, groups.groupTypeId))
       .where(
         and(
           eq(analyticsPageGroups.tenantId, tenantId),

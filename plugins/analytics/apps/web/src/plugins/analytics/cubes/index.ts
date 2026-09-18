@@ -4,11 +4,6 @@
  * an entry below + a case in that test. Another PLUGIN adds one through
  * `analyticsExtensions({ cubes, cubeIsolationCases })` (D31 decision 6). Read ./CLAUDE.md first.
  *
- * **Every cube is a memoised FACTORY rather than a module-scope const**, because three of them name
- * kit tables (`activity_events`, `tenant_users`) that `@/db/schema/kit` does not carry and which
- * therefore arrive through `kitTables()` — a call that must not happen at module scope. Built once
- * per isolate on first use; the join thunks (`targetCube: () => usersCube()`) were already lazy, so
- * nothing about the cube definitions changed.
  */
 import type { Cube } from 'drizzle-cube/server'
 import { contributedCubes } from '../extensions'
@@ -18,14 +13,12 @@ import { tenantUsersCube } from './tenant-users'
 import { usersCube } from './users'
 
 /** This plugin's own cubes, sorted by title — the order the schema explorer shows. */
-export function analyticsCubes(): Cube[] {
-  return [
-    activityEventsCube(), // Activity Events
-    tenantActivityDailyCube(), // Daily Activity
-    tenantUsersCube(), // Members
-    usersCube(), // Users
-  ]
-}
+export const ANALYTICS_CUBES: Cube[] = [
+  activityEventsCube, // Activity Events
+  tenantActivityDailyCube, // Daily Activity
+  tenantUsersCube, // Members
+  usersCube, // Users
+]
 
 /**
  * Every cube this app has: this plugin's, plus every cube another installed plugin contributed
@@ -38,7 +31,7 @@ export function analyticsCubes(): Cube[] {
  * today. Feature filtering happens per request in `cubesFor` below.
  */
 export function allCubes(): Cube[] {
-  return [...analyticsCubes(), ...contributedCubes()]
+  return [...ANALYTICS_CUBES, ...contributedCubes()]
 }
 
 /**

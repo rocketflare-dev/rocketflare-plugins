@@ -24,13 +24,12 @@ import { createTestTenantWithUser, setupTestDatabase } from '@testkit/integratio
 import { makeCronCtx } from '@testkit/unit'
 import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
+import { activityEvents } from '@/db/schema/kit'
 import { analyticsServer } from '../..'
 import { refreshFactTables } from '../../api/scheduled'
 import { tenantActivityDailyFacts } from '../../db/schema/facts'
-import { kitTables } from '../../kit-tables'
 
 const db = setupTestDatabase()
-const { activityEvents } = kitTables()
 
 const manifest = JSON.parse(
   readFileSync(new URL('../../plugin.json', import.meta.url), 'utf8')
