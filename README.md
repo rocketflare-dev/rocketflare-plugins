@@ -87,11 +87,17 @@ to a released tag orphans them.
 
 ## CI
 
-`.github/workflows/ci.yml` calls the kit's reusable `plugin-ci.yml`, once per plugin. For each, it
-reads that plugin's `requires.kit`, resolves the **oldest and the newest** kit release inside the
-range, and for each clones that kit, installs this checkout into it, generates and applies the
-migrations the host owns, and runs the kit's whole gate. Both ends of the range rather than a
-midpoint: the floor an adopter may still be on, and the ceiling the kit has just reached.
+`.github/workflows/ci.yml` calls the kit's reusable `plugin-ci.yml` **once for the whole
+repository**, passing `plugin_subdirs`. For each plugin it reads that plugin's `requires.kit`,
+resolves the **oldest and the newest** kit release inside the range, and for each clones that kit,
+installs this checkout into it, generates and applies the migrations the host owns, and runs the
+kit's whole gate — every plugin against every kit version its OWN range admits, off one
+include-matrix. Both ends of the range rather than a midpoint: the floor an adopter may still be
+on, and the ceiling the kit has just reached.
+
+The kit also dispatches `kit-released` here on every tag it cuts, and `ci.yml` listens for it: that
+run proves the plugins against the ref just released rather than re-resolving the same range, so a
+kit that moves under a plugin is discovered on the day rather than whenever somebody next pushes.
 
 Failing at the FLOOR means the plugin has started using something the kit only gained later — raise
 `requires.kit` and release. Failing at the CEILING means the kit has moved under it: port the
@@ -101,7 +107,7 @@ plugin and widen the range.
 
 Create `plugins/<id>/` with a `rocketflare-plugin.json` (`id`, `version`, `repo` pointing here,
 `subdir: "plugins/<id>"`, `requires.kit`), mirror the host tree beneath it, add a row to the table
-above and a job to `ci.yml`. Namespace everything with the id — tables `<id>_*`, job types
+above and a line to the `plugin_subdirs` array in `ci.yml`. Namespace everything with the id — tables `<id>_*`, job types
 `<id>.x`, query-key roots `<id>:…`, the API prefix `/api/<id>` — because two plugins have to be
 able to live in one app.
 

@@ -4,7 +4,7 @@
 # compatibility is proved reaches every plugin through one file. For each plugin below it reads
 # that plugin's own `requires.kit`, resolves the OLDEST and the NEWEST kit release inside the
 # range, and for each clones that kit, installs this checkout as a plugin, generates and applies
-# the migrations the host owns, and runs the full gate. Both ends of the range rather than a
+# the migrations the host owns, and runs the kit's whole gate. Both ends of the range rather than a
 # midpoint: the floor an adopter may still be on, and the ceiling the kit has just reached.
 #
 # Failing at the FLOOR means the plugin has started using something the kit only gained later —
@@ -12,20 +12,33 @@
 # it: port the plugin (`pnpm plugin upgrade` is the adopter's side of the same change) and widen
 # the range.
 #
-# One job per plugin. A plugin added to `plugins/` adds a job here and nothing else.
+# `plugin_subdirs` rather than `plugin_subdir`: this repository holds several plugins, and that
+# input proves EVERY one against every kit version its OWN range admits, in one run, off an
+# include-matrix. Adding a plugin is a line in that array — no new job.
 name: CI
 on:
   pull_request:
   push:
     branches: [main]
   workflow_dispatch: # re-run against a kit release cut after the last push
+  # The kit's `notify-plugins.yml` dispatches this on every kit tag, and names this repository
+  # explicitly. Without the trigger the notification arrives and does nothing, which is the failure
+  # mode that workflow exists to remove: a stable plugin otherwise learns the kit moved under it
+  # whenever somebody next happens to push, which can be months.
+  repository_dispatch:
+    types: [kit-released]
 
 jobs:
-  analytics:
+  plugins:
     uses: rocketflare-dev/rocketflare/.github/workflows/plugin-ci.yml@main
     with:
-      plugin_subdir: plugins/analytics
+      plugin_subdirs: '["plugins/analytics"]'
+      # On a kit-released dispatch, prove against the ref that was just cut — used verbatim, with
+      # the range NOT consulted. That is what makes the notification worth sending: resolving the
+      # range again would pick the same versions as the last run and prove nothing new. Empty on
+      # every other trigger, which restores the normal range resolution.
+      kit_ref: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.kit_ref || '' }}
     # kit_repo: https://github.com/rocketflare-dev/rocketflare.git  # the default
-    # kit_range: "=0.6.1"   # override the plugin's own requires.kit
+    # kit_range: "=0.6.1"   # override the plugins' own requires.kit
     # secrets:
     #   kit_token: ${{ secrets.KIT_READ_TOKEN }}   # only if the kit repository is private
