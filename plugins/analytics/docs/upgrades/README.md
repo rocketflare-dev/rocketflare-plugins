@@ -22,7 +22,6 @@ Frontmatter, then four fixed headings — **What changed**, **How to apply**, **
 | `breaking` | does an adopter have to change their own code? |
 | `requires_kit` | the kit range this release needs. CI resolves the oldest and newest kit inside it and runs the host's whole gate against both |
 | `migrations` | **descriptions of the schema change, never file names.** The HOST generates the DDL with `pnpm db:generate`; this plugin ships no migration, ever |
-| `data_migrations` | backfills, as plain SQL fragments under `migrations/`, applied by hand |
 | `areas` · `touches_registries` | where the change lands, and which of the host's registries move |
 | `manual` | is there a step no tool can do? |
 
