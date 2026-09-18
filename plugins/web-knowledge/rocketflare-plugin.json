@@ -1,0 +1,113 @@
+{
+  "id": "web-knowledge",
+  "label": "Web knowledge",
+  "version": "3.1.0",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "minKit": "0.9.0",
+  "anchor": "apps/web/src/plugins/web-knowledge/plugin.json",
+  "paths": [
+    "apps/web/src/plugins/web-knowledge/**",
+    "packages/shared/src/plugins/web-knowledge/**",
+    "apps/cli/src/plugins/web-knowledge/**"
+  ],
+  "registries": [
+    "apps/web/src/plugins/server.ts",
+    "apps/web/src/plugins/ui.ts",
+    "apps/web/src/plugins/schema.ts",
+    "packages/shared/src/plugins/index.ts",
+    "apps/cli/src/plugins/index.ts"
+  ],
+  "requires": {
+    "surfaces": [],
+    "plugins": []
+  },
+  "uses": {
+    "@/plugins/api": [
+      "createRouter",
+      "Database",
+      "defineTool",
+      "openSecret",
+      "PluginConfig",
+      "recordActivity",
+      "requestCtx",
+      "RequestCtx",
+      "sealSecret",
+      "ServerPlugin",
+      "Tool",
+      "toolCtx",
+      "ToolCtx",
+      "validate"
+    ],
+    "@/plugins/api/ui-wiring": [
+      "UiPlugin"
+    ],
+    "@/plugins/api/ui": [
+      "api",
+      "ApiError",
+      "SectionPanel",
+      "SectionPanelSkeleton",
+      "SettingRow",
+      "SettingToggle",
+      "showToast",
+      "usePermissions"
+    ],
+    "@/db/schema/kit": [
+      "tenantIsolation",
+      "tenantRef",
+      "tenants",
+      "timestamps",
+      "users"
+    ],
+    "'../api' (apps/cli/src/plugins/api.ts)": [
+      "CliPlugin",
+      "CommandContext",
+      "formatDate",
+      "requireClient"
+    ],
+    "@testkit/integration": [
+      "createTestSession",
+      "createTestTenant",
+      "createTestUser",
+      "json",
+      "jsonResponse",
+      "linkUserToTenant",
+      "makeSession",
+      "makeTenant",
+      "makeUser",
+      "renderWithProviders",
+      "request",
+      "requestBody",
+      "rulesFor",
+      "sessionCookieHeader",
+      "setupTestDatabase",
+      "stubFetch"
+    ],
+    "@testkit/unit": [
+      "makeToolCtx"
+    ],
+    "@rocketflare/shared/plugins/types": [
+      "SharedPlugin"
+    ]
+  },
+  "dependencies": {
+    "apps/web": {},
+    "packages/shared": {},
+    "apps/cli": {}
+  },
+  "bindings": [],
+  "crons": [],
+  "apiPrefixes": [],
+  "coreEdits": [],
+  "vars": [],
+  "workerExports": [],
+  "schema": {
+    "tables": [
+      "web_search_settings"
+    ],
+    "rlsExcluded": []
+  },
+  "migrations": [
+    "web_search_settings — one row per tenant (unique tenant_id): provider, sealed api_key_enc, enabled, max_results; RLS policy"
+  ],
+  "subdir": "plugins/web-knowledge"
+}

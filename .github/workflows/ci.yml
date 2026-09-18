@@ -32,7 +32,7 @@ jobs:
   plugins:
     uses: rocketflare-dev/rocketflare/.github/workflows/plugin-ci.yml@main
     with:
-      plugin_subdirs: '["plugins/analytics"]'
+      plugin_subdirs: '["plugins/analytics", "plugins/web-knowledge"]'
       # On a kit-released dispatch, prove against the ref that was just cut — used verbatim, with
       # the range NOT consulted. That is what makes the notification worth sending: resolving the
       # range again would pick the same versions as the last run and prove nothing new. Empty on

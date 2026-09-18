@@ -11,7 +11,8 @@ rather than a version bump, which the kit's tooling already knows how to do.
 
 | Plugin | Subdir | What it adds |
 |---|---|---|
-| **analytics** | `plugins/analytics` | Dashboards (`analytics_pages`), four tenant-scoped cubes served by drizzle-cube at `/cubejs-api` and `/mcp`, one fact table rebuilt hourly, the `Dashboard` and `Analytics` CASL subjects, three UI routes and three CLI commands. Requires kit `>=0.7.0 <1.0.0`, plugin API `1`. |
+| **analytics** | `plugins/analytics` | Dashboards (`analytics_pages`), four tenant-scoped cubes served by drizzle-cube at `/cubejs-api` and `/mcp`, one fact table rebuilt hourly, the `Dashboard` and `Analytics` CASL subjects, three UI routes and three CLI commands. `minKit` 0.8.0. |
+| **web-knowledge** | `plugins/web-knowledge` | Web search for agents and chat on each organisation's own key (Tavily, Brave, Exa, Serper, Firecrawl): `web_search` and `fetch_page` tools offered only to tenants that turn it on, a Settings → Web search tab, `web_search_settings` (sealed key), the `WebSearchConfig` subject and `rocketflare web-knowledge status`. `minKit` 0.9.0. |
 
 ## Installing one
 
@@ -55,12 +56,11 @@ subdir prefix has been stripped. A plugin ships **no migration, no wrangler toml
 
 ## The plugin API
 
-Every plugin here declares `requires.pluginApi` in its `rocketflare-plugin.json` — a whole number,
-never a range, and a different question from `requires.kit`. `requires.kit` says which kit RELEASES
-a plugin may be installed into; `requires.pluginApi` says which version of the kit's plugin SURFACE
-it was written against (`docs/plugin-api.md` in the kit). Declaring it is also the opt-in that
-holds a plugin STRICTLY to the import rule — *a plugin imports only from declared entries, and
-receives everything else as injected context* — rather than merely warning about it.
+A plugin's compatibility with a kit is **observed, not declared**. `pnpm plugin export` derives the
+manifest's `uses` block from the plugin's actual imports, and `pnpm plugin add` checks it against
+the kit's surface ledger (`docs/plugin-api.md` in the kit) before copying anything. The one
+declared number is the top-level `minKit`, the oldest kit release the plugin may be installed into.
+`requires.kit` and `requires.pluginApi` are gone and are refused by name.
 
 ## One version, one tag
 
@@ -97,25 +97,24 @@ to a released tag orphans them.
 ## CI
 
 `.github/workflows/ci.yml` calls the kit's reusable `plugin-ci.yml` **once for the whole
-repository**, passing `plugin_subdirs`. For each plugin it reads that plugin's `requires.kit`,
-resolves the **oldest and the newest** kit release inside the range, and for each clones that kit,
+repository**, passing `plugin_subdirs`. For each plugin it reads that plugin's `minKit` and
+the **newest** kit release, and for each of the two clones that kit,
 installs this checkout into it, generates and applies the migrations the host owns, and runs the
-kit's whole gate — every plugin against every kit version its OWN range admits, off one
-include-matrix. Both ends of the range rather than a midpoint: the floor an adopter may still be
-on, and the ceiling the kit has just reached.
+kit's whole gate, off one include-matrix: the floor an adopter may still be on, and the ceiling
+the kit has just reached.
 
 The kit also dispatches `kit-released` here on every tag it cuts, and `ci.yml` listens for it: that
 run proves the plugins against the ref just released rather than re-resolving the same range, so a
 kit that moves under a plugin is discovered on the day rather than whenever somebody next pushes.
 
-Failing at the FLOOR means the plugin has started using something the kit only gained later — raise
-`requires.kit` and release. Failing at the CEILING means the kit has moved under it: port the
-plugin and widen the range.
+Failing at the FLOOR means the plugin has started using something the kit only gained later —
+raise `minKit` and release. Failing at the CEILING means the kit has moved under it: port the
+plugin.
 
 ## Adding a plugin to this repository
 
 Create `plugins/<id>/` with a `rocketflare-plugin.json` (`id`, `version`, `repo` pointing here,
-`subdir: "plugins/<id>"`, `requires.kit`), mirror the host tree beneath it, add a row to the table
+`subdir: "plugins/<id>"`, `minKit`), mirror the host tree beneath it, add a row to the table
 above and a line to the `plugin_subdirs` array in `ci.yml`. Namespace everything with the id — tables `<id>_*`, job types
 `<id>.x`, query-key roots `<id>:…`, the API prefix `/api/<id>` — because two plugins have to be
 able to live in one app.
