@@ -77,7 +77,10 @@ function SettingsForm({ settings }: { settings: Settings }) {
         // Switching provider without a key would leave search on with nothing to search with.
         ...(!keyAvailable && { enabled: false }),
       },
-      'Web search settings saved'
+      // The server turns search on with the first key, so say so rather than leave it a surprise.
+      !settings.hasCredential && apiKey.trim()
+        ? 'Key saved — web search is on for agents and chat'
+        : 'Web search settings saved'
     )
   }
 
@@ -104,7 +107,7 @@ function SettingsForm({ settings }: { settings: Settings }) {
           description={
             settings.hasCredential
               ? 'When on, every agent run and chat turn in this organisation can call web_search and fetch_page.'
-              : 'Save an API key below before turning this on.'
+              : 'Saving an API key below turns this on.'
           }
           checked={settings.enabled}
           disabled={

@@ -17,6 +17,7 @@ The first release: web search for agents and chat on each organisation's own key
 
 - `web_search` and `fetch_page` agent tools, offered through an async `agentTools` only to tenants whose settings are enabled with a key.
 - Settings → Web search tab: provider, sealed API key (`sealSecret`), max results, a live Test, read-only for members.
+- Saving an organisation's first key turns web search on unless the request sends `enabled: false`; replacing a key keeps the admin's on/off choice.
 - `GET|PUT /api/web-knowledge/settings`, `POST /api/web-knowledge/settings/test`.
 - `rocketflare web-knowledge status [--json]`.
 
@@ -26,7 +27,7 @@ The first release: web search for agents and chat on each organisation's own key
 2. Run `pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git --subdir plugins/web-knowledge`, read the plan, then re-run it with `--apply`.
 3. Run `pnpm db:generate --name plugin-web-knowledge-<version>` and `pnpm db:migrate`.
 4. Confirm `OAUTH_ENCRYPTION_KEY` is set in every environment; without it, saving a key answers 503 `encryption_key_missing`.
-5. As an organisation admin, open Settings → Web search, save a provider key, press Test, then turn web search on.
+5. As an organisation admin, open Settings → Web search, press Test with a provider key, then Save; the first key turns web search on.
 
 ## Conflicts to expect
 

@@ -84,7 +84,9 @@ export interface NextSettings {
 /**
  * The update rules, as a pure function so they are tested without a database:
  * an omitted key is kept, `null` clears it, and a provider change without a new key clears it too,
- * because a key belongs to one provider.
+ * because a key belongs to one provider. Saving the organisation's FIRST key turns search on unless
+ * the body says `enabled: false` — a key saved with search left off does nothing, and reads as a
+ * broken plugin. Replacing a key keeps whatever the admin chose, so a deliberate "off" stays off.
  */
 export function nextSettings(
   existing: WebSearchSettingsRow | undefined,
@@ -98,8 +100,9 @@ export function nextSettings(
   else if (body.apiKey === null || providerChanged) key = { kind: 'clear' }
   else key = { kind: 'keep' }
   const hasKey = key.kind === 'set' || (key.kind === 'keep' && Boolean(existing?.apiKeyEnc))
+  const firstKey = key.kind === 'set' && !existing?.apiKeyEnc
   return {
-    enabled: body.enabled ?? existing?.enabled ?? false,
+    enabled: body.enabled ?? (firstKey || (existing?.enabled ?? false)),
     provider,
     maxResults: body.maxResults ?? existing?.maxResults ?? WEB_SEARCH_DEFAULT_RESULTS,
     key,

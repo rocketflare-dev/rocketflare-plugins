@@ -11,7 +11,7 @@ exist.
 | `packages/shared/src/plugins/web-knowledge/index.ts` | Provider list and info (`WEB_SEARCH_PROVIDER_INFO`, which the page reads directly), settings contracts, `webKnowledgeShared` (subject `WebSearchConfig`) |
 | `index.ts` | Server entry. It has one mount and grants (admin-level `manage`; member and support `read`). `agentTools` reads the tenant's row and returns `[]` unless the row is enabled **and** has a key |
 | `db/schema/web-search-settings.ts` | `web_search_settings`: one row per tenant (unique `tenant_id`), `api_key_enc` = `sealSecret` output, RLS |
-| `api/settings.ts` | The only reader and writer of the row. `nextSettings` holds the update rules as a pure function: an omitted key is kept, `null` clears it, and a provider change with no new key clears it |
+| `api/settings.ts` | The only reader and writer of the row. `nextSettings` holds the update rules as a pure function: an omitted key is kept, `null` clears it, a provider change with no new key clears it, and the FIRST key turns search on unless the body says `enabled: false` |
 | `api/routes.ts` | `GET/PUT /api/web-knowledge/settings` and `POST /settings/test`. The test route always answers 200 with a verdict |
 | `services/providers/` | One adapter per provider (Tavily, Brave, Exa, Serper, Firecrawl), normalised to `SearchHit`. `providerJson` maps 401/403 → `key_rejected`, 429 → `rate_limited`, a timeout → `timeout`, and anything else → `provider_error` |
 | `services/fetch-page.ts` | `guardUrl` (http/https only, default ports, no IP literals, no localhost or private suffixes) and a direct fetch with manual redirects that runs the guard again on every hop, a 2 MB cap, and `AI.toMarkdown` with a tag-strip fallback |

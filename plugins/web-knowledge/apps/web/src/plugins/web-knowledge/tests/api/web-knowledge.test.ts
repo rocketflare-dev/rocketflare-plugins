@@ -112,7 +112,7 @@ describe('settings routes', () => {
     const read = await request(BASE, { headers: otherCookie })
     expect(await json(read)).toMatchObject({ enabled: false, hasCredential: false })
 
-    await put(otherCookie, { provider: 'exa', apiKey: 'exa-other' })
+    await put(otherCookie, { provider: 'exa', apiKey: 'exa-other', enabled: false })
     const mine = await loadRow(db, tenantId)
     expect(mine?.provider).toBe('brave')
     const [theirs] = await db
@@ -163,6 +163,19 @@ describe('nextSettings (the update rules)', () => {
     })
   })
 
+  it('turns search on with the first key, unless told not to', () => {
+    const off = { ...existing, enabled: false, apiKeyEnc: null }
+    expect(nextSettings(undefined, { apiKey: 'k' }).enabled).toBe(true)
+    expect(nextSettings(off, { apiKey: 'k' }).enabled).toBe(true)
+    expect(nextSettings(off, { apiKey: 'k', enabled: false }).enabled).toBe(false)
+  })
+
+  it('keeps a deliberate "off" when a key is replaced, on any provider', () => {
+    const off = { ...existing, enabled: false }
+    expect(nextSettings(off, { apiKey: 'new' }).enabled).toBe(false)
+    expect(nextSettings(off, { provider: 'exa', apiKey: 'new' }).enabled).toBe(false)
+  })
+
   it('sets a new key with a provider change', () => {
     expect(nextSettings(existing, { provider: 'exa', apiKey: 'k' })).toMatchObject({
       provider: 'exa',
@@ -182,7 +195,7 @@ describe('agent tools', () => {
 
   it('are offered to a tenant with search on and a key, and to nobody else', async () => {
     expect(await toolsFor(tenantId)).toEqual([WEB_SEARCH_TOOL, FETCH_PAGE_TOOL])
-    // The other tenant saved a key but never turned search on.
+    // The other tenant saved a key and explicitly left search off.
     expect(await toolsFor(otherTenantId)).toEqual([])
   })
 
