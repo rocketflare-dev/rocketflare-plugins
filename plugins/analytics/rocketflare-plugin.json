@@ -1,7 +1,7 @@
 {
   "id": "analytics",
   "label": "Analytics",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "minKit": "0.8.0",
   "anchor": "apps/web/src/plugins/analytics/plugin.json",

@@ -9,6 +9,14 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.1.0 — 2026-09-18
+
+**analytics** — No change to analytics: this release exists because the repository released `web-knowledge` and every plugin here ships at the repository's version.
+[Porting note](plugins/analytics/docs/upgrades/3.1.0.md).
+
+**web-knowledge** — The first release: web search for agents and chat on each organisation's own key (Tavily, Brave, Exa, Serper or Firecrawl), configured in Settings → Web search and offered only to tenants that turn it on.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.1.0.md).
+
 ## 3.0.0 — 2026-09-18
 
 **Compatibility is observed now, not declared**: `requires.kit` and `requires.pluginApi` are gone, replaced by a top-level `minKit` of `0.8.0` and a derived `uses` block, so this release installs only into kit 0.8.0 or later.
