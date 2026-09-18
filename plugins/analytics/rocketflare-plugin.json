@@ -17,7 +17,8 @@
     "apps/cli/src/plugins/index.ts"
   ],
   "requires": {
-    "kit": ">=0.6.1 <1.0.0",
+    "kit": ">=0.7.0 <1.0.0",
+    "pluginApi": "1",
     "surfaces": [],
     "plugins": []
   },
@@ -26,20 +27,15 @@
       "d3": "^7.9.0",
       "drizzle-cube": "0.8.3",
       "react-grid-layout": "^2.2.4",
-      "react-is": "^19.2.8",
+      "react-is": "^19.3.0",
       "recharts": "^3.10.1"
     },
     "packages/shared": {},
     "apps/cli": {}
   },
   "bindings": [],
-  "crons": [
-    "15 * * * *"
-  ],
-  "apiPrefixes": [
-    "/cubejs-api",
-    "/mcp"
-  ],
+  "crons": ["15 * * * *"],
+  "apiPrefixes": ["/cubejs-api", "/mcp"],
   "coreEdits": [
     {
       "file": "apps/web/vite.config.ts",
@@ -57,17 +53,13 @@
   "vars": [],
   "workerExports": [],
   "schema": {
-    "tables": [
-      "analytics_pages",
-      "analytics_page_groups",
-      "analytics_tenant_activity_daily_facts"
-    ],
+    "tables": ["analytics_pages", "analytics_page_groups", "analytics_tenant_activity_daily_facts"],
     "rlsExcluded": []
   },
   "migrations": [
-    "analytics_pages — one dashboard per row, tenant-scoped, jsonb config, RLS policy",
-    "analytics_page_groups — which groups a `visibility: 'groups'` dashboard is shared with",
-    "analytics_tenant_activity_daily_facts — activity pre-aggregated to (tenant, day, user), UNIQUE NULLS NOT DISTINCT, RLS policy"
+    "analytics_pages \u2014 one dashboard per row, tenant-scoped, jsonb config, RLS policy",
+    "analytics_page_groups \u2014 which groups a `visibility: 'groups'` dashboard is shared with",
+    "analytics_tenant_activity_daily_facts \u2014 activity pre-aggregated to (tenant, day, user), UNIQUE NULLS NOT DISTINCT, RLS policy"
   ],
   "subdir": "plugins/analytics"
 }

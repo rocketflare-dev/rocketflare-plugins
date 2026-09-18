@@ -11,17 +11,17 @@ rather than a version bump, which the kit's tooling already knows how to do.
 
 | Plugin | Subdir | What it adds |
 |---|---|---|
-| **analytics** | `plugins/analytics` | Dashboards (`analytics_pages`), four tenant-scoped cubes served by drizzle-cube at `/cubejs-api` and `/mcp`, one fact table rebuilt hourly, the `Dashboard` and `Analytics` CASL subjects, three UI routes and three CLI commands. Requires kit `>=0.6.1 <1.0.0`. |
+| **analytics** | `plugins/analytics` | Dashboards (`analytics_pages`), four tenant-scoped cubes served by drizzle-cube at `/cubejs-api` and `/mcp`, one fact table rebuilt hourly, the `Dashboard` and `Analytics` CASL subjects, three UI routes and three CLI commands. Requires kit `>=0.7.0 <1.0.0`, plugin API `1`. |
 
 ## Installing one
 
 ```bash
 # Read the plan first — it always prints and stops.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@1.0.2 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git --subdir plugins/analytics
 # Then install it.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@1.0.2 --subdir plugins/analytics --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git --subdir plugins/analytics --apply
 # The HOST generates the migration. Always.
-pnpm db:generate --name plugin-analytics-1.0.2 && pnpm db:migrate
+pnpm db:generate --name plugin-analytics-<version> && pnpm db:migrate
 ```
 
 `--subdir` is what tells `pnpm plugin add` which plugin in this repository you mean; each plugin
@@ -52,6 +52,15 @@ expects: `classifyPluginFile` refuses any path outside `apps/web/src/plugins/<id
 `packages/shared/src/plugins/<id>/`, `apps/cli/src/plugins/<id>/` and `docs/plugins/<id>/` once the
 subdir prefix has been stripped. A plugin ships **no migration, no wrangler toml and no
 `package.json`** — those three are the host's, always.
+
+## The plugin API
+
+Every plugin here declares `requires.pluginApi` in its `rocketflare-plugin.json` — a whole number,
+never a range, and a different question from `requires.kit`. `requires.kit` says which kit RELEASES
+a plugin may be installed into; `requires.pluginApi` says which version of the kit's plugin SURFACE
+it was written against (`docs/plugin-api.md` in the kit). Declaring it is also the opt-in that
+holds a plugin STRICTLY to the import rule — *a plugin imports only from declared entries, and
+receives everything else as injected context* — rather than merely warning about it.
 
 ## One version, one tag
 
