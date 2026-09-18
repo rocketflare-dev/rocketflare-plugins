@@ -9,6 +9,11 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.0.0 — 2026-09-18
+
+**Compatibility is observed now, not declared**: `requires.kit` and `requires.pluginApi` are gone, replaced by a top-level `minKit` of `0.8.0` and a derived `uses` block, so this release installs only into kit 0.8.0 or later.
+[Porting note](plugins/analytics/docs/upgrades/3.0.0.md).
+
 ## 2.0.1 — 2026-09-18
 
 **2.0.0 could not be installed with a green gate**: its anchor still said `1.0.2`, so every install

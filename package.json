@@ -1,6 +1,6 @@
 {
   "name": "rocketflare-plugins",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "private": true,
   "description": "The first-party plugins for Rocketflare — copied into an app, never installed from npm.",
   "type": "module",

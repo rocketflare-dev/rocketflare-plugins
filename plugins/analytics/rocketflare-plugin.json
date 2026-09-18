@@ -1,8 +1,9 @@
 {
   "id": "analytics",
   "label": "Analytics",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "minKit": "0.8.0",
   "anchor": "apps/web/src/plugins/analytics/plugin.json",
   "paths": [
     "apps/web/src/plugins/analytics/**",
@@ -17,10 +18,135 @@
     "apps/cli/src/plugins/index.ts"
   ],
   "requires": {
-    "kit": ">=0.7.0 <1.0.0",
-    "pluginApi": "1",
     "surfaces": [],
     "plugins": []
+  },
+  "uses": {
+    "'../api' (apps/cli/src/plugins/api.ts)": [
+      "CliError",
+      "CliPlugin",
+      "CommandContext",
+      "EXIT_ERROR",
+      "formatDate",
+      "renderTable",
+      "requireClient"
+    ],
+    "@/db/schema/kit": [
+      "activityEvents",
+      "groupMembers",
+      "groups",
+      "groupTypes",
+      "RESOURCE_VISIBILITY_VALUES",
+      "tenantIsolation",
+      "tenantRef",
+      "tenants",
+      "tenantUsers",
+      "timestamps",
+      "users"
+    ],
+    "@/plugins/api": [
+      "AccessScope",
+      "createRouter",
+      "cronCtx",
+      "CronCtx",
+      "Database",
+      "DetachedCtx",
+      "HookCtx",
+      "jobCtx",
+      "JobCtx",
+      "JobHandler",
+      "PluginLogger",
+      "recordActivity",
+      "requestCtx",
+      "RequestCtx",
+      "ScheduledTask",
+      "SeedCtx",
+      "ServerPlugin",
+      "sharedWithMyGroups",
+      "transaction",
+      "validate",
+      "VisibilityResource"
+    ],
+    "@/plugins/api/peers": [
+      "allTables",
+      "extensions",
+      "extensionSources"
+    ],
+    "@/plugins/api/ui": [
+      "AccessBadge",
+      "api",
+      "ApiError",
+      "ConfirmModal",
+      "EmptyState",
+      "FieldError",
+      "fieldErrorFor",
+      "formatDate",
+      "LoadingIndicator",
+      "Modal",
+      "notifyUnauthorized",
+      "PageHeader",
+      "SectionPanel",
+      "setUnauthorizedHandler",
+      "showToast",
+      "SkeletonRows",
+      "timeAgo",
+      "useGroups",
+      "usePermissions",
+      "useToastStore",
+      "VisibilityModal"
+    ],
+    "@/plugins/api/ui-wiring": [
+      "NavGuard",
+      "UiPlugin"
+    ],
+    "@rocketflare/shared/errors": [
+      "ERROR_CODES"
+    ],
+    "@rocketflare/shared/groups": [
+      "GroupRef",
+      "groupRefSchema",
+      "resourceVisibilitySchema",
+      "SetVisibilityRequest",
+      "setVisibilityRequestSchema"
+    ],
+    "@rocketflare/shared/jobs": [
+      "JobOf"
+    ],
+    "@rocketflare/shared/plugins/types": [
+      "SharedPlugin"
+    ],
+    "@rocketflare/shared/tenants": [
+      "MembershipRole",
+      "slugify"
+    ],
+    "@testkit/integration": [
+      "createExecutionContext",
+      "createTestEnv",
+      "createTestSession",
+      "createTestTenant",
+      "createTestTenantWithUser",
+      "createTestUser",
+      "dispatchScheduled",
+      "IDS",
+      "json",
+      "jsonResponse",
+      "linkUserToTenant",
+      "makeSession",
+      "makeTenant",
+      "renderWithProviders",
+      "request",
+      "requestBody",
+      "RouteTable",
+      "sessionCookieHeader",
+      "setupTestDatabase",
+      "stubFetch",
+      "unauthorizedResponse",
+      "waitOnExecutionContext"
+    ],
+    "@testkit/unit": [
+      "makeCronCtx",
+      "makeRequestCtx"
+    ]
   },
   "dependencies": {
     "apps/web": {
