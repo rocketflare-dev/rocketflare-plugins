@@ -5,8 +5,6 @@
  * members and the admin-only status request is never made for them.
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { useToastStore } from '@/ui/components/shared/Toast'
 import {
   jsonResponse,
   makeSession,
@@ -15,7 +13,9 @@ import {
   renderWithProviders,
   requestBody,
   stubFetch,
-} from '../../../../../tests/ui/helpers/renderWithProviders'
+} from '@testkit/integration'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useToastStore } from '@/plugins/api/ui'
 import { ANALYTICS_TEMPLATES, sortTemplates } from '../../dashboards/registry'
 import DashboardListPage from '../../ui/pages/DashboardListPage'
 import { analyticsPage, customPage, PAGE_IDS } from './helpers/analytics'

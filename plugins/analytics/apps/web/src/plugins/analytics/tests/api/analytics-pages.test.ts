@@ -9,18 +9,19 @@ import {
   analyticsPageListResponseSchema,
   analyticsPageSchema,
 } from '@rocketflare/shared/plugins/analytics/index'
-import { eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
-import { analyticsPages } from '@/db/schema'
 import {
   createTestSession,
   createTestTenantWithUser,
   createTestUser,
+  json,
   linkUserToTenant,
+  request,
   sessionCookieHeader,
-} from '../../../../../tests/helpers/auth'
-import { setupTestDatabase } from '../../../../../tests/helpers/db'
-import { json, request } from '../../../../../tests/helpers/request'
+  setupTestDatabase,
+} from '@testkit/integration'
+import { eq } from 'drizzle-orm'
+import { describe, expect, it } from 'vitest'
+import { analyticsPages } from '../../db/schema'
 
 const db = setupTestDatabase()
 const ORIGIN = { Origin: 'http://localhost:3001' }

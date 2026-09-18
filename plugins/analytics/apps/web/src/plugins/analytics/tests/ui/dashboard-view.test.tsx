@@ -8,9 +8,6 @@
  * fire the same callbacks.
  */
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { useToastStore } from '@/ui/components/shared/Toast'
 import {
   jsonResponse,
   makeSession,
@@ -19,7 +16,10 @@ import {
   renderWithProviders,
   requestBody,
   stubFetch,
-} from '../../../../../tests/ui/helpers/renderWithProviders'
+} from '@testkit/integration'
+import { Route, Routes } from 'react-router-dom'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useToastStore } from '@/plugins/api/ui'
 import DashboardViewPage from '../../ui/pages/DashboardViewPage'
 import { analyticsPage, customPage, PAGE_IDS } from './helpers/analytics'
 

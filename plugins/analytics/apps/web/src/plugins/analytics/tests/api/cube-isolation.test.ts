@@ -5,23 +5,26 @@
  * every dashboard-template portlet query actually executes against Postgres.
  */
 import { ERROR_CODES } from '@rocketflare/shared/errors'
-import { describe, expect, it } from 'vitest'
-import { activityEvents } from '@/db/schema'
 import {
   createTestSession,
   createTestTenantWithUser,
   createTestUser,
+  json,
   linkUserToTenant,
+  request,
   sessionCookieHeader,
-} from '../../../../../tests/helpers/auth'
-import { setupTestDatabase } from '../../../../../tests/helpers/db'
-import { json, request } from '../../../../../tests/helpers/request'
+  setupTestDatabase,
+} from '@testkit/integration'
+import { describe, expect, it } from 'vitest'
 import { allCubes } from '../../cubes'
 import { listTemplates } from '../../dashboards'
 import { contributedCubeIsolationCases } from '../../extensions'
+import { kitTables } from '../../kit-tables'
 import { refreshFactTable } from '../../services/fact-tables'
 
 const db = setupTestDatabase()
+// The kit's audit log — the `ActivityEvents` cube's table and the fact table's source (D31).
+const { activityEvents } = kitTables()
 
 /** Cube.js v1 load shape: `{ queryType, results: [{ query, data, annotation, … }] }`. */
 interface LoadResponse {
