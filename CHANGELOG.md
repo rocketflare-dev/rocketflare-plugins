@@ -9,6 +9,11 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 2.0.1 — 2026-09-18
+
+**2.0.0 could not be installed with a green gate.** Its anchor — `apps/web/src/plugins/analytics/plugin.json`, the file copied into a host and the one `pnpm plugin check` compares against the recorded surface — still said `1.0.2`, so every install reported `plugin.json says 1.0.2, and the surface says 2.0.0` and exited 1. That is a FAILURE rather than a warning, so it took the whole host gate down with it.
+[Porting note](plugins/analytics/docs/upgrades/2.0.1.md).
+
 ## 2.0.0 — 2026-09-18
 
 **This plugin is written against the kit's plugin API now, and says so.** It declares `requires.pluginApi: "1"`, which is what moves it from *warned* to *checked*: the host's import rule fails the gate on anything that reaches past a declared entry, rather than printing a warning nobody reads. The floor moves to kit `>=0.7.0`, the release that introduced the contract.
