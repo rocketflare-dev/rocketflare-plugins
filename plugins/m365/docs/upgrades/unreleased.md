@@ -1,35 +1,22 @@
 ---
 version: unreleased
-previous: null
+previous: 3.2.0
 date: null
 breaking: false
 migrations: []
-areas: [shared, api, docs]
+areas: []
 touches_surfaces: []
 requires_surfaces: []
-manual: true
+manual: false
 ---
 
 ## What changed
 
-The first release: Microsoft 365 as a `connectors` provider (D34, phase 1). An organisation admin grants the deployment's multi-tenant Entra app admin consent once; the directory (`users/delta`, `groups/delta` with memberships) and the Outlook calendars of people who are members of this app (`calendarView/delta` over a rolling −30…+90 day window) then sync every 15 minutes, app-only.
-
-- Contributes one provider through `extensions` (`connectorExtensions`) — no routes, tables, UI or CLI of its own; everything a reader sees belongs to `connectors`, which this plugin requires.
-- Two secrets, both optional: `M365_CLIENT_ID`, `M365_CLIENT_SECRET` (the operator's Entra app). Without them an organisation can still bring its own multi-tenant app.
-- Graph throttling (429/503/504, `Retry-After`) re-schedules the cursor; `410`/`syncStateNotFound` restarts a full pass; a refused app (consent revoked, secret expired) puts the installation in `error`. Background calls send `x-ms-throttle-priority: low`. A bearer token is only ever sent to `graph.microsoft.com`.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Install `connectors` first (same repository, `--subdir plugins/connectors`), then `pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git --subdir plugins/m365`, read the plan, re-run with `--apply`.
-2. Register the Entra app (the Connections card lists the steps under "operator"): multitenant, redirect URI `<APP_URL>/api/hooks/connectors/m365/callback` per environment, Graph APPLICATION permissions `User.Read.All`, `Group.Read.All`, `Calendars.Read`, a client secret.
-3. `pnpm provision secrets <env>` for `M365_CLIENT_ID` and `M365_CLIENT_SECRET` (locally: `apps/web/.dev.vars`).
-
 ## Conflicts to expect
 
-None.
-
 ## Verify
-
-1. `pnpm plugin check` reports `m365` checks out and its `connectors` requirement met.
-2. Settings → Connections shows a Microsoft 365 card with "Connect Microsoft 365" enabled.
-3. `pnpm test` passes, including `src/plugins/m365/tests/**`.

@@ -9,6 +9,20 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.2.0 — 2026-09-26
+
+**analytics** — No change to analytics: this release exists because the repository released `connectors` and `m365` and every plugin here ships at the repository's version.
+[Porting note](plugins/analytics/docs/upgrades/3.2.0.md).
+
+**web-knowledge** — No change to web-knowledge: this release exists because the repository released `connectors` and `m365` and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.2.0.md).
+
+**connectors** — The first release: organisation-level connections to Microsoft 365 / Google Workspace (D34, phase 1 — directory and calendar, org-wide, app-only, delta polling). Provider-neutral: a provider plugin (`m365`) contributes the vendor conversation through `extensions`; this plugin owns every row, route, cursor and schedule.
+[Porting note](plugins/connectors/docs/upgrades/3.2.0.md).
+
+**m365** — The first release: Microsoft 365 as a `connectors` provider (D34, phase 1). An organisation admin grants the deployment's multi-tenant Entra app admin consent once; the directory (`users/delta`, `groups/delta` with memberships) and the Outlook calendars of people who are members of this app (`calendarView/delta` over a rolling −30…+90 day window) then sync every 15 minutes, app-only.
+[Porting note](plugins/m365/docs/upgrades/3.2.0.md).
+
 ## 3.1.0 — 2026-09-18
 
 **analytics** — No change to analytics: this release exists because the repository released `web-knowledge` and every plugin here ships at the repository's version.
