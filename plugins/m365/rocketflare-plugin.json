@@ -1,0 +1,54 @@
+{
+  "id": "m365",
+  "label": "Microsoft 365",
+  "version": "3.1.0",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "minKit": "0.12.0",
+  "anchor": "apps/web/src/plugins/m365/plugin.json",
+  "paths": ["apps/web/src/plugins/m365/**", "packages/shared/src/plugins/m365/**"],
+  "registries": ["apps/web/src/plugins/server.ts", "packages/shared/src/plugins/index.ts"],
+  "requires": {
+    "surfaces": [],
+    "plugins": ["connectors"]
+  },
+  "uses": {
+    "@/plugins/api": ["ServerPlugin"],
+    "@testkit/integration": [
+      "createTestEnv",
+      "createTestSession",
+      "createTestTenant",
+      "createTestUser",
+      "json",
+      "linkUserToTenant",
+      "request",
+      "sessionCookieHeader",
+      "setupTestDatabase"
+    ],
+    "@rocketflare/shared/plugins/types": ["SharedPlugin"]
+  },
+  "dependencies": {
+    "apps/web": {},
+    "packages/shared": {}
+  },
+  "bindings": [],
+  "crons": [],
+  "apiPrefixes": [],
+  "coreEdits": [],
+  "vars": [
+    {
+      "key": "M365_CLIENT_ID",
+      "secret": true
+    },
+    {
+      "key": "M365_CLIENT_SECRET",
+      "secret": true
+    }
+  ],
+  "workerExports": [],
+  "schema": {
+    "tables": [],
+    "rlsExcluded": []
+  },
+  "migrations": [],
+  "subdir": "plugins/m365"
+}

@@ -1,0 +1,144 @@
+{
+  "id": "connectors",
+  "label": "Connectors",
+  "version": "3.1.0",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "minKit": "0.12.0",
+  "anchor": "apps/web/src/plugins/connectors/plugin.json",
+  "paths": [
+    "apps/web/src/plugins/connectors/**",
+    "packages/shared/src/plugins/connectors/**",
+    "apps/cli/src/plugins/connectors/**"
+  ],
+  "registries": [
+    "apps/web/src/plugins/server.ts",
+    "apps/web/src/plugins/ui.ts",
+    "apps/web/src/plugins/schema.ts",
+    "packages/shared/src/plugins/index.ts",
+    "apps/cli/src/plugins/index.ts"
+  ],
+  "requires": {
+    "surfaces": [],
+    "plugins": []
+  },
+  "uses": {
+    "@/plugins/api": [
+      "createRouter",
+      "cronCtx",
+      "CronCtx",
+      "Database",
+      "jobCtx",
+      "JobCtx",
+      "JobHandler",
+      "JobInput",
+      "openSecret",
+      "pageWindow",
+      "PluginConfig",
+      "PluginLogger",
+      "publicCtx",
+      "PublicCtx",
+      "recordActivity",
+      "requestCtx",
+      "RequestCtx",
+      "requireFeature",
+      "ScheduledTask",
+      "sealSecret",
+      "ServerPlugin",
+      "signState",
+      "transaction",
+      "validate",
+      "verifyState"
+    ],
+    "@/plugins/api/peers": ["allTables", "extensions", "extensionSources"],
+    "@/plugins/api/ui-wiring": ["NavGuard", "UiPlugin"],
+    "@/plugins/api/ui": [
+      "api",
+      "ConfirmModal",
+      "EmptyStateCard",
+      "formatDateTime",
+      "LoadingIndicator",
+      "PageHeader",
+      "SectionPanel",
+      "SectionPanelSkeleton",
+      "showToast",
+      "timeAgo",
+      "usePermissions"
+    ],
+    "@/db/schema/kit": [
+      "tenantIsolation",
+      "tenantRef",
+      "tenants",
+      "tenantUsers",
+      "timestamps",
+      "users"
+    ],
+    "@rocketflare/shared/plugins/api": [
+      "FeatureDefinition",
+      "paginatedResponse",
+      "paginationQuerySchema"
+    ],
+    "'../api' (apps/cli/src/plugins/api.ts)": [
+      "CliError",
+      "CliPlugin",
+      "CommandContext",
+      "EXIT_ERROR",
+      "formatDate",
+      "renderTable",
+      "requireClient"
+    ],
+    "@testkit/integration": [
+      "createTestEnv",
+      "createTestSession",
+      "createTestTenant",
+      "createTestUser",
+      "json",
+      "jsonResponse",
+      "linkUserToTenant",
+      "makeSession",
+      "makeTenant",
+      "makeUser",
+      "renderWithProviders",
+      "request",
+      "requestBody",
+      "rulesFor",
+      "sessionCookieHeader",
+      "setupTestDatabase",
+      "stubFetch",
+      "stubs"
+    ],
+    "@testkit/unit": ["makeCronCtx", "makeJobCtx"],
+    "@rocketflare/shared/jobs": ["JobOf"],
+    "@rocketflare/shared/plugins/types": ["SharedPlugin"]
+  },
+  "dependencies": {
+    "apps/web": {},
+    "packages/shared": {},
+    "apps/cli": {}
+  },
+  "bindings": [],
+  "crons": ["*/15 * * * *"],
+  "apiPrefixes": [],
+  "coreEdits": [],
+  "vars": [],
+  "workerExports": [],
+  "schema": {
+    "tables": [
+      "connectors_installations",
+      "connectors_connections",
+      "connectors_sync_cursors",
+      "connectors_directory_users",
+      "connectors_directory_groups",
+      "connectors_group_members",
+      "connectors_calendar_events"
+    ],
+    "rlsExcluded": []
+  },
+  "migrations": [
+    "connectors_installations \u2014 one row per tenant per provider: status, app mode, sealed BYO secret, external tenant id, granted scopes; RLS policy",
+    "connectors_connections \u2014 whose data a cursor reads (the organisation '*', one per mailbox, later one per user), sealed access-token cache; RLS policy",
+    "connectors_sync_cursors \u2014 one per (connection, resource): opaque provider cursor, pass generation, DB claim; RLS policy",
+    "connectors_directory_users / connectors_directory_groups / connectors_group_members \u2014 the synced directory, cascading from the installation; RLS policies",
+    "connectors_calendar_events \u2014 synced events per mailbox, owner-visible; RLS policy"
+  ],
+  "subdir": "plugins/connectors"
+}
