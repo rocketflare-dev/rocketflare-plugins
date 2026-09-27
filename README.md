@@ -9,18 +9,24 @@ rather than a version bump, which the kit's tooling already knows how to do.
 
 ## The plugins
 
-| Plugin | Subdir | What it adds |
+Each plugin has its own README with what it adds, requirements, install and first-run steps, who
+sees what and its known gaps. They are also published at
+[rocketflare.dev/plugins](https://rocketflare.dev/plugins/).
+
+| Plugin | What it adds | Needs |
 |---|---|---|
-| **analytics** | `plugins/analytics` | Dashboards (`analytics_pages`), four tenant-scoped cubes served by drizzle-cube at `/cubejs-api` and `/mcp`, one fact table rebuilt hourly, the `Dashboard` and `Analytics` CASL subjects, three UI routes and three CLI commands. `minKit` 0.8.0. |
-| **web-knowledge** | `plugins/web-knowledge` | Web search for agents and chat on each organisation's own key (Tavily, Brave, Exa, Serper, Firecrawl): `web_search` and `fetch_page` tools offered only to tenants that turn it on, a Settings → Web search tab, `web_search_settings` (sealed key), the `WebSearchConfig` subject and `rocketflare web-knowledge status`. `minKit` 0.9.0. |
+| [**analytics**](plugins/analytics/README.md) | Dashboards, tenant-scoped drizzle-cube cubes at `/cubejs-api` and `/mcp`, an hourly fact table, CLI, and four `analytics-*` agent skills. Installed by the kit's bootstrap | kit 0.13.0 |
+| [**web-knowledge**](plugins/web-knowledge/README.md) | `web_search` and `fetch_page` tools for agents and chat on each organisation's own key (Tavily, Brave, Exa, Serper, Firecrawl), Settings → Web search | kit 0.9.0 |
+| [**connectors**](plugins/connectors/README.md) | Organisation connections: admin consent once, then directory and calendar sync every 15 minutes; Settings → Connections, My calendar, CLI and the `connectors` setup skill | kit 0.13.0 and a provider |
+| [**m365**](plugins/m365/README.md) | Microsoft 365 as a `connectors` provider: Entra admin consent, app-only Graph delta sync of users, groups and calendars | kit 0.12.0 and `connectors` |
 
 ## Installing one
 
 ```bash
 # Read the plan first — it always prints and stops.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.3.0 --subdir plugins/analytics
 # Then install it.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git --subdir plugins/analytics --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.3.0 --subdir plugins/analytics --apply
 # The HOST generates the migration. Always.
 pnpm db:generate --name plugin-analytics-<version> && pnpm db:migrate
 ```
@@ -113,7 +119,7 @@ plugin.
 
 ## Adding a plugin to this repository
 
-Create `plugins/<id>/` with a `rocketflare-plugin.json` (`id`, `version`, `repo` pointing here,
+Create `plugins/<id>/` with a `rocketflare-plugin.json` and a `README.md` (the site publishes it) (`id`, `version`, `repo` pointing here,
 `subdir: "plugins/<id>"`, `minKit`), mirror the host tree beneath it, add a row to the table
 above and a line to the `plugin_subdirs` array in `ci.yml`. Namespace everything with the id — tables `<id>_*`, job types
 `<id>.x`, query-key roots `<id>:…`, the API prefix `/api/<id>` — because two plugins have to be
