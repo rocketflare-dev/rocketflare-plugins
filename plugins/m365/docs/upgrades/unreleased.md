@@ -1,6 +1,6 @@
 ---
 version: unreleased
-previous: 3.4.0
+previous: 3.4.1
 date: null
 breaking: false
 migrations: []
@@ -12,19 +12,11 @@ manual: false
 
 ## What changed
 
-No change to m365: this release exists because `analytics` needed a type fix to compile against kit 0.15.0's driver-neutral `Database`, and every plugin here ships at the repository's version.
-
-- Audited against kit 0.15.0 (two database drivers, D35): m365 makes no raw `db.execute()` read and hands the handle to no library that types it by driver, so it compiles and runs unchanged on both.
-- Version stamps only (`rocketflare-plugin.json` and its anchor copy); no code, schema or behaviour change.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Run `pnpm plugin upgrade m365 --apply`; it changes only the version stamps.
-
 ## Conflicts to expect
 
-None.
-
 ## Verify
-
-1. `pnpm plugin check` reports `m365` checks out at the new version.
