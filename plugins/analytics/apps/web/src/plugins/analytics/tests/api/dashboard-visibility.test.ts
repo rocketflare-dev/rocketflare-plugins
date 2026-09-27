@@ -30,7 +30,7 @@ import {
   sessionCookieHeader,
   setupTestDatabase,
 } from '@testkit/integration'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { groupMembers, groups, groupTypes } from '@/db/schema/kit'
 import { analyticsPageGroups } from '../../db/schema/analytics-page-groups'
@@ -155,7 +155,11 @@ describe('a dashboard restricted to a group', () => {
 describe('an EMPTY grant list is private, not public', () => {
   it('narrows to the creator and admins when the last group goes', async () => {
     const orphaned = await page(creator.userId, 'groups', [groupId])
-    await db.delete(analyticsPageGroups).where(eq(analyticsPageGroups.pageId, orphaned))
+    await db
+      .delete(analyticsPageGroups)
+      .where(
+        and(eq(analyticsPageGroups.tenantId, tenantId), eq(analyticsPageGroups.pageId, orphaned))
+      )
 
     for (const [label, get, isAdminLevel] of [
       ['the creator', () => creator, true],
