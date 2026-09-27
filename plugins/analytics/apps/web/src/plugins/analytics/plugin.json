@@ -1,7 +1,7 @@
 {
   "id": "analytics",
   "label": "Analytics",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "minKit": "0.13.0",
   "skills": ["analytics", "analytics-cubes", "analytics-queries", "analytics-dashboards"],

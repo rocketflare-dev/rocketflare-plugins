@@ -9,6 +9,20 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.3.0 — 2026-09-27
+
+**analytics** — Analytics now ships four Claude Code skills for drizzle-cube: `analytics`, `analytics-cubes`, `analytics-queries` and `analytics-dashboards`.
+[Porting note](plugins/analytics/docs/upgrades/3.3.0.md).
+
+**web-knowledge** — No change to web-knowledge: this release exists because the repository added skills to `connectors` and `analytics`, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.3.0.md).
+
+**connectors** — Connectors now ships a `connectors` Claude Code skill that drives Microsoft 365 setup end to end, and Settings → Connections shows each audience only the steps it can act on.
+[Porting note](plugins/connectors/docs/upgrades/3.3.0.md).
+
+**m365** — No change to m365: this release exists because the repository added skills to `connectors` and `analytics`, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.3.0.md).
+
 ## 3.2.0 — 2026-09-26
 
 **analytics** — No change to analytics: this release exists because the repository released `connectors` and `m365` and every plugin here ships at the repository's version.
