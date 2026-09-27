@@ -12,11 +12,19 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+No change to web-knowledge: this release exists because `analytics` needed a type fix to compile against kit 0.15.0's driver-neutral `Database`, and every plugin here ships at the repository's version.
+
+- Audited against kit 0.15.0 (two database drivers, D35): web-knowledge makes no raw `db.execute()` read and hands the handle to no library that types it by driver, so it compiles and runs unchanged on both.
+- Version stamps only (`rocketflare-plugin.json` and its anchor copy); no code, schema or behaviour change.
 
 ## How to apply
 
+1. Run `pnpm plugin upgrade web-knowledge --apply`; it changes only the version stamps.
+
 ## Conflicts to expect
 
+None.
+
 ## Verify
+
+1. `pnpm plugin check` reports `web-knowledge` checks out at the new version.

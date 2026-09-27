@@ -4,7 +4,7 @@ previous: 3.4.0
 date: null
 breaking: false
 migrations: []
-areas: []
+areas: [api]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,21 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+The cube API passes the request's database handle to drizzle-cube in a form that type-checks against kit 0.15.0, whose `Database` is driver-neutral; without it an app with analytics fails `pnpm typecheck` after taking that kit.
+
+- `api/routes/cube-api.ts` hands `ctx.db` to `createCubeApp` as drizzle-cube's own `DrizzleDatabase` type. Kit 0.15.0 types `Database` as drizzle's `PgDatabase` base so a raw `execute()` is `unknown` (postgres.js resolves an array, the Neon driver `{ rows }`); drizzle-cube declares `unknown[]` but normalises both shapes at runtime, so nothing about the queries changes.
+- Proven under both drivers against kit 0.15.0: every analytics api test, including `cube-isolation.test.ts` and `fact-table-refresh.test.ts`, passes with `DATABASE_DRIVER=postgres` and `DATABASE_DRIVER=neon`.
+- `minKit` stays 0.13.0: the cast compiles against 0.13 and 0.14 as well.
 
 ## How to apply
 
+1. Run `pnpm plugin upgrade analytics --apply`. It changes one property and a comment in `api/routes/cube-api.ts`. No schema change and no migration.
+
 ## Conflicts to expect
 
+Only if you edited the `createCubeApp({ … })` call in `cube-api.ts`: keep your change and pass `drizzle: ctx.db as unknown as DrizzleDatabase` (type import from `drizzle-cube/server`).
+
 ## Verify
+
+1. `pnpm typecheck` passes.
+2. `pnpm test` passes, including `src/plugins/analytics/tests/api/cube-isolation.test.ts`.
