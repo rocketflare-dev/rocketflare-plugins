@@ -56,6 +56,10 @@ export const connectorsRouter = createRouter()
 connectorsRouter.get('/providers', c => {
   const ctx: RequestCtx = requestCtx(c)
   ctx.guard('read', CONNECTOR_SUBJECT)
+  // Each audience is sent only what it can act on: the operator's steps need the deployment's
+  // secrets, so they go to a global admin and nobody else. Whether the app is configured is a
+  // boolean, never the credential.
+  const isOperator = ctx.isGlobalAdmin
   const items: ConnectorProviderInfo[] = [...connectorProviders().values()].map(p => ({
     id: p.id,
     label: p.label,
@@ -64,11 +68,12 @@ connectorsRouter.get('/providers', c => {
     supportsByo: p.supportsByo,
     resources: providerResources(p),
     adminSteps: [...p.adminSteps],
-    operatorSteps: [...p.operatorSteps],
+    operatorSteps: isOperator ? [...p.operatorSteps] : [],
     permissions: [...p.permissions],
     docsUrl: p.docsUrl,
+    redirectUri: consentRedirectUri(ctx.config.APP_URL, p.id),
   }))
-  return c.json({ items })
+  return c.json({ items, viewer: { isOperator } })
 })
 
 connectorsRouter.get('/installations', async c => {

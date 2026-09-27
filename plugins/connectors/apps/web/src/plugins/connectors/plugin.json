@@ -3,7 +3,7 @@
   "label": "Connectors",
   "version": "3.2.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.12.0",
+  "minKit": "0.13.0",
   "anchor": "apps/web/src/plugins/connectors/plugin.json",
   "paths": [
     "apps/web/src/plugins/connectors/**",
@@ -121,6 +121,7 @@
   "coreEdits": [],
   "vars": [],
   "workerExports": [],
+  "skills": ["connectors"],
   "schema": {
     "tables": [
       "connectors_installations",

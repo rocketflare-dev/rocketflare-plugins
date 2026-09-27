@@ -3,7 +3,8 @@
   "label": "Analytics",
   "version": "3.2.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.8.0",
+  "minKit": "0.13.0",
+  "skills": ["analytics", "analytics-cubes", "analytics-queries", "analytics-dashboards"],
   "anchor": "apps/web/src/plugins/analytics/plugin.json",
   "paths": [
     "apps/web/src/plugins/analytics/**",

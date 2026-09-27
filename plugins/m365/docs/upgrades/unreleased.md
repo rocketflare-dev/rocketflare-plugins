@@ -12,11 +12,18 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+No change to m365: this release exists because the repository added skills to `connectors` and `analytics`, and every plugin here ships at the repository's version.
+
+- Version stamps only (`rocketflare-plugin.json` and its anchor copy); no code, schema or behaviour change.
 
 ## How to apply
 
+1. Run `pnpm plugin upgrade m365 --apply`; it changes only the version stamps.
+
 ## Conflicts to expect
 
+None.
+
 ## Verify
+
+1. `pnpm plugin check` reports `m365` checks out at 3.3.0.

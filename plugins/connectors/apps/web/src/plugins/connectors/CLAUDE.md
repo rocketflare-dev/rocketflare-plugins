@@ -5,7 +5,8 @@ person's login (that is the kit's arctic providers) — and the app syncs the di
 members' calendars (D34, kit `docs/CONNECTORS.md`). Provider-neutral: a provider plugin (`m365`;
 `google-workspace` next) contributes one `ConnectorProvider` through `extensions`. This plugin owns
 every row, route, cursor, claim and schedule; a provider owns only the vendor conversation and never
-touches the database. Requires kit ≥ 0.12.0 (public mounts, `signState`, `ctx.features(tenantId)`).
+touches the database. Requires kit ≥ 0.13.0 (public mounts, `signState`, `ctx.features(tenantId)` from 0.12.0; plugin
+skills from 0.13.0).
 
 | Where | What |
 |---|---|
@@ -20,6 +21,7 @@ touches the database. Requires kit ≥ 0.12.0 (public mounts, `signState`, `ctx.
 | `services/events.ts` | The ONE place calendar visibility is decided: owner, or `manage Connector` |
 | `api/routes.ts` · `api/hooks.ts` · `api/consent.ts` · `api/scheduled.ts` | Authed routes; the public consent callback (trusts only the signed state); state + redirect helpers; the cron |
 | `ui/` | Settings → Connections (`pages/ConnectionsSettings.tsx`), My calendar (`pages/MyCalendarPage.tsx`, route `/calendar`) |
+| `skills/connectors/` (plugin repo) → `.claude/skills/connectors/` | The `connectors` skill: explain, operator setup (drives `az`), bring-your-own app, connect & verify, troubleshoot (AADSTS table). Provider detail in `providers/<id>.md`; a new provider adds its file there |
 | `apps/cli/src/plugins/connectors/` | `rocketflare connectors status | sync [--provider] [--resource]` |
 
 ## Rules
@@ -33,6 +35,10 @@ touches the database. Requires kit ≥ 0.12.0 (public mounts, `signState`, `ctx.
 - **Save the cursor after every page**, and only a FULL pass may sweep.
 - **A bearer token is only sent to the provider's own API host** — the provider's job, but check
   it in review.
+- **Setup copy has two audiences.** `GET /providers` returns `operatorSteps` only to a global admin
+  (`viewer.isOperator`) and `operatorConfigured` as a boolean, never a credential. A tenant admin
+  sees consent steps, or — when the deployment app is not configured — "ask your operator" plus the
+  bring-your-own-app form. Keep the skill's `providers/<id>.md` and the provider's steps in step.
 - **Adding a provider** is a provider plugin, not an edit here: implement `ConnectorProvider`,
   contribute it with `connectorExtensions` from the shared entry, `requires.plugins: ["connectors"]`.
   A new RESOURCE (mail, files) is an edit here: the resource list, an `apply*`, a branch in the
