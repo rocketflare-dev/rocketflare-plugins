@@ -9,6 +9,20 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.4.0 — 2026-09-27
+
+**analytics** — Analytics now reads raw `db.execute()` results in a driver-neutral way, so it works on the kit's current postgres.js driver and on the Neon serverless driver the kit moves to in 0.15.0.
+[Porting note](plugins/analytics/docs/upgrades/3.4.0.md).
+
+**web-knowledge** — No change to web-knowledge: this release exists because `analytics` was made to work with both database drivers the kit may run, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.4.0.md).
+
+**connectors** — No change to connectors: this release exists because `analytics` was made to work with both database drivers the kit may run, and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.4.0.md).
+
+**m365** — No change to m365: this release exists because `analytics` was made to work with both database drivers the kit may run, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.4.0.md).
+
 ## 3.3.0 — 2026-09-27
 
 **analytics** — Analytics now ships four Claude Code skills for drizzle-cube: `analytics`, `analytics-cubes`, `analytics-queries` and `analytics-dashboards`.

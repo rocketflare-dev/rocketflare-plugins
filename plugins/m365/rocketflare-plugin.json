@@ -1,7 +1,7 @@
 {
   "id": "m365",
   "label": "Microsoft 365",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "minKit": "0.12.0",
   "anchor": "apps/web/src/plugins/m365/plugin.json",

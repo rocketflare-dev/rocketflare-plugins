@@ -1,7 +1,7 @@
 {
   "id": "connectors",
   "label": "Connectors",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "minKit": "0.13.0",
   "anchor": "apps/web/src/plugins/connectors/plugin.json",
