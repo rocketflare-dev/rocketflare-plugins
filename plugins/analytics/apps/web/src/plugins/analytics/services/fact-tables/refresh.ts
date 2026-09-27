@@ -11,6 +11,7 @@ import { getTableColumns, sql } from 'drizzle-orm'
 import { tenants } from '@/db/schema/kit'
 import type { Database, PluginLogger } from '@/plugins/api'
 import { transaction } from '@/plugins/api'
+import { affectedRows } from '../sql-result'
 import { type FactTableDefinition, factTables, getFactTable } from './registry'
 
 export interface TenantRefreshError {
@@ -61,8 +62,8 @@ export async function refreshFactTableForTenant(
     const inserted = await tx.execute(
       sql`insert into ${def.table} (${columns}) ${def.selectForTenant(tenantId)}`
     )
-    // postgres.js returns a RowList whose `count` is the statement's affected-row count.
-    return (inserted as unknown as { count?: number }).count ?? 0
+    // Affected rows: `.count` on postgres.js, `.rowCount` on the Neon driver (kit 0.15.0+).
+    return affectedRows(inserted)
   })
 }
 
