@@ -97,18 +97,32 @@ export const connectorProviderInfoSchema = z.object({
   operatorConfigured: z.boolean(),
   supportsByo: z.boolean(),
   resources: z.array(connectorResourceSchema),
-  /** Numbered steps for the organisation's admin, and for the operator who registers the app. */
+  /** Numbered steps for the organisation's admin: the consent they give. */
   adminSteps: z.array(z.string()),
+  /**
+   * Numbered steps for the platform OPERATOR who registers the deployment's app. EMPTY unless the
+   * reader is a global admin: a tenant admin cannot act on them (they need the deployment's
+   * secrets), so showing them only reads as "this is your job".
+   */
   operatorSteps: z.array(z.string()),
   /** The permissions the admin is asked to consent to, and why each is needed. */
   permissions: z.array(z.object({ scope: z.string(), reason: z.string() })),
   docsUrl: z.string().url().nullable(),
+  /**
+   * This deployment's consent callback for the provider — what an app registration (the
+   * operator's, or an organisation's own) must list as its redirect URI. A public URL, not a
+   * secret, and the one value nobody registering an app can guess.
+   */
+  redirectUri: z.string().url(),
 })
 export type ConnectorProviderInfo = z.infer<typeof connectorProviderInfoSchema>
 
 export const connectorProviderListResponseSchema = z.object({
   items: z.array(connectorProviderInfoSchema),
+  /** Who is reading: a platform operator (global admin) is shown the deployment's setup. */
+  viewer: z.object({ isOperator: z.boolean() }),
 })
+export type ConnectorProviderListResponse = z.infer<typeof connectorProviderListResponseSchema>
 
 /** One cursor's progress, as the status view shows it. */
 export const syncCursorStatusSchema = z.object({

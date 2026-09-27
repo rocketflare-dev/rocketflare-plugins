@@ -338,12 +338,44 @@ describe('routes', () => {
     expect(start.status).toBe(403)
   })
 
-  it('lists the contributed providers for an admin', async () => {
+  it('lists the contributed providers for an admin, without the operator’s steps', async () => {
     const res = await request(`${BASE}/providers`, { headers: ownerCookie })
     expect(res.status).toBe(200)
-    expect(await json(res)).toMatchObject({
-      items: [{ id: 'fake', operatorConfigured: true, resources: ['users', 'groups', 'calendar'] }],
+    const text = await res.text()
+    expect(JSON.parse(text)).toMatchObject({
+      items: [
+        {
+          id: 'fake',
+          operatorConfigured: true,
+          resources: ['users', 'groups', 'calendar'],
+          adminSteps: ['Press connect.'],
+          // A tenant admin cannot act on the deployment's setup, so it is not sent at all.
+          operatorSteps: [],
+          redirectUri: expect.stringMatching(/\/api\/hooks\/connectors\/fake\/callback$/),
+        },
+      ],
+      viewer: { isOperator: false },
     })
+    // Configured is a boolean; the credential behind it never travels.
+    expect(text).not.toContain('operator-client')
+    expect(text).not.toContain('operator-secret')
+  })
+
+  it('sends the operator’s steps to a platform operator (global admin) only', async () => {
+    const operator = await createTestUser(db, {
+      email: `operator-${suffix}@example.test`,
+      isGlobalAdmin: true,
+    })
+    await linkUserToTenant(db, operator.id, tenantId, 'member')
+    const cookie = sessionCookieHeader(await createTestSession(db, operator.id, tenantId))
+    const res = await request(`${BASE}/providers`, { headers: cookie })
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(JSON.parse(text)).toMatchObject({
+      items: [{ id: 'fake', operatorSteps: ['None.'] }],
+      viewer: { isOperator: true },
+    })
+    expect(text).not.toContain('operator-secret')
   })
 
   it('404s an unknown provider, and seals a BYO secret without ever returning it', async () => {
