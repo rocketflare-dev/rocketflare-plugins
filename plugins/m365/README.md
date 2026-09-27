@@ -30,7 +30,7 @@ everything you see belongs to `connectors`, which it requires.
 After `connectors`:
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.3.0 --subdir plugins/m365 --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.4.0 --subdir plugins/m365 --apply
 ```
 
 ## Set it up

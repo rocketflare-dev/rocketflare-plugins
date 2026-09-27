@@ -36,9 +36,9 @@ A fresh copy of the kit already has it. To add it yourself — the first command
 stops, the second applies it:
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.3.0 --subdir plugins/analytics
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.3.0 --subdir plugins/analytics --apply
-pnpm db:generate --name plugin-analytics-3.3.0 && pnpm db:migrate
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.4.0 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.4.0 --subdir plugins/analytics --apply
+pnpm db:generate --name plugin-analytics-3.4.0 && pnpm db:migrate
 ```
 
 The plan lists the steps a plugin cannot make in your files, and `pnpm provision cloudflare <env>`
