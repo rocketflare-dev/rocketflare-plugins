@@ -14,6 +14,9 @@ read by the `TenantActivityDaily` cube.
   incremental; `fact_refreshed_at` is a stamp.
 - `freshness.ts` — `checkFactTableFreshness(db)`: `lagSeconds` = newest source row minus last
   build (0 if the build is newer); `stale` = lag > 2× interval.
+- Raw `execute` results go through `../sql-result.ts` (`rowsOf`, `affectedRows`), never indexed
+  or `.count`-read directly: the kit's driver is postgres.js (a `RowList` array with `.count`) up
+  to 0.14.x and the Neon serverless driver (`{ rows, rowCount }`) from 0.15.0, and both must work.
 - Runs from: cron `"15 * * * *"` (the task is `api/scheduled.ts`, written against `CronCtx`; the
   EXPRESSION is `plugin.json` `crons`, which `pnpm provision cloudflare <env>` writes into both
   tomls), the `analytics.refresh-facts` job (`rocketflare analytics refresh-facts`, one tenant), and

@@ -9,6 +9,7 @@
 import type { FactTableStatus } from '@rocketflare/shared/plugins/analytics/index'
 import { sql } from 'drizzle-orm'
 import type { Database } from '@/plugins/api'
+import { rowsOf } from '../sql-result'
 import { type FactTableDefinition, factTables } from './registry'
 
 function toDate(value: unknown): Date | null {
@@ -21,8 +22,8 @@ function toDate(value: unknown): Date | null {
 }
 
 async function maxOf(db: Database, query: ReturnType<typeof sql>): Promise<Date | null> {
-  const rows = (await db.execute(query)) as unknown as Array<{ max_ts: unknown }>
-  return toDate(rows[0]?.max_ts)
+  const [row] = rowsOf<{ max_ts: unknown }>(await db.execute(query))
+  return toDate(row?.max_ts)
 }
 
 export function computeFreshness(
