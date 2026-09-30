@@ -200,7 +200,8 @@ cd apps/web && NODE_ENV=test pnpm exec dotenv -e .env.test -- vitest run --proje
 ```
 
 **Success** is every case green in both directions. Then run the full gate before committing:
-`pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+`pnpm gate` (on a kit before 0.16.0, which has no `pnpm gate`:
+`pnpm lint && pnpm typecheck && pnpm test && pnpm build`).
 
 ## Troubleshooting
 

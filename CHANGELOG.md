@@ -9,6 +9,20 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.4.2 — 2026-09-30
+
+**analytics** — The dashboard-visibility test's setup delete now names the tenant, so an app with analytics installed passes the kit's `unscoped-allowlist` scan.
+[Porting note](plugins/analytics/docs/upgrades/3.4.2.md).
+
+**connectors** — No change to connectors: this release exists because `analytics` fixed a test that failed the kit's tenant-isolation scan, and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.4.2.md).
+
+**m365** — No change to m365: this release exists because `analytics` fixed a test that failed the kit's tenant-isolation scan, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.4.2.md).
+
+**web-knowledge** — No change to web-knowledge: this release exists because `analytics` fixed a test that failed the kit's tenant-isolation scan, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.4.2.md).
+
 ## 3.4.1 — 2026-09-27
 
 **analytics** — The cube API passes the request's database handle to drizzle-cube in a form that type-checks against kit 0.15.0, whose `Database` is driver-neutral; without it an app with analytics fails `pnpm typecheck` after taking that kit.
