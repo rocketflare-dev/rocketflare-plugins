@@ -29,8 +29,8 @@ on that organisation's chat turns and agent runs carry two more tools, `web_sear
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.4.1 --subdir plugins/web-knowledge
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.4.1 --subdir plugins/web-knowledge --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.4.2 --subdir plugins/web-knowledge
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.4.2 --subdir plugins/web-knowledge --apply
 pnpm db:generate --name plugin-web-knowledge-3.4.0 && pnpm db:migrate
 ```
 
