@@ -9,6 +9,24 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.5.0 — 2026-10-22
+
+**analytics** — No change to analytics: this release exists because `issue-reports` ships for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/analytics/docs/upgrades/3.5.0.md).
+
+**connectors** — No change to connectors: this release exists because `issue-reports` ships for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.5.0.md).
+
+**issue-reports** — The first release: Ideas & issues, where anyone on the team talks a bug or an idea through with an agent that asks until it is clear, checks for an existing issue, and logs it on GitHub once they approve the draft.
+Contributed by [Mosaic Data](https://mosaicdata.ai/) ([#11](https://github.com/rocketflare-dev/rocketflare-plugins/pull/11)).
+[Porting note](plugins/issue-reports/docs/upgrades/3.5.0.md).
+
+**m365** — No change to m365: this release exists because `issue-reports` ships for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.5.0.md).
+
+**web-knowledge** — No change to web-knowledge: this release exists because `issue-reports` ships for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.5.0.md).
+
 ## 3.4.2 — 2026-09-30
 
 **analytics** — The dashboard-visibility test's setup delete now names the tenant, so an app with analytics installed passes the kit's `unscoped-allowlist` scan.
