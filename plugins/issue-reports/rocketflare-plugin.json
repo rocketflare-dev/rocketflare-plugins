@@ -1,0 +1,117 @@
+{
+  "id": "issue-reports",
+  "label": "Issue reports",
+  "version": "3.4.2",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "subdir": "plugins/issue-reports",
+  "anchor": "apps/web/src/plugins/issue-reports/plugin.json",
+  "minKit": "0.21.0",
+  "uses": {
+    "@/plugins/api": [
+      "agentCtx",
+      "AgentCtx",
+      "AgentInterruptAnswer",
+      "AgentInterruptAsk",
+      "createRouter",
+      "PluginAgent",
+      "PluginConfig",
+      "recordUsage",
+      "requestCtx",
+      "RequestCtx",
+      "ServerPlugin"
+    ],
+    "@/plugins/api/ui-wiring": [
+      "NavGuard",
+      "UiPlugin"
+    ],
+    "@/plugins/api/ui": [
+      "api",
+      "EmptyState",
+      "LoadingIndicator",
+      "PageHeader",
+      "PaginationControls",
+      "SectionPanel",
+      "SkeletonRows",
+      "timeAgo"
+    ],
+    "@/db/schema/kit": [
+      "users"
+    ],
+    "@rocketflare/shared/plugins/api": [
+      "paginatedResponse"
+    ],
+    "@testkit/integration": [
+      "createTestEnv",
+      "createTestSession",
+      "createTestTenantWithUser",
+      "json",
+      "request",
+      "sessionCookieHeader",
+      "setupTestDatabase",
+      "TestEnv"
+    ],
+    "@rocketflare/shared/ai/agents": [
+      "AgentRun",
+      "agentRunSchema",
+      "AgentRunWithEvents",
+      "agentRunWithEventsSchema",
+      "agentStepEventDataSchema",
+      "createAgentRunResponseSchema",
+      "isRunActive"
+    ],
+    "@rocketflare/shared/ai/interrupts": [
+      "AgentRunInterrupt",
+      "choicePayloadSchema"
+    ],
+    "@rocketflare/shared/ai/prompts": [
+      "PromptDefinition"
+    ],
+    "@rocketflare/shared/plugins/types": [
+      "SharedPlugin"
+    ]
+  },
+  "paths": [
+    "apps/web/src/plugins/issue-reports/**",
+    "packages/shared/src/plugins/issue-reports/**"
+  ],
+  "registries": [
+    "apps/web/src/plugins/server.ts",
+    "apps/web/src/plugins/ui.ts",
+    "packages/shared/src/plugins/index.ts"
+  ],
+  "requires": {
+    "surfaces": [
+      "feature-agents"
+    ],
+    "plugins": []
+  },
+  "dependencies": {
+    "apps/web": {
+      "react-markdown": "^10.1.0",
+      "remark-gfm": "^4.0.1"
+    },
+    "packages/shared": {},
+    "apps/cli": {}
+  },
+  "bindings": [],
+  "crons": [],
+  "apiPrefixes": [],
+  "vars": [
+    {
+      "key": "ISSUE_REPORTS_GITHUB_REPO",
+      "example": "your-org/your-app",
+      "secret": true
+    },
+    {
+      "key": "ISSUE_REPORTS_GITHUB_TOKEN",
+      "secret": true
+    }
+  ],
+  "workerExports": [],
+  "skills": [],
+  "schema": {
+    "tables": [],
+    "rlsExcluded": []
+  },
+  "migrations": []
+}
