@@ -1,7 +1,7 @@
 {
   "id": "issue-reports",
   "label": "Issue reports",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "subdir": "plugins/issue-reports",
   "anchor": "apps/web/src/plugins/issue-reports/plugin.json",

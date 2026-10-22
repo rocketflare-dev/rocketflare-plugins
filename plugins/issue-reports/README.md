@@ -31,8 +31,8 @@ that issue instead of opening a new one.
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.0 --subdir plugins/issue-reports
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.0 --subdir plugins/issue-reports --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.1 --subdir plugins/issue-reports
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.1 --subdir plugins/issue-reports --apply
 pnpm install
 ```
 

@@ -9,6 +9,23 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.5.1 — 2026-10-22
+
+**analytics** — `minKit` rises from 0.13.0 to 0.17.1, because before kit 0.17.1 `plugin check` compares dependency ranges as strings and fails analytics as soon as `react-grid-layout` or `react-is` publishes a newer release inside the declared range.
+[Porting note](plugins/analytics/docs/upgrades/3.5.1.md).
+
+**connectors** — No change to connectors: this release exists because `analytics` raised its `minKit` to 0.17.1, and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.5.1.md).
+
+**issue-reports** — No change to issue-reports: this release exists because `analytics` raised its `minKit` to 0.17.1, and every plugin here ships at the repository's version.
+[Porting note](plugins/issue-reports/docs/upgrades/3.5.1.md).
+
+**m365** — No change to m365: this release exists because `analytics` raised its `minKit` to 0.17.1, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.5.1.md).
+
+**web-knowledge** — No change to web-knowledge: this release exists because `analytics` raised its `minKit` to 0.17.1, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.5.1.md).
+
 ## 3.5.0 — 2026-10-22
 
 **analytics** — No change to analytics: this release exists because `issue-reports` ships for the first time, and every plugin here ships at the repository's version.

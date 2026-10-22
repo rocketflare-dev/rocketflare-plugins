@@ -25,7 +25,7 @@ one is malformed.
 
 ## Requirements
 
-- Rocketflare kit **0.13.0** or later (`minKit`; earlier plugin releases support older kits).
+- Rocketflare kit **0.17.1** or later (`minKit`; earlier plugin releases support older kits).
 - No other plugin, no bindings and no secrets.
 - npm dependencies the install adds to `apps/web`: `drizzle-cube` (pinned 0.8.3), `recharts`, `d3`,
   `react-grid-layout`, `react-is`.
@@ -36,8 +36,8 @@ A fresh copy of the kit already has it. To add it yourself — the first command
 stops, the second applies it:
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.0 --subdir plugins/analytics
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.0 --subdir plugins/analytics --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.1 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.1 --subdir plugins/analytics --apply
 pnpm db:generate --name plugin-analytics-3.4.0 && pnpm db:migrate
 ```
 

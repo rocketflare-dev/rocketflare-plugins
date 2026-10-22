@@ -15,7 +15,7 @@ sees what and its known gaps. They are also published at
 
 | Plugin | What it adds | Needs |
 |---|---|---|
-| [**analytics**](plugins/analytics/README.md) | Dashboards, tenant-scoped drizzle-cube cubes at `/cubejs-api` and `/mcp`, an hourly fact table, CLI, and four `analytics-*` agent skills. Installed by the kit's bootstrap | kit 0.13.0 |
+| [**analytics**](plugins/analytics/README.md) | Dashboards, tenant-scoped drizzle-cube cubes at `/cubejs-api` and `/mcp`, an hourly fact table, CLI, and four `analytics-*` agent skills. Installed by the kit's bootstrap | kit 0.17.1 |
 | [**web-knowledge**](plugins/web-knowledge/README.md) | `web_search` and `fetch_page` tools for agents and chat on each organisation's own key (Tavily, Brave, Exa, Serper, Firecrawl), Settings → Web search | kit 0.9.0 |
 | [**connectors**](plugins/connectors/README.md) | Organisation connections: admin consent once, then directory and calendar sync every 15 minutes; Settings → Connections, My calendar, CLI and the `connectors` setup skill | kit 0.13.0 and a provider |
 | [**m365**](plugins/m365/README.md) | Microsoft 365 as a `connectors` provider: Entra admin consent, app-only Graph delta sync of users, groups and calendars | kit 0.12.0 and `connectors` |
@@ -25,9 +25,9 @@ sees what and its known gaps. They are also published at
 
 ```bash
 # Read the plan first — it always prints and stops.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.0 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.1 --subdir plugins/analytics
 # Then install it.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.0 --subdir plugins/analytics --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.1 --subdir plugins/analytics --apply
 # The HOST generates the migration. Always.
 pnpm db:generate --name plugin-analytics-<version> && pnpm db:migrate
 ```
