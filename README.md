@@ -27,9 +27,9 @@ sees what and its known gaps. They are also published at
 
 ```bash
 # Read the plan first — it always prints and stops.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.1 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.6.0 --subdir plugins/analytics
 # Then install it.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.5.1 --subdir plugins/analytics --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.6.0 --subdir plugins/analytics --apply
 # The HOST generates the migration. Always.
 pnpm db:generate --name plugin-analytics-<version> && pnpm db:migrate
 ```

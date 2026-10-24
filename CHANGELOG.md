@@ -9,6 +9,29 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.6.0 — 2026-10-24
+
+**analytics** — No change to analytics: this release exists because `inbox` and `freeagent` ship for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/analytics/docs/upgrades/3.6.0.md).
+
+**connectors** — No change to connectors: this release exists because `inbox` and `freeagent` ship for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.6.0.md).
+
+**freeagent** — First release of `freeagent`: an organisation connects its FreeAgent company over OAuth, and its books are mirrored every 30 minutes for pages, agents, analytics and other plugins.
+[Porting note](plugins/freeagent/docs/upgrades/3.6.0.md).
+
+**inbox** — First release of `inbox`: organisations receive forwarded email through Cloudflare Email Routing, with an allow-list, authentication checks, parsed attachments, forwarding-confirmation codes and a consumer extension for other plugins.
+[Porting note](plugins/inbox/docs/upgrades/3.6.0.md).
+
+**issue-reports** — No change to issue-reports: this release exists because `inbox` and `freeagent` ship for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/issue-reports/docs/upgrades/3.6.0.md).
+
+**m365** — No change to m365: this release exists because `inbox` and `freeagent` ship for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.6.0.md).
+
+**web-knowledge** — No change to web-knowledge: this release exists because `inbox` and `freeagent` ship for the first time, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.6.0.md).
+
 ## 3.5.1 — 2026-10-22
 
 **analytics** — `minKit` rises from 0.13.0 to 0.17.1, because before kit 0.17.1 `plugin check` compares dependency ranges as strings and fails analytics as soon as `react-grid-layout` or `react-is` publishes a newer release inside the declared range.

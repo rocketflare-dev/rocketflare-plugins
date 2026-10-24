@@ -36,8 +36,8 @@ the `freeagent:sync-listeners` extension.
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@<version> --subdir plugins/freeagent
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@<version> --subdir plugins/freeagent --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.6.0 --subdir plugins/freeagent
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.6.0 --subdir plugins/freeagent --apply
 pnpm db:generate --name plugin-freeagent-<version> && pnpm db:migrate
 ```
 

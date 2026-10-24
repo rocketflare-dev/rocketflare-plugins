@@ -33,8 +33,8 @@ job. Other plugins subscribe to parsed messages through the `inbox:consumers` ex
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@<version> --subdir plugins/inbox
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@<version> --subdir plugins/inbox --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.6.0 --subdir plugins/inbox
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.6.0 --subdir plugins/inbox --apply
 pnpm db:generate --name plugin-inbox-<version> && pnpm db:migrate
 ```
 

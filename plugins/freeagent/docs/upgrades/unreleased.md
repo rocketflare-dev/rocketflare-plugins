@@ -1,41 +1,22 @@
 ---
 version: unreleased
-previous: null
+previous: 3.6.0
 date: null
 breaking: false
-migrations:
-  - freeagent_connections — one row per tenant (unique tenant_id): environment, status, sealed refresh and access tokens, company, sync claim and last outcome; RLS policy
-  - freeagent_sync_state — one updated_since cursor per (tenant, resource), unique; RLS policy
-  - freeagent_bank_accounts, freeagent_bank_transactions, freeagent_explanations, freeagent_categories, freeagent_contacts, freeagent_bills, freeagent_invoices — the mirror, each unique on (tenant_id, url), money as numeric; RLS policies
-areas: [api, ui, cli]
+migrations: []
+areas: []
 touches_surfaces: []
 requires_surfaces: []
-manual: true
+manual: false
 ---
 
 ## What changed
 
-First release of `freeagent`: an organisation connects its FreeAgent company over OAuth, and its books are mirrored every 30 minutes for pages, agents, analytics and other plugins.
-
-- OAuth through `POST /api/freeagent/connect` and the public callback `/api/hooks/freeagent/callback`; tokens sealed; `invalid_grant` marks the connection `needs_reconnect`.
-- `freeagent.sync` (cron `*/30 * * * *`, "Sync now", and after connecting) mirrors bank accounts, transactions, explanations, categories, contacts, bills and invoices incrementally by `updated_since`, then calls every `freeagent:sync-listeners` extension.
-- Every request sends `X-Api-Version: 2026-09-01` (multiple attachments per explanation).
-- Service API for other plugins: `freeagentClientFor`, `explainTransaction`, `attachToExplanation`, `deleteExplanation`, `createBill`, `listUnexplainedTransactions`.
-- Agent tools: five read tools over the mirror; `freeagent_explain_transaction` and `freeagent_create_bill` need approval and are offered to admin-level requesters only.
-- UI: Settings → FreeAgent and a FreeAgent page; CLI `rocketflare freeagent status|sync`; drizzle-cube cubes contributed to `analytics` when it is installed.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Install with `pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@<version> --subdir plugins/freeagent --apply` on a kit at 0.21.0 or later.
-2. Run `pnpm db:generate --name plugin-freeagent-<version>`, read the SQL (nine `CREATE TABLE`s and their policies), then `pnpm db:migrate`.
-3. Register a FreeAgent app and set `FREEAGENT_CLIENT_ID`, `FREEAGENT_CLIENT_SECRET` and `FREEAGENT_ENVIRONMENT` — the `freeagent` skill (`/freeagent register`, `/freeagent secrets`) walks both. `pnpm provision cloudflare <env>` writes the `*/30 * * * *` cron into both tomls.
-
 ## Conflicts to expect
 
-None — a first release adds files only.
-
 ## Verify
-
-1. `pnpm plugin check` passes.
-2. `pnpm gate` passes, including `src/plugins/freeagent/tests/**`.
-3. After connecting, `pnpm cli freeagent status` shows the company and a last-sync time.
