@@ -1,0 +1,72 @@
+{
+  "id": "freeagent",
+  "label": "FreeAgent",
+  "version": "3.5.1",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "minKit": "0.21.0",
+  "anchor": "apps/web/src/plugins/freeagent/plugin.json",
+  "paths": [
+    "apps/web/src/plugins/freeagent/**",
+    "packages/shared/src/plugins/freeagent/**",
+    "apps/cli/src/plugins/freeagent/**",
+    "docs/plugins/freeagent/**"
+  ],
+  "registries": [
+    "apps/web/src/plugins/server.ts",
+    "apps/web/src/plugins/ui.ts",
+    "apps/web/src/plugins/schema.ts",
+    "packages/shared/src/plugins/index.ts",
+    "apps/cli/src/plugins/index.ts"
+  ],
+  "requires": {
+    "surfaces": [],
+    "plugins": []
+  },
+  "uses": {},
+  "dependencies": {
+    "apps/web": {},
+    "packages/shared": {},
+    "apps/cli": {}
+  },
+  "bindings": [],
+  "crons": ["*/30 * * * *"],
+  "apiPrefixes": [],
+  "coreEdits": [],
+  "vars": [
+    {
+      "key": "FREEAGENT_CLIENT_ID",
+      "secret": true
+    },
+    {
+      "key": "FREEAGENT_CLIENT_SECRET",
+      "secret": true
+    },
+    {
+      "key": "FREEAGENT_ENVIRONMENT",
+      "example": "sandbox",
+      "secret": true
+    }
+  ],
+  "workerExports": [],
+  "skills": ["freeagent"],
+  "schema": {
+    "tables": [
+      "freeagent_connections",
+      "freeagent_sync_state",
+      "freeagent_bank_accounts",
+      "freeagent_bank_transactions",
+      "freeagent_explanations",
+      "freeagent_categories",
+      "freeagent_contacts",
+      "freeagent_bills",
+      "freeagent_invoices"
+    ],
+    "rlsExcluded": []
+  },
+  "migrations": [
+    "freeagent_connections — one row per tenant (unique tenant_id): environment, status, sealed refresh/access tokens, company, sync claim and last outcome; RLS policy",
+    "freeagent_sync_state — one updated_since cursor per (tenant, resource), unique; RLS policy",
+    "freeagent_bank_accounts / freeagent_bank_transactions / freeagent_explanations / freeagent_categories / freeagent_contacts / freeagent_bills / freeagent_invoices — the mirror, each unique on (tenant_id, url), money as numeric; RLS policies"
+  ],
+  "subdir": "plugins/freeagent"
+}
