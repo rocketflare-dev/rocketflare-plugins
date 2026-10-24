@@ -58,6 +58,14 @@ export const INBOX_MAX_ALLOWED_SENDERS = 50
 /** The text body is kept in Postgres up to this many characters; the HTML body lives in R2. */
 export const INBOX_TEXT_BODY_MAX = 100_000
 
+/**
+ * Forwarded-as-attachment mail: every `message/rfc822` part becomes a child message of its own.
+ * A child is its parent's depth + 1, and a message at the cap keeps its embedded parts as plain
+ * `.eml` attachments; past the per-message cap, the rest stay attachments too.
+ */
+export const INBOX_FORWARD_MAX_DEPTH = 3
+export const INBOX_FORWARD_MAX_CHILDREN = 50
+
 // ---- Vocabulary ---------------------------------------------------------------------------------
 
 export const INBOX_MESSAGE_STATUSES = ['received', 'parsed', 'failed'] as const
@@ -132,6 +140,8 @@ export const inboxAttachmentSchema = z.object({
   size: z.number().int().nonnegative(),
   sha256: z.string(),
   inline: z.boolean(),
+  /** For an embedded `.eml`: the inbox message it became. Null for an ordinary attachment. */
+  expandedMessageId: z.string().uuid().nullable(),
 })
 export type InboxAttachment = z.infer<typeof inboxAttachmentSchema>
 
@@ -152,8 +162,23 @@ export const inboxMessageSummarySchema = z.object({
   receivedAt: z.coerce.date(),
   attachmentCount: z.number().int().nonnegative(),
   rawSize: z.number().int().nonnegative(),
+  /** The message this one was forwarded inside (as a `message/rfc822` part), else null. */
+  parentMessageId: z.string().uuid().nullable(),
+  /** Who forwarded a child — its authentication verdict is inherited from that forward. */
+  forwardedBy: z.string().nullable(),
+  /** How many embedded emails this message was split into. */
+  forwardedCount: z.number().int().nonnegative(),
 })
 export type InboxMessageSummary = z.infer<typeof inboxMessageSummarySchema>
+
+/** Just enough of another message to link to it. */
+export const inboxMessageLinkSchema = z.object({
+  id: z.string().uuid(),
+  subject: z.string().nullable(),
+  fromAddress: z.string().nullable(),
+  fromName: z.string().nullable(),
+})
+export type InboxMessageLink = z.infer<typeof inboxMessageLinkSchema>
 
 export const inboxMessageSchema = inboxMessageSummarySchema.extend({
   messageIdHeader: z.string().nullable(),
@@ -163,6 +188,10 @@ export const inboxMessageSchema = inboxMessageSummarySchema.extend({
   confirmation: inboxConfirmationSchema.nullable(),
   error: z.string().nullable(),
   attachments: z.array(inboxAttachmentSchema),
+  /** The message this one was forwarded inside, for the "forwarded inside …" link. */
+  parent: inboxMessageLinkSchema.nullable(),
+  /** The emails embedded in this one (children, or earlier copies they were deduplicated to). */
+  forwardedMessages: z.array(inboxMessageLinkSchema),
 })
 export type InboxMessage = z.infer<typeof inboxMessageSchema>
 
@@ -195,7 +224,7 @@ export type InboxParsePayload = z.infer<typeof inboxParsePayloadSchema>
 export const inboxShared = {
   id: INBOX_ID,
   label: 'Inbox',
-  version: '3.5.1',
+  version: '3.7.0',
   subjects: [INBOX_MESSAGE_SUBJECT, INBOX_SETTINGS_SUBJECT],
   jobs: [z.object({ type: z.literal(INBOX_PARSE_JOB), payload: inboxParsePayloadSchema })],
 } as const satisfies SharedPlugin

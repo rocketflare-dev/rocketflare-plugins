@@ -1,13 +1,19 @@
 /**
  * Inbox: what arrived, newest first, and one message beside it — sender, forwarding mailbox,
  * authentication verdicts, the text body and the attachments. A forwarding confirmation shows its
- * code and link at the top, because that is the only reason anybody opens one.
+ * code and link at the top, because that is the only reason anybody opens one. A message
+ * forwarded as an attachment links to the wrapper it came in ("Forwarded inside …"), and the
+ * wrapper lists the emails split out of it ("Contains N forwarded emails").
  *
  * Bodies are shown as TEXT only. The HTML body and the raw message are downloads (served as
  * attachments by the API), never rendered here: they are markup a stranger wrote.
  */
-import { EnvelopeIcon, PaperClipIcon } from '@heroicons/react/24/outline'
-import type { InboxMessage, InboxMessageSummary } from '@rocketflare/shared/plugins/inbox/index'
+import { ArrowUturnRightIcon, EnvelopeIcon, PaperClipIcon } from '@heroicons/react/24/outline'
+import type {
+  InboxMessage,
+  InboxMessageLink,
+  InboxMessageSummary,
+} from '@rocketflare/shared/plugins/inbox/index'
 import { useState } from 'react'
 import {
   ConfirmModal,
@@ -85,7 +91,18 @@ export default function InboxPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm opacity-80">
+                        {m.parentMessageId && (
+                          <ArrowUturnRightIcon
+                            className="h-3 w-3 shrink-0"
+                            aria-label="Forwarded as an attachment"
+                          />
+                        )}
                         <span className="truncate">{m.subject || '(no subject)'}</span>
+                        {m.forwardedCount > 0 && (
+                          <span className="badge badge-ghost badge-sm ml-auto shrink-0">
+                            {m.forwardedCount} forwarded
+                          </span>
+                        )}
                         {m.attachmentCount > 0 && (
                           <span className="ml-auto flex shrink-0 items-center gap-1 text-xs">
                             <PaperClipIcon className="h-3 w-3" />
@@ -106,7 +123,7 @@ export default function InboxPage() {
           )}
         </SectionPanel>
         {selected ? (
-          <MessageDetail id={selected} onDeleted={() => setSelected(null)} />
+          <MessageDetail id={selected} onSelect={setSelected} onDeleted={() => setSelected(null)} />
         ) : (
           <SectionPanel>
             <p className="text-sm opacity-70">Choose a message to read it.</p>
@@ -117,7 +134,15 @@ export default function InboxPage() {
   )
 }
 
-function MessageDetail({ id, onDeleted }: { id: string; onDeleted: () => void }) {
+function MessageDetail({
+  id,
+  onSelect,
+  onDeleted,
+}: {
+  id: string
+  onSelect: (id: string) => void
+  onDeleted: () => void
+}) {
   const message = useInboxMessage(id)
   if (message.isPending) {
     return (
@@ -133,7 +158,7 @@ function MessageDetail({ id, onDeleted }: { id: string; onDeleted: () => void })
       </SectionPanel>
     )
   }
-  return <MessageBody message={message.data} onDeleted={onDeleted} />
+  return <MessageBody message={message.data} onSelect={onSelect} onDeleted={onDeleted} />
 }
 
 function Verdict({ label, value }: { label: string; value: string | null }) {
@@ -141,7 +166,21 @@ function Verdict({ label, value }: { label: string; value: string | null }) {
   return <span className={`badge badge-sm ${tone}`}>{`${label} ${value ?? '—'}`}</span>
 }
 
-function MessageBody({ message, onDeleted }: { message: InboxMessage; onDeleted: () => void }) {
+function linkLabel(link: InboxMessageLink): string {
+  const from = link.fromName || link.fromAddress
+  return `${link.subject || '(no subject)'}${from ? ` — ${from}` : ''}`
+}
+
+function MessageBody({
+  message,
+  onSelect,
+  onDeleted,
+}: {
+  message: InboxMessage
+  onSelect: (id: string) => void
+  onDeleted: () => void
+}) {
+  const attachments = message.attachments.filter(a => !a.expandedMessageId)
   const { can } = usePermissions()
   const reprocess = useReprocessInboxMessage()
   const remove = useDeleteInboxMessage()
@@ -210,13 +249,26 @@ function MessageBody({ message, onDeleted }: { message: InboxMessage; onDeleted:
           </div>
         </div>
       )}
+      {message.parent && (
+        <p className="mb-3 flex items-center gap-1 text-sm">
+          <ArrowUturnRightIcon className="h-4 w-4 opacity-60" />
+          Forwarded inside{' '}
+          <button
+            type="button"
+            className="link"
+            onClick={() => message.parent && onSelect(message.parent.id)}
+          >
+            {linkLabel(message.parent)}
+          </button>
+        </p>
+      )}
       <dl className="mb-4 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
         <dt className="opacity-60">From</dt>
         <dd>
           {message.fromName ? `${message.fromName} <${message.fromAddress}>` : message.fromAddress}
         </dd>
         <dt className="opacity-60">Forwarded by</dt>
-        <dd>{message.envelopeFrom}</dd>
+        <dd>{message.forwardedBy ?? message.envelopeFrom}</dd>
         <dt className="opacity-60">To</dt>
         <dd>{message.toAddress}</dd>
         <dt className="opacity-60">Sent</dt>
@@ -224,16 +276,37 @@ function MessageBody({ message, onDeleted }: { message: InboxMessage; onDeleted:
         <dt className="opacity-60">Received</dt>
         <dd>{formatDateTime(message.receivedAt)}</dd>
         <dt className="opacity-60">Checks</dt>
-        <dd className="flex gap-1">
+        <dd className="flex flex-wrap items-center gap-1">
           <Verdict label="SPF" value={message.auth.spf} />
           <Verdict label="DKIM" value={message.auth.dkim} />
           <Verdict label="DMARC" value={message.auth.dmarc} />
+          {message.parentMessageId && (
+            <span className="text-xs opacity-60">(of the forward it came in)</span>
+          )}
         </dd>
       </dl>
+      {message.forwardedMessages.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-1 text-sm font-medium">
+            Contains {message.forwardedMessages.length} forwarded email
+            {message.forwardedMessages.length === 1 ? '' : 's'}
+          </p>
+          <ul className="space-y-1">
+            {message.forwardedMessages.map(f => (
+              <li key={f.id} className="flex items-center gap-2 text-sm">
+                <EnvelopeIcon className="h-4 w-4 opacity-60" />
+                <button type="button" className="link text-left" onClick={() => onSelect(f.id)}>
+                  {linkLabel(f)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {message.error && <p className="mb-4 text-sm text-error">{message.error}</p>}
-      {message.attachments.length > 0 && (
+      {attachments.length > 0 && (
         <ul className="mb-4 space-y-1">
-          {message.attachments.map(a => (
+          {attachments.map(a => (
             <li key={a.id} className="flex items-center gap-2 text-sm">
               <PaperClipIcon className="h-4 w-4 opacity-60" />
               <a className="link" href={`/api/inbox/attachments/${a.id}`}>

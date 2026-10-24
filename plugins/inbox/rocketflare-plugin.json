@@ -146,8 +146,8 @@
   },
   "migrations": [
     "inbox_settings — one row per tenant (unique tenant_id) plus a GLOBALLY unique local_part, the sender allow-list and require_authentication; RLS policy",
-    "inbox_messages — one row per accepted message, raw bytes in R2; partial unique (tenant_id, message_id_header); RLS policy",
-    "inbox_attachments — one row per kept part, cascading with its message, bytes in R2; unique (tenant_id, message_id, sha256); RLS policy"
+    "inbox_messages — one row per accepted message, raw bytes in R2; partial unique (tenant_id, message_id_header); a message split out of a forward links its parent (parent_message_id, self-FK set null) with forwarded_by, forward_depth, source_sha256 and partial unique (tenant_id, parent_message_id, source_sha256); forwarded_count; RLS policy",
+    "inbox_attachments — one row per kept part, cascading with its message, bytes in R2; unique (tenant_id, message_id, sha256); expanded_message_id (FK set null) for an embedded message split into its own row; RLS policy"
   ],
   "subdir": "plugins/inbox"
 }

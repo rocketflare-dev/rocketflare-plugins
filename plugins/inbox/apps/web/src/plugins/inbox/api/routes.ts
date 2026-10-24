@@ -17,13 +17,14 @@ import {
   type InboxAuth,
   type InboxConfirmation,
   type InboxMessage,
+  type InboxMessageLink,
   type InboxMessageListQuery,
   type InboxMessageSummary,
   inboxMessageListQuerySchema,
   type UpdateInboxSettings,
   updateInboxSettingsSchema,
 } from '@rocketflare/shared/plugins/inbox/index'
-import { and, count, desc, eq, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, type SQL } from 'drizzle-orm'
 import type { RequestCtx } from '@/plugins/api'
 import {
   createRouter,
@@ -54,7 +55,28 @@ function toSummary(row: InboxMessageRow): InboxMessageSummary {
     receivedAt: row.receivedAt,
     attachmentCount: row.attachmentCount,
     rawSize: row.rawSize,
+    parentMessageId: row.parentMessageId,
+    forwardedBy: row.forwardedBy,
+    forwardedCount: row.forwardedCount,
   }
+}
+
+const linkColumns = {
+  id: inboxMessages.id,
+  subject: inboxMessages.subject,
+  fromAddress: inboxMessages.fromAddress,
+  fromName: inboxMessages.fromName,
+}
+
+/** The other messages one message links to — its wrapper, the emails split out of it. */
+async function loadLinks(ctx: RequestCtx, ids: readonly string[]): Promise<InboxMessageLink[]> {
+  if (ids.length === 0) return []
+  const rows = await ctx.db
+    .select(linkColumns)
+    .from(inboxMessages)
+    .where(and(eq(inboxMessages.tenantId, ctx.tenantId), inArray(inboxMessages.id, [...ids])))
+  const byId = new Map(rows.map(r => [r.id, r]))
+  return ids.flatMap(id => byId.get(id) ?? [])
 }
 
 function download(body: ReadableStream, contentType: string, filename: string, size?: number) {
@@ -153,6 +175,13 @@ inboxRouter.get('/messages/:id', async c => {
     .from(inboxAttachments)
     .where(and(eq(inboxAttachments.tenantId, ctx.tenantId), eq(inboxAttachments.messageId, row.id)))
     .orderBy(inboxAttachments.createdAt)
+  const forwardedIds = [
+    ...new Set(attachments.flatMap(a => (a.expandedMessageId ? [a.expandedMessageId] : []))),
+  ]
+  const [parent, forwardedMessages] = await Promise.all([
+    row.parentMessageId ? loadLinks(ctx, [row.parentMessageId]) : Promise.resolve([]),
+    loadLinks(ctx, forwardedIds),
+  ])
   const body: InboxMessage = {
     ...toSummary(row),
     messageIdHeader: row.messageIdHeader,
@@ -169,8 +198,11 @@ inboxRouter.get('/messages/:id', async c => {
         size: a.size,
         sha256: a.sha256,
         inline: a.inline,
+        expandedMessageId: a.expandedMessageId,
       })
     ),
+    parent: parent[0] ?? null,
+    forwardedMessages,
   }
   return c.json(body)
 })

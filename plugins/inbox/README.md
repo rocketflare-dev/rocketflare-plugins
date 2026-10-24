@@ -15,10 +15,11 @@ job. Other plugins subscribe to parsed messages through the `inbox:consumers` ex
 |---|---|
 | Email | A catch-all `emailHandlers` entry. Unknown addresses, senders that aren't allowed and failed authentication are bounced with a reason the forwarding mailbox shows |
 | UI | **Inbox**: messages, sender and forwarder, authentication verdicts, text body, attachments, raw/HTML downloads, reprocess and delete. **Settings → Inbox**: address, allow-list, require authentication, on/off |
+| Forward as attachment | Each `message/rfc822` part of a message (Gmail's "Forward as attachment", with or without a disposition) becomes a **message of its own**, linked to the forward it came in: its own sender, subject, date and attachments, the forward's authentication verdict, and who forwarded it. An embedded email already received is linked, not stored again. Nesting stops at 3 levels and 50 emails per message |
 | Forwarding | Gmail and Proton forwarding confirmations are let through before anyone is allow-listed, and their **code and link** are shown at the top of the message |
 | Knowledge | Each parsed message (headers + text) and its PDF/Office/HTML/text attachments are indexed into the kit's knowledge base (`inbox:message`, `inbox:attachment`), so chat can search your mail. Upserted on reprocess, removed on delete, switchable in Settings |
 | Agent tools | `inbox_list_messages` and `inbox_get_message`, both read-only |
-| Extension | `inbox:consumers`: a plugin contributes `{ id, onMessage(message, ctx) }` and is called once per parsed message, with attachment refs it reads through `readInboxAttachment` |
+| Extension | `inbox:consumers`: a plugin contributes `{ id, onMessage(message, ctx) }` and is called once per parsed message — so once per embedded email of a forward — with attachment refs it reads through `readInboxAttachment`, and `parentMessageId` / `forwardedBy` / `forwardedMessageIds` for forwarded mail |
 | API | `GET/PUT /api/inbox/settings`, `GET /api/inbox/messages`, `GET /api/inbox/messages/:id`, `…/:id/raw`, `…/:id/html`, `GET /api/inbox/attachments/:id`, `POST …/:id/reprocess`, `DELETE …/:id` |
 | Data | `inbox_settings`, `inbox_messages` and `inbox_attachments`, all with row-level security. Bytes live in R2 under `tenants/<id>/inbox/` and are purged with the tenant |
 | CLI | `rocketflare inbox list [--status]` and `rocketflare inbox status` |
@@ -73,3 +74,5 @@ Every member can read the inbox and its attachments. Owners and admins change th
 - No outbound replies.
 - The routing rule is a manual dashboard step; provisioning doesn't create it.
 - The HTML body is a download only and is never rendered in the app.
+- A message split out of a forward carries the forward's SPF/DKIM/DMARC verdict; its own signatures can't be checked once it has been re-wrapped.
+- Messages received before 3.7.0 aren't split until they are reprocessed.

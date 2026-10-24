@@ -9,10 +9,18 @@
  *   `tenants/<id>/inbox/<message id>/raw.eml` (purged with the tenant by the kit); the row carries
  *   what the list and the consumers need. `message_id_header` is unique per tenant when present,
  *   so a message delivered twice (two forwarding rules, a retried SMTP hand-off) is stored once.
- * - `inbox_attachments` — one row per extracted part, cascading with its message, bytes in R2.
+ *   A message that arrived as a `message/rfc822` part of another (Gmail's "Forward as
+ *   attachment") is a row of its own — a CHILD — linked by `parent_message_id`, carrying the
+ *   embedded email's own headers, the parent's authentication verdict and `forwarded_by`.
+ *   `(tenant_id, parent_message_id, source_sha256)` is unique, so a redelivered parse cannot
+ *   mint a second child for the same part.
+ * - `inbox_attachments` — one row per extracted part, cascading with its message, bytes in R2. An
+ *   embedded message's row keeps the original `.eml` and points at the message it became through
+ *   `expanded_message_id` — such a row is never handed to consumers or the knowledge base.
  */
 import { sql } from 'drizzle-orm'
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -75,6 +83,24 @@ export const inboxMessages = pgTable(
     attachmentCount: integer('attachment_count').notNull().default(0),
     error: text('error'),
     parsedAt: timestamp('parsed_at', { withTimezone: true }),
+    /**
+     * The message this one was forwarded inside (a `message/rfc822` part of it), else null.
+     * `set null`, not cascade: deleting the wrapper leaves the receipts it carried in place.
+     */
+    parentMessageId: uuid('parent_message_id').references((): AnyPgColumn => inboxMessages.id, {
+      onDelete: 'set null',
+    }),
+    /**
+     * Who forwarded a child — the parent's authenticated envelope sender (the top-level one, at
+     * any depth). The child's own SPF/DKIM/DMARC cannot be checked; it inherits the parent's.
+     */
+    forwardedBy: text('forwarded_by'),
+    /** 0 for mail that arrived on its own; a child is its parent's depth + 1 (capped). */
+    forwardDepth: integer('forward_depth').notNull().default(0),
+    /** SHA-256 of the embedded part a child was made from — its idempotency key with the parent. */
+    sourceSha256: text('source_sha256'),
+    /** How many embedded messages this one was split into (new children plus linked duplicates). */
+    forwardedCount: integer('forwarded_count').notNull().default(0),
     ...timestamps(),
   },
   table => [
@@ -83,6 +109,9 @@ export const inboxMessages = pgTable(
     uniqueIndex('inbox_messages_tenant_message_id_uidx')
       .on(table.tenantId, table.messageIdHeader)
       .where(sql`${table.messageIdHeader} IS NOT NULL`),
+    uniqueIndex('inbox_messages_tenant_parent_part_uidx')
+      .on(table.tenantId, table.parentMessageId, table.sourceSha256)
+      .where(sql`${table.parentMessageId} IS NOT NULL`),
     tenantIsolation('inbox_messages'),
   ]
 )
@@ -101,6 +130,13 @@ export const inboxAttachments = pgTable(
     sha256: text('sha256').notNull(),
     storageKey: text('storage_key').notNull(),
     inline: boolean('inline').notNull().default(false),
+    /**
+     * For an embedded `message/rfc822` part: the inbox message it was split into (a new child, or
+     * an earlier message with the same Message-ID). Null for an ordinary attachment.
+     */
+    expandedMessageId: uuid('expanded_message_id').references(() => inboxMessages.id, {
+      onDelete: 'set null',
+    }),
     ...timestamps(),
   },
   table => [

@@ -54,7 +54,7 @@ export function messageDocumentText(row: InboxMessageRow): string {
   const from = row.fromName ? `${row.fromName} <${row.fromAddress}>` : (row.fromAddress ?? '')
   return [
     `From: ${from}`,
-    `Forwarded by: ${row.envelopeFrom}`,
+    `Forwarded by: ${row.forwardedBy ?? row.envelopeFrom}`,
     row.sentAt ? `Date: ${row.sentAt.toISOString().slice(0, 10)}` : null,
     `Subject: ${row.subject ?? '(no subject)'}`,
     '',
