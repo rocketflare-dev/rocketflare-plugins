@@ -9,6 +9,29 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.7.0 — 2026-10-24
+
+**analytics** — No change to analytics. This release exists because `inbox` splits forwarded-as-attachment email into messages of their own, and every plugin here ships at the repository's version.
+[Porting note](plugins/analytics/docs/upgrades/3.7.0.md).
+
+**connectors** — No change to connectors. This release exists because `inbox` splits forwarded-as-attachment email into messages of their own, and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.7.0.md).
+
+**freeagent** — No code change to freeagent. The duplicated `docs/plugins/freeagent/upgrades/` copy inside the plugin directory, left there by `pnpm plugin export` in 3.6.0, is removed.
+[Porting note](plugins/freeagent/docs/upgrades/3.7.0.md).
+
+**inbox** — Forwarded-as-attachment email is split: each embedded `message/rfc822` part becomes an inbox message of its own, so consumers and the knowledge base see one message per forwarded email instead of an `.eml` attachment they skip.
+[Porting note](plugins/inbox/docs/upgrades/3.7.0.md).
+
+**issue-reports** — No change to issue-reports. This release exists because `inbox` splits forwarded-as-attachment email into messages of their own, and every plugin here ships at the repository's version.
+[Porting note](plugins/issue-reports/docs/upgrades/3.7.0.md).
+
+**m365** — No change to m365. This release exists because `inbox` splits forwarded-as-attachment email into messages of their own, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.7.0.md).
+
+**web-knowledge** — No change to web-knowledge. This release exists because `inbox` splits forwarded-as-attachment email into messages of their own, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.7.0.md).
+
 ## 3.6.0 — 2026-10-24
 
 **analytics** — No change to analytics: this release exists because `inbox` and `freeagent` ship for the first time, and every plugin here ships at the repository's version.
