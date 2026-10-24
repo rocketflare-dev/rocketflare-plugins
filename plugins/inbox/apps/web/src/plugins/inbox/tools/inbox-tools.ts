@@ -77,6 +77,8 @@ export function listInboxMessagesTool(ctx: ToolCtx): Tool<ListInboxMessagesInput
           receivedAt: r.receivedAt.toISOString(),
           attachments: r.attachmentCount,
           source: r.subaddress,
+          ...(r.parentMessageId && { forwardedInside: r.parentMessageId }),
+          ...(r.forwardedCount > 0 && { forwardedEmails: r.forwardedCount }),
         })),
       })
     },
@@ -128,7 +130,11 @@ export function getInboxMessageTool(ctx: ToolCtx): Tool<GetInboxMessageInput> {
         messageId: row.id,
         from: row.fromAddress,
         fromName: row.fromName,
-        forwardedBy: row.envelopeFrom,
+        forwardedBy: row.forwardedBy ?? row.envelopeFrom,
+        ...(row.parentMessageId && {
+          forwardedInside: row.parentMessageId,
+          context: 'Forwarded as an attachment of forwardedInside; read that message for context.',
+        }),
         subject: row.subject,
         sentAt: row.sentAt?.toISOString() ?? null,
         receivedAt: row.receivedAt.toISOString(),
@@ -140,12 +146,18 @@ export function getInboxMessageTool(ctx: ToolCtx): Tool<GetInboxMessageInput> {
         ...(row.status !== 'parsed' && {
           note: `This message is ${row.status}; the body may be empty.`,
         }),
-        attachments: attachments.map(a => ({
-          attachmentId: a.id,
-          filename: a.filename,
-          contentType: a.contentType,
-          size: a.size,
-        })),
+        attachments: attachments
+          .filter(a => !a.expandedMessageId)
+          .map(a => ({
+            attachmentId: a.id,
+            filename: a.filename,
+            contentType: a.contentType,
+            size: a.size,
+          })),
+        // Embedded emails split into messages of their own — read each with this tool.
+        forwardedMessageIds: attachments.flatMap(a =>
+          a.expandedMessageId ? [a.expandedMessageId] : []
+        ),
       })
     },
   })

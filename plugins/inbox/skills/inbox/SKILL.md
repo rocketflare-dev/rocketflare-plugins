@@ -38,7 +38,11 @@ Say, in this order: mail reaches the Worker only for addresses Email Routing sen
 dashboard rule); the inbox resolves the organisation from the local part; it accepts a message
 when the **forwarding mailbox or the original sender** is on the allow-list AND SPF, DKIM or DMARC
 passed; it stores the raw message in R2 and parses it in a queued job; attachments and the text
-body appear on the Inbox page; consumer plugins (e.g. a receipts matcher) are then called.
+body appear on the Inbox page; consumer plugins (e.g. a receipts matcher) are then called. A
+message forwarded **as an attachment** (Gmail's "Forward as attachment", several at once) is split:
+each embedded email becomes its own message — its own sender, subject and attachments, the
+forward's authentication verdict, "Forwarded inside …" linking back — and consumers see each one
+separately. An embedded email the organisation already has is linked, not stored twice.
 
 ## Mode: setup
 
@@ -64,7 +68,10 @@ body appear on the Inbox page; consumer plugins (e.g. a receipts matcher) are th
 3. Forward selectively: Gmail search for the mail you want (e.g. `from:(stripe.com) has:attachment`
    or `subject:(receipt OR invoice)`) → **Create filter** → **Forward it to** the inbox address.
    Use a `+tag` per source (`receipts+gmail@`) to see where each message came from.
-4. Make sure the Gmail address itself is in **Allowed senders** — Gmail forwards with your address
+4. Backfilling older receipts: select them in Gmail → ⋮ → **Forward as attachment** → the inbox
+   address. One message arrives and is split into one inbox message per receipt (up to 50 per
+   forward); only the forwarding mailbox needs to be allow-listed.
+5. Make sure the Gmail address itself is in **Allowed senders** — Gmail forwards with your address
    as the envelope sender, and passes SPF for gmail.com.
 
 ## Mode: forward-proton
@@ -94,4 +101,5 @@ body appear on the Inbox page; consumer plugins (e.g. a receipts matcher) are th
 | Bounce "This inbox is not accepting mail" | Accept mail is off | Settings → Inbox |
 | Nothing in `wrangler tail` at all | Email Routing never sent it to the Worker | The routing rule, or the subdomain's MX records |
 | Message `failed` | Parse error (corrupt MIME, R2 missing) | Inbox → Reprocess; read the error on the message |
+| A forward shows as one message with `.eml` files | It was parsed before inbox 3.7.0, or it is nested deeper than 3 levels, or it carried more than 50 emails (the message's error says so) | Reprocess it (3.7.0+) — children are made once, however often it runs |
 | Message parsed but a consumer did nothing | The consumer threw — the message's error names it | Fix the consumer, then Reprocess |

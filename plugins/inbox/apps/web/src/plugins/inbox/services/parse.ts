@@ -3,9 +3,16 @@
  * every consumer plugin. Safe to re-run (the reprocess route does exactly that): attachments are
  * unique per (message, sha256), the row is overwritten, and consumers are required to be
  * idempotent too.
+ *
+ * Every `message/rfc822` part is an attachment here (`forceRfc822Attachments`) — never merged into
+ * this message's body — and is then split into a child message of its own (`./forwarded.ts`). Its
+ * `.eml` row stays, pointing at the child through `expanded_message_id`, and is left out of what
+ * consumers and the knowledge base are given: the child is where that email is processed.
  */
 import {
   INBOX_EXTENSION_KEYS,
+  INBOX_FORWARD_MAX_CHILDREN,
+  INBOX_FORWARD_MAX_DEPTH,
   INBOX_MESSAGES_ENTITY,
   INBOX_TEXT_BODY_MAX,
   type InboxConfirmation,
@@ -16,6 +23,7 @@ import { z } from 'zod'
 import type { JobCtx } from '@/plugins/api'
 import { extensions } from '@/plugins/api/peers'
 import { type InboxMessageRow, inboxAttachments, inboxMessages, inboxSettings } from '../db/schema'
+import { EMBEDDED_MESSAGE_TYPE, type EmbeddedPart, expandEmbeddedMessage } from './forwarded'
 import { ingestMessage } from './knowledge'
 import { messagePrefix } from './receive'
 import {
@@ -50,7 +58,20 @@ export interface InboxParsedMessage {
   receivedAt: Date
   textBody: string | null
   hasHtmlBody: boolean
+  /**
+   * The ordinary attachments. An embedded email (`.eml`) that was split into a message of its own
+   * is NOT here — it reaches consumers as that message, once.
+   */
   attachments: readonly InboxAttachmentRef[]
+  /**
+   * Set when this message arrived as a `message/rfc822` part of another ("Forward as
+   * attachment"): the wrapper's id. Its authentication verdict is the wrapper's.
+   */
+  parentMessageId: string | null
+  /** Who forwarded it, for a message with a `parentMessageId`; null otherwise. */
+  forwardedBy: string | null
+  /** The messages split out of this one — each is delivered to consumers on its own. */
+  forwardedMessageIds: readonly string[]
 }
 
 /**
@@ -99,7 +120,8 @@ function toArrayBuffer(content: ArrayBuffer | Uint8Array | string): ArrayBuffer 
 
 export function toParsedMessage(
   row: InboxMessageRow,
-  attachments: readonly InboxAttachmentRef[]
+  attachments: readonly InboxAttachmentRef[],
+  forwardedMessageIds: readonly string[] = []
 ): InboxParsedMessage {
   return {
     tenantId: row.tenantId,
@@ -115,6 +137,9 @@ export function toParsedMessage(
     textBody: row.textBody,
     hasHtmlBody: row.htmlKey !== null,
     attachments,
+    parentMessageId: row.parentMessageId,
+    forwardedBy: row.forwardedBy,
+    forwardedMessageIds,
   }
 }
 
@@ -145,7 +170,9 @@ export async function parseMessage(
     return
   }
   const raw = await new Response(object.body).arrayBuffer()
-  const email = await PostalMime.parse(raw)
+  // Every embedded message is a part of its own, with or without a Content-Disposition: inlined,
+  // a forwarded receipt would be merged into this body and never seen on its own.
+  const email = await PostalMime.parse(raw, { forceRfc822Attachments: true })
 
   const prefix = messagePrefix(tenantId, messageId)
   let htmlKey: string | null = null
@@ -155,13 +182,22 @@ export async function parseMessage(
   }
 
   const kept: InboxAttachmentRef[] = []
+  const embedded: (EmbeddedPart & { ref: InboxAttachmentRef })[] = []
+  const failures: string[] = []
+  // Confirmations are never split, and a message at the depth cap keeps its parts as attachments.
+  const mayExpand = row.kind === 'message' && row.forwardDepth < INBOX_FORWARD_MAX_DEPTH
+  let overflow = 0
   for (const [index, part] of (email.attachments ?? []).entries()) {
     const bytes = toArrayBuffer(part.content)
     const contentType = (part.mimeType || 'application/octet-stream').toLowerCase()
     const inline = part.disposition === 'inline' || Boolean(part.related)
-    if (!keepPart({ inline, contentType, size: bytes.byteLength })) continue
+    const isEmbedded = contentType === EMBEDDED_MESSAGE_TYPE
+    if (!isEmbedded && !keepPart({ inline, contentType, size: bytes.byteLength })) continue
     const sha256 = await sha256Hex(bytes)
-    const filename = safeFilename(part.filename, `attachment-${index + 1}`)
+    const filename = safeFilename(
+      part.filename,
+      isEmbedded ? `forwarded-${index + 1}.eml` : `attachment-${index + 1}`
+    )
     const attachmentId = crypto.randomUUID()
     const storageKey = `${prefix}/attachments/${sha256.slice(0, 16)}-${filename}`
     await storage.put(storageKey, bytes, { contentType })
@@ -185,16 +221,44 @@ export async function parseMessage(
         set: { filename, contentType, storageKey, inline },
       })
       .returning()
-    if (saved) {
-      kept.push({
-        id: saved.id,
-        filename: saved.filename,
-        contentType: saved.contentType,
-        size: saved.size,
-        sha256: saved.sha256,
-        inline: saved.inline,
-      })
+    if (!saved) continue
+    const ref: InboxAttachmentRef = {
+      id: saved.id,
+      filename: saved.filename,
+      contentType: saved.contentType,
+      size: saved.size,
+      sha256: saved.sha256,
+      inline: saved.inline,
     }
+    if (isEmbedded && mayExpand) {
+      if (embedded.length < INBOX_FORWARD_MAX_CHILDREN) {
+        embedded.push({ bytes, sha256, ref })
+        continue
+      }
+      overflow += 1
+    }
+    kept.push(ref)
+  }
+
+  // Split each embedded email into a message of its own, and point its `.eml` row at it.
+  const forwardedMessageIds: string[] = []
+  for (const part of embedded) {
+    const outcome = await expandEmbeddedMessage(ctx, row, part)
+    if (outcome.status === 'skipped') {
+      kept.push(part.ref)
+      continue
+    }
+    forwardedMessageIds.push(outcome.messageId)
+    await ctx.db
+      .update(inboxAttachments)
+      .set({ expandedMessageId: outcome.messageId })
+      .where(and(eq(inboxAttachments.tenantId, tenantId), eq(inboxAttachments.id, part.ref.id)))
+  }
+  if (overflow > 0) {
+    ctx.logger.warn({ messageId, overflow }, 'inbox.parse: too many forwarded emails to split')
+    failures.push(
+      `${overflow} forwarded email(s) beyond the first ${INBOX_FORWARD_MAX_CHILDREN} were kept as attachments`
+    )
   }
 
   const text = email.text ?? null
@@ -226,6 +290,7 @@ export async function parseMessage(
       htmlKey,
       confirmation,
       attachmentCount: kept.length,
+      forwardedCount: forwardedMessageIds.length,
       error: null,
       parsedAt: new Date(),
     })
@@ -233,8 +298,7 @@ export async function parseMessage(
     .returning()
 
   if (updated && updated.kind === 'message') {
-    const failures: string[] = []
-    const parsed = toParsedMessage(updated, kept)
+    const parsed = toParsedMessage(updated, kept, forwardedMessageIds)
     for (const consumer of consumers) {
       try {
         await consumer.onMessage(parsed, ctx)
@@ -251,12 +315,12 @@ export async function parseMessage(
     if (settings?.ingestToKnowledge ?? true) {
       failures.push(...(await ingestMessage(ctx, updated, kept, settings)))
     }
-    if (failures.length > 0) {
-      await ctx.db
-        .update(inboxMessages)
-        .set({ error: failures.join('; ').slice(0, 2000) })
-        .where(and(eq(inboxMessages.tenantId, tenantId), eq(inboxMessages.id, messageId)))
-    }
+  }
+  if (failures.length > 0) {
+    await ctx.db
+      .update(inboxMessages)
+      .set({ error: failures.join('; ').slice(0, 2000) })
+      .where(and(eq(inboxMessages.tenantId, tenantId), eq(inboxMessages.id, messageId)))
   }
   await ctx.nudge(tenantId, INBOX_MESSAGES_ENTITY, messageId)
 }

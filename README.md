@@ -63,6 +63,12 @@ expects: `classifyPluginFile` refuses any path outside `apps/web/src/plugins/<id
 subdir prefix has been stripped. A plugin ships **no migration, no wrangler toml and no
 `package.json`** — those three are the host's, always.
 
+A plugin's release notes live in `plugins/<id>/docs/upgrades/` and nowhere else. `pnpm plugin add`
+copies them to the host's `docs/plugins/<id>/upgrades/`, and `pnpm plugin export` copies that host
+directory back verbatim. After an export, delete `plugins/<id>/docs/plugins/`
+(`find plugins -path '*docs/plugins*'` should print nothing): that copy duplicates the notes at the
+same host path, and it is how 3.6.0 shipped two of them.
+
 ## The plugin API
 
 A plugin's compatibility with a kit is **observed, not declared**. `pnpm plugin export` derives the

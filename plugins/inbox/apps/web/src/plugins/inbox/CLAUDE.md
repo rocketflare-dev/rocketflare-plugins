@@ -18,9 +18,26 @@ Inbound email for an organisation: Cloudflare Email Routing → the kit's `email
   `nosniff`; the UI shows the text body only. These are bytes a stranger chose.
 - **Parse is idempotent.** Attachments are unique per (message, sha256) and upserted, so a
   reprocess keeps attachment ids a consumer may have stored. Consumers must be idempotent too.
+- **Forwarded as attachment** (`services/forwarded.ts`): postal-mime runs with
+  `forceRfc822Attachments`, so every `message/rfc822` part — with or without a disposition — is
+  an attachment, never merged into the parent body. Each becomes a CHILD message: its own row
+  (`parent_message_id`, `forward_depth`, `source_sha256`), its own R2 prefix, the embedded
+  headers (read from the header block only), the PARENT's `auth` (the inner signatures cannot be
+  verified) and `forwarded_by` (the top-level envelope sender), then its own `inbox.parse`. The
+  parent keeps the `.eml` row with `expanded_message_id` set; such rows are excluded from consumer
+  `attachments`, knowledge and the parent's `attachment_count`. Idempotency is the unique
+  `(tenant_id, parent_message_id, source_sha256)` index plus the per-tenant Message-ID index (an
+  email already received is LINKED, not stored again) — never memory. Caps:
+  `INBOX_FORWARD_MAX_DEPTH` (3; at the cap parts stay plain `.eml`s) and
+  `INBOX_FORWARD_MAX_CHILDREN` (50 per message; the rest stay attachments and the message's
+  `error` says so). A child still `received` when its parent is re-run is re-enqueued, so a
+  failed enqueue cannot strand it — consumers must tolerate the rare second call. Deleting a
+  parent leaves its children (`parent_message_id` is `set null`); each is deleted on its own.
 - **Consumers** (`InboxConsumer`, exported from `index.ts`) are called for `kind = 'message'` only,
-  never for forwarding confirmations. A consumer's throw is logged and written to the message's
-  `error`; it does not stop the others and does not retry the job.
+  never for forwarding confirmations — once per message, so once per embedded email (a child
+  carries `parentMessageId`/`forwardedBy`; a parent lists `forwardedMessageIds`). A consumer's
+  throw is logged and written to the message's `error`; it does not stop the others and does not
+  retry the job.
 - **Knowledge** (`services/knowledge.ts`): after consumers, a parsed message (headers + text) and
   each non-image attachment are ingested with `source: 'inbox:message' | 'inbox:attachment'` and the
   row's id as `externalId` — upserts, so a reprocess is safe. Best-effort: failures land on the

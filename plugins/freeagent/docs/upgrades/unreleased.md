@@ -12,11 +12,18 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+No code change to freeagent. The duplicated `docs/plugins/freeagent/upgrades/` copy inside the plugin directory, left there by `pnpm plugin export` in 3.6.0, is removed.
+
+- A host's `docs/plugins/freeagent/upgrades/` now comes only from the plugin's `docs/upgrades/`, its one canonical home. The duplicate could put a stale `unreleased.md` (`previous: null`) at the same host path.
 
 ## How to apply
 
+1. `pnpm plugin upgrade freeagent --apply`. It changes the version stamps and the release notes under `docs/plugins/freeagent/upgrades/`.
+
 ## Conflicts to expect
 
+None.
+
 ## Verify
+
+1. `pnpm plugin check` reports `freeagent` checks out at the new version.
