@@ -33,6 +33,7 @@ import {
   validate,
 } from '@/plugins/api'
 import { type InboxMessageRow, inboxAttachments, inboxMessages } from '../db/schema'
+import { forgetMessage } from '../services/knowledge'
 import { messagePrefix } from '../services/receive'
 import { loadSettings, saveSettings, toSettings } from './settings'
 
@@ -223,6 +224,17 @@ inboxRouter.delete('/messages/:id', async c => {
   const ctx: RequestCtx = requestCtx(c)
   ctx.guard('delete', INBOX_MESSAGE_SUBJECT)
   const row = await loadMessage(ctx, ctx.uuid('id'))
+  const attachmentIds = await ctx.db
+    .select({ id: inboxAttachments.id })
+    .from(inboxAttachments)
+    .where(and(eq(inboxAttachments.tenantId, ctx.tenantId), eq(inboxAttachments.messageId, row.id)))
+  // Knowledge first: its documents are found by these ids, which the cascade is about to remove.
+  await forgetMessage(
+    ctx,
+    ctx.tenantId,
+    row.id,
+    attachmentIds.map(a => a.id)
+  )
   await ctx.db
     .delete(inboxMessages)
     .where(and(eq(inboxMessages.tenantId, ctx.tenantId), eq(inboxMessages.id, row.id)))

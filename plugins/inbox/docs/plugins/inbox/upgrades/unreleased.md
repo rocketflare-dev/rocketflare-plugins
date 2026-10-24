@@ -1,0 +1,37 @@
+---
+version: unreleased
+previous: null
+date: null
+breaking: false
+migrations:
+  - inbox_settings — one row per tenant plus a globally unique local_part, the sender allow-list and require_authentication; RLS policy
+  - inbox_messages — one row per accepted message (raw bytes in R2), partial unique (tenant_id, message_id_header); RLS policy
+  - inbox_attachments — one row per kept part, cascading with its message (bytes in R2), unique (tenant_id, message_id, sha256); RLS policy
+areas: [api, ui, cli]
+touches_surfaces: []
+requires_surfaces: []
+manual: true
+---
+
+## What changed
+
+First release of `inbox`: organisations receive forwarded email through Cloudflare Email Routing, with an allow-list, authentication checks, parsed attachments, forwarding-confirmation codes and a consumer extension for other plugins.
+
+- The plugin claims the kit's `emailHandlers` catch-all and resolves the organisation from the recipient's local part (`inbox_settings.local_part`).
+- `inbox.parse` extracts the text body, the HTML body (to R2) and attachments, recognises Gmail and Proton forwarding confirmations, and calls every `inbox:consumers` contribution.
+- UI: an Inbox page and Settings → Inbox; CLI: `rocketflare inbox list|status`; agent tools `inbox_list_messages` and `inbox_get_message`.
+
+## How to apply
+
+1. Install with `pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@<version> --subdir plugins/inbox --apply` on a kit at 0.22.0 or later (the release that added the `emailHandlers` slot).
+2. Run `pnpm db:generate --name plugin-inbox-<version>`, read the SQL (three `CREATE TABLE`s and their policies), then `pnpm db:migrate`.
+3. Route an address to the Worker in Cloudflare Email Routing and choose the same local part in Settings → Inbox — the `inbox` skill (`/inbox setup`) walks both.
+
+## Conflicts to expect
+
+None — a first release adds files only.
+
+## Verify
+
+1. `pnpm plugin check` passes.
+2. `pnpm gate` passes, including `src/plugins/inbox/tests/api/inbox.test.ts`.

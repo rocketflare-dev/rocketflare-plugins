@@ -19,7 +19,9 @@
     "apps/cli/src/plugins/index.ts"
   ],
   "requires": {
-    "surfaces": [],
+    "surfaces": [
+      "feature-knowledge"
+    ],
     "plugins": []
   },
   "uses": {
@@ -27,15 +29,19 @@
       "createRouter",
       "Database",
       "defineTool",
+      "deleteIngestedDocument",
       "EMAIL_CATCH_ALL",
       "emailCtx",
       "EmailCtx",
       "emailLocalPart",
       "emailSubaddress",
+      "ingestDocument",
+      "ingestDocumentFile",
       "isUniqueViolation",
       "jobCtx",
       "JobCtx",
       "JobHandler",
+      "PluginContext",
       "recordActivity",
       "requestCtx",
       "RequestCtx",
@@ -46,6 +52,7 @@
       "validate"
     ],
     "@/plugins/api/peers": [
+      "allTables",
       "extensions"
     ],
     "@/plugins/api/ui-wiring": [
@@ -75,6 +82,7 @@
       "tenantIsolation",
       "tenantRef",
       "tenants",
+      "tenantUsers",
       "timestamps",
       "users"
     ],

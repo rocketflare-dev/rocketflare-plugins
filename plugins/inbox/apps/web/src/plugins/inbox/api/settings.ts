@@ -26,6 +26,7 @@ export function toSettings(row: InboxSettingsRow | undefined): InboxSettings {
     localPart: row?.localPart ?? null,
     allowedSenders: row?.allowedSenders ?? [],
     requireAuthentication: row?.requireAuthentication ?? true,
+    ingestToKnowledge: row?.ingestToKnowledge ?? true,
     updatedAt: row?.updatedAt ?? null,
   }
 }
@@ -45,6 +46,7 @@ export async function saveSettings(
     ...(body.requireAuthentication !== undefined && {
       requireAuthentication: body.requireAuthentication,
     }),
+    ...(body.ingestToKnowledge !== undefined && { ingestToKnowledge: body.ingestToKnowledge }),
     updatedByUserId: userId,
   }
   const [row] = await db

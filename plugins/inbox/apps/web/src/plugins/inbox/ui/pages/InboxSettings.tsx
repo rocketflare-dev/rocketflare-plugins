@@ -51,6 +51,7 @@ function SettingsForm({ settings }: { settings: Settings }) {
   const [localPart, setLocalPart] = useState(settings.localPart ?? '')
   const [senders, setSenders] = useState(settings.allowedSenders.join('\n'))
   const [requireAuth, setRequireAuth] = useState(settings.requireAuthentication)
+  const [ingest, setIngest] = useState(settings.ingestToKnowledge)
 
   const parsedSenders = parseSenders(senders)
   const badSender = parsedSenders.find(s => !INBOX_SENDER_RE.test(s))
@@ -67,6 +68,7 @@ function SettingsForm({ settings }: { settings: Settings }) {
         ...(localPart && { localPart }),
         allowedSenders: parsedSenders,
         requireAuthentication: requireAuth,
+        ingestToKnowledge: ingest,
       },
       {
         onSuccess: () => showToast('Inbox settings saved', 'success'),
@@ -119,6 +121,14 @@ function SettingsForm({ settings }: { settings: Settings }) {
         description="Refuse mail unless SPF, DKIM or DMARC passed. Leave on: it is what stops anyone forging an allowed sender."
         checked={requireAuth}
         onChange={setRequireAuth}
+        disabled={!canManage}
+      />
+      <SettingToggle
+        id="inbox-knowledge"
+        label="Add to knowledge base"
+        description="Index each message and its PDF or document attachments so chat and agents can search them. Deleting a message removes it from search too."
+        checked={ingest}
+        onChange={setIngest}
         disabled={!canManage}
       />
       <SettingToggle

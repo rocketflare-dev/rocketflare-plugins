@@ -34,6 +34,8 @@ export const inboxSettings = pgTable(
     localPart: text('local_part'),
     allowedSenders: text('allowed_senders').array().notNull().default(sql`'{}'::text[]`),
     requireAuthentication: boolean('require_authentication').notNull().default(true),
+    /** Index each parsed message and its documents into the knowledge base (chat can search it). */
+    ingestToKnowledge: boolean('ingest_to_knowledge').notNull().default(true),
     updatedByUserId: uuid('updated_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),

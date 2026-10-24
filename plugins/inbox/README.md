@@ -16,6 +16,7 @@ job. Other plugins subscribe to parsed messages through the `inbox:consumers` ex
 | Email | A catch-all `emailHandlers` entry. Unknown addresses, senders that aren't allowed and failed authentication are bounced with a reason the forwarding mailbox shows |
 | UI | **Inbox**: messages, sender and forwarder, authentication verdicts, text body, attachments, raw/HTML downloads, reprocess and delete. **Settings → Inbox**: address, allow-list, require authentication, on/off |
 | Forwarding | Gmail and Proton forwarding confirmations are let through before anyone is allow-listed, and their **code and link** are shown at the top of the message |
+| Knowledge | Each parsed message (headers + text) and its PDF/Office/HTML/text attachments are indexed into the kit's knowledge base (`inbox:message`, `inbox:attachment`), so chat can search your mail. Upserted on reprocess, removed on delete, switchable in Settings |
 | Agent tools | `inbox_list_messages` and `inbox_get_message`, both read-only |
 | Extension | `inbox:consumers`: a plugin contributes `{ id, onMessage(message, ctx) }` and is called once per parsed message, with attachment refs it reads through `readInboxAttachment` |
 | API | `GET/PUT /api/inbox/settings`, `GET /api/inbox/messages`, `GET /api/inbox/messages/:id`, `…/:id/raw`, `…/:id/html`, `GET /api/inbox/attachments/:id`, `POST …/:id/reprocess`, `DELETE …/:id` |
@@ -27,7 +28,7 @@ job. Other plugins subscribe to parsed messages through the `inbox:consumers` ex
 
 - Rocketflare kit **0.22.0** or later (the `emailHandlers` slot and `storage()` on background contexts).
 - The receiving domain on Cloudflare, with Email Routing enabled and a rule that sends the address to the Worker.
-- The kit's `FILES` (R2) and `JOBS_QUEUE` bindings, which every kit app already has.
+- The kit's `FILES` (R2) and `JOBS_QUEUE` bindings, which every kit app already has, and its knowledge surface (`feature-knowledge`) for indexing.
 
 ## Install
 

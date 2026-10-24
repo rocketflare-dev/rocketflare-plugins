@@ -18,6 +18,12 @@ import type { SharedPlugin } from '../types'
 
 export const INBOX_ID = 'inbox'
 
+/** Knowledge-base `source` values (D34): one per kind, each unique by `externalId`. */
+export const INBOX_KNOWLEDGE_SOURCES = {
+  message: `${INBOX_ID}:message`,
+  attachment: `${INBOX_ID}:attachment`,
+} as const
+
 /** The job that turns a stored raw message into bodies, attachments and consumer calls. */
 export const INBOX_PARSE_JOB = 'inbox.parse'
 
@@ -87,6 +93,8 @@ export const inboxSettingsSchema = z.object({
   allowedSenders: z.array(z.string()),
   /** Refuse mail whose SPF, DKIM and DMARC all failed or are missing (off only for local tests). */
   requireAuthentication: z.boolean(),
+  /** Index parsed messages and their PDF/document attachments into the knowledge base. */
+  ingestToKnowledge: z.boolean(),
   updatedAt: z.coerce.date().nullable(),
 })
 export type InboxSettings = z.infer<typeof inboxSettingsSchema>
@@ -109,6 +117,7 @@ export const updateInboxSettingsSchema = z
       )
       .max(INBOX_MAX_ALLOWED_SENDERS),
     requireAuthentication: z.boolean(),
+    ingestToKnowledge: z.boolean(),
   })
   .partial()
   .refine(body => Object.keys(body).length > 0, { message: 'Nothing to update' })

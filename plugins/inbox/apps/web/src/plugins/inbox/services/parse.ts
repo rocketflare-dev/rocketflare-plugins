@@ -15,7 +15,8 @@ import PostalMime from 'postal-mime'
 import { z } from 'zod'
 import type { JobCtx } from '@/plugins/api'
 import { extensions } from '@/plugins/api/peers'
-import { type InboxMessageRow, inboxAttachments, inboxMessages } from '../db/schema'
+import { type InboxMessageRow, inboxAttachments, inboxMessages, inboxSettings } from '../db/schema'
+import { ingestMessage } from './knowledge'
 import { messagePrefix } from './receive'
 import {
   extractConfirmation,
@@ -241,6 +242,14 @@ export async function parseMessage(
         ctx.logger.error({ err, consumer: consumer.id, messageId }, 'inbox: consumer failed')
         failures.push(`${consumer.id}: ${err instanceof Error ? err.message : String(err)}`)
       }
+    }
+    const [settings] = await ctx.db
+      .select()
+      .from(inboxSettings)
+      .where(eq(inboxSettings.tenantId, tenantId))
+      .limit(1)
+    if (settings?.ingestToKnowledge ?? true) {
+      failures.push(...(await ingestMessage(ctx, updated, kept, settings)))
     }
     if (failures.length > 0) {
       await ctx.db

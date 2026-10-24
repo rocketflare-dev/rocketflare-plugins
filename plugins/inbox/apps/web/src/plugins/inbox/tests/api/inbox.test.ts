@@ -19,6 +19,7 @@ import {
 import { makeEmailCtx, makeJobCtx } from '@testkit/unit'
 import { and, eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { allTables } from '@/plugins/api/peers'
 import { inboxAttachments, inboxMessages } from '../../db/schema'
 import type { InboxConsumer, InboxParsedMessage } from '../../index'
 import { parseMessage, readInboxAttachment } from '../../services/parse'
@@ -314,6 +315,79 @@ describe('receive', () => {
     })
     // A confirmation is not mail anybody subscribed to.
     expect(seen).toEqual([])
+  })
+})
+
+describe('knowledge base', () => {
+  const { documents } = allTables()
+
+  async function docsFor(externalIds: string[]) {
+    const rows = await db
+      .select({ source: documents.source, externalId: documents.externalId })
+      .from(documents)
+      .where(eq(documents.tenantId, tenantId))
+    return rows.filter(r => r.externalId && externalIds.includes(r.externalId))
+  }
+
+  it('ingests the message and its PDF, and forgets both when the message is deleted', async () => {
+    const env = createTestEnv()
+    const outcome = await receiveMessage(
+      message(mime({ subject: 'Knowledge receipt' }), {
+        from: 'me@gmail.com',
+        to: `${localPart}@example.test`,
+      }),
+      makeEmailCtx({ db, env })
+    )
+    if (outcome.status !== 'stored') throw new Error('not stored')
+    await parseMessage(makeJobCtx({ db, env }), tenantId, outcome.messageId, [])
+    const [att] = await db
+      .select()
+      .from(inboxAttachments)
+      .where(
+        and(
+          eq(inboxAttachments.tenantId, tenantId),
+          eq(inboxAttachments.messageId, outcome.messageId)
+        )
+      )
+    const ids = [outcome.messageId, att?.id ?? '']
+    expect((await docsFor(ids)).map(d => d.source).sort()).toEqual([
+      'inbox:attachment',
+      'inbox:message',
+    ])
+
+    // A reprocess upserts: still one document each.
+    await parseMessage(makeJobCtx({ db, env }), tenantId, outcome.messageId, [])
+    expect(await docsFor(ids)).toHaveLength(2)
+
+    const res = await request(
+      `${BASE}/messages/${outcome.messageId}`,
+      { method: 'DELETE', headers: ownerCookie },
+      { env }
+    )
+    expect(res.status).toBe(204)
+    expect(await docsFor(ids)).toEqual([])
+  })
+
+  it('ingests nothing when the organisation turned it off', async () => {
+    const off = await request(
+      `${BASE}/settings`,
+      { method: 'PUT', headers: ownerCookie },
+      { json: { ingestToKnowledge: false } }
+    )
+    expect(await json(off)).toMatchObject({ ingestToKnowledge: false })
+    const env = createTestEnv()
+    const outcome = await receiveMessage(
+      message(mime({}), { from: 'me@gmail.com', to: `${localPart}@example.test` }),
+      makeEmailCtx({ db, env })
+    )
+    if (outcome.status !== 'stored') throw new Error('not stored')
+    await parseMessage(makeJobCtx({ db, env }), tenantId, outcome.messageId, [])
+    expect(await docsFor([outcome.messageId])).toEqual([])
+    await request(
+      `${BASE}/settings`,
+      { method: 'PUT', headers: ownerCookie },
+      { json: { ingestToKnowledge: true } }
+    )
   })
 })
 

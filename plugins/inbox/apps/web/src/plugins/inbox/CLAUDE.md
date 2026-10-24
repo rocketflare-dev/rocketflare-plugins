@@ -21,6 +21,11 @@ Inbound email for an organisation: Cloudflare Email Routing → the kit's `email
 - **Consumers** (`InboxConsumer`, exported from `index.ts`) are called for `kind = 'message'` only,
   never for forwarding confirmations. A consumer's throw is logged and written to the message's
   `error`; it does not stop the others and does not retry the job.
+- **Knowledge** (`services/knowledge.ts`): after consumers, a parsed message (headers + text) and
+  each non-image attachment are ingested with `source: 'inbox:message' | 'inbox:attachment'` and the
+  row's id as `externalId` — upserts, so a reprocess is safe. Best-effort: failures land on the
+  message's `error`, never fail the job. Files need an owner: the settings' last editor, else the
+  oldest owner. Deleting a message calls `forgetMessage` BEFORE the rows go (the ids are the keys).
 - **Forwarding confirmations** (Gmail's `forwarding-noreply@google.com`, Proton domains) are
   accepted before the allow-list names anyone — that is the only way to read the code — but must
   still authenticate. Logic and tables: `services/rules.ts`, `tests/config/rules.test.ts`.

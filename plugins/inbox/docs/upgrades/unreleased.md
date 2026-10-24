@@ -4,12 +4,12 @@ previous: null
 date: null
 breaking: false
 migrations:
-  - inbox_settings — one row per tenant plus a globally unique local_part, the sender allow-list and require_authentication; RLS policy
+  - inbox_settings — one row per tenant plus a globally unique local_part, the sender allow-list, require_authentication and ingest_to_knowledge; RLS policy
   - inbox_messages — one row per accepted message (raw bytes in R2), partial unique (tenant_id, message_id_header); RLS policy
   - inbox_attachments — one row per kept part, cascading with its message (bytes in R2), unique (tenant_id, message_id, sha256); RLS policy
 areas: [api, ui, cli]
 touches_surfaces: []
-requires_surfaces: []
+requires_surfaces: [feature-knowledge]
 manual: true
 ---
 
@@ -19,6 +19,7 @@ First release of `inbox`: organisations receive forwarded email through Cloudfla
 
 - The plugin claims the kit's `emailHandlers` catch-all and resolves the organisation from the recipient's local part (`inbox_settings.local_part`).
 - `inbox.parse` extracts the text body, the HTML body (to R2) and attachments, recognises Gmail and Proton forwarding confirmations, and calls every `inbox:consumers` contribution.
+- Parsed messages and their document attachments are indexed into the knowledge base (`inbox:message`, `inbox:attachment`), upserted on reprocess and removed on delete; Settings → Inbox can turn it off.
 - UI: an Inbox page and Settings → Inbox; CLI: `rocketflare inbox list|status`; agent tools `inbox_list_messages` and `inbox_get_message`.
 
 ## How to apply
