@@ -278,7 +278,7 @@ describe('receive', () => {
     const [row] = await db
       .select()
       .from(inboxMessages)
-      .where(eq(inboxMessages.id, outcome.messageId))
+      .where(and(eq(inboxMessages.tenantId, tenantId), eq(inboxMessages.id, outcome.messageId)))
     expect(row).toMatchObject({ fromAddress: 'billing@aws.example', fromName: 'AWS' })
   })
 
@@ -380,7 +380,10 @@ describe('routes and tenant isolation', () => {
       { env }
     )
     expect(deleted.status).toBe(404)
-    const [row] = await db.select().from(inboxMessages).where(eq(inboxMessages.id, messageId))
+    const [row] = await db
+      .select()
+      .from(inboxMessages)
+      .where(and(eq(inboxMessages.tenantId, tenantId), eq(inboxMessages.id, messageId)))
     expect(row).toBeDefined()
   })
 
@@ -397,7 +400,10 @@ describe('routes and tenant isolation', () => {
       { env }
     )
     expect(res.status).toBe(204)
-    const [row] = await db.select().from(inboxMessages).where(eq(inboxMessages.id, messageId))
+    const [row] = await db
+      .select()
+      .from(inboxMessages)
+      .where(and(eq(inboxMessages.tenantId, tenantId), eq(inboxMessages.id, messageId)))
     expect(row).toBeUndefined()
     const left = await stubs(env).files.list({ prefix: `tenants/${tenantId}/inbox/${messageId}/` })
     expect(left.objects).toHaveLength(0)
