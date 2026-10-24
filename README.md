@@ -20,6 +20,7 @@ sees what and its known gaps. They are also published at
 | [**connectors**](plugins/connectors/README.md) | Organisation connections: admin consent once, then directory and calendar sync every 15 minutes; Settings → Connections, My calendar, CLI and the `connectors` setup skill | kit 0.13.0 and a provider |
 | [**m365**](plugins/m365/README.md) | Microsoft 365 as a `connectors` provider: Entra admin consent, app-only Graph delta sync of users, groups and calendars | kit 0.12.0 and `connectors` |
 | [**issue-reports**](plugins/issue-reports/README.md) | Ideas & issues: anyone talks a bug or an idea through with an agent that asks until it is clear, checks for a duplicate, and logs it as a GitHub issue (or a comment) once they approve the draft | kit 0.21.0 and a GitHub token |
+| [**inbox**](plugins/inbox/README.md) | Inbound email through Cloudflare Email Routing: per-organisation address and sender allow-list, SPF/DKIM/DMARC checks, parsed bodies and attachments, Gmail/Proton forwarding-confirmation codes, an Inbox page, CLI, read-only agent tools, and an `inbox:consumers` extension other plugins build on | kit 0.22.0 and Email Routing on the domain |
 
 ## Installing one
 

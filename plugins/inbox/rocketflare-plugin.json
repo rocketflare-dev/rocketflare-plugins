@@ -1,0 +1,145 @@
+{
+  "id": "inbox",
+  "label": "Inbox",
+  "version": "3.5.1",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "minKit": "0.22.0",
+  "anchor": "apps/web/src/plugins/inbox/plugin.json",
+  "paths": [
+    "apps/web/src/plugins/inbox/**",
+    "packages/shared/src/plugins/inbox/**",
+    "apps/cli/src/plugins/inbox/**",
+    "docs/plugins/inbox/**"
+  ],
+  "registries": [
+    "apps/web/src/plugins/server.ts",
+    "apps/web/src/plugins/ui.ts",
+    "apps/web/src/plugins/schema.ts",
+    "packages/shared/src/plugins/index.ts",
+    "apps/cli/src/plugins/index.ts"
+  ],
+  "requires": {
+    "surfaces": [],
+    "plugins": []
+  },
+  "uses": {
+    "@/plugins/api": [
+      "createRouter",
+      "Database",
+      "defineTool",
+      "EMAIL_CATCH_ALL",
+      "emailCtx",
+      "EmailCtx",
+      "emailLocalPart",
+      "emailSubaddress",
+      "isUniqueViolation",
+      "jobCtx",
+      "JobCtx",
+      "JobHandler",
+      "recordActivity",
+      "requestCtx",
+      "RequestCtx",
+      "ServerPlugin",
+      "Tool",
+      "toolCtx",
+      "ToolCtx",
+      "validate"
+    ],
+    "@/plugins/api/peers": [
+      "extensions"
+    ],
+    "@/plugins/api/ui-wiring": [
+      "NavGuard",
+      "UiPlugin"
+    ],
+    "@/plugins/api/ui": [
+      "api",
+      "ApiError",
+      "ConfirmModal",
+      "EmptyState",
+      "formatBytes",
+      "formatDateTime",
+      "PageHeader",
+      "PaginationControls",
+      "SectionPanel",
+      "SectionPanelSkeleton",
+      "SettingInput",
+      "SettingRow",
+      "SettingToggle",
+      "showToast",
+      "SkeletonRows",
+      "timeAgo",
+      "usePermissions"
+    ],
+    "@/db/schema/kit": [
+      "tenantIsolation",
+      "tenantRef",
+      "tenants",
+      "timestamps",
+      "users"
+    ],
+    "'../api' (apps/cli/src/plugins/api.ts)": [
+      "CliPlugin",
+      "CommandContext",
+      "formatDate",
+      "renderTable",
+      "requireClient"
+    ],
+    "@testkit/integration": [
+      "createTestEnv",
+      "createTestSession",
+      "createTestTenant",
+      "createTestUser",
+      "json",
+      "linkUserToTenant",
+      "request",
+      "sessionCookieHeader",
+      "setupTestDatabase",
+      "stubs"
+    ],
+    "@testkit/unit": [
+      "makeEmailCtx",
+      "makeJobCtx"
+    ],
+    "@rocketflare/shared/jobs": [
+      "JobOf"
+    ],
+    "@rocketflare/shared/pagination": [
+      "paginatedResponse",
+      "paginationQuerySchema"
+    ],
+    "@rocketflare/shared/plugins/types": [
+      "SharedPlugin"
+    ]
+  },
+  "dependencies": {
+    "apps/web": {
+      "postal-mime": "^4.1.4"
+    },
+    "packages/shared": {},
+    "apps/cli": {}
+  },
+  "bindings": [],
+  "crons": [],
+  "apiPrefixes": [],
+  "coreEdits": [],
+  "vars": [],
+  "workerExports": [],
+  "skills": [
+    "inbox"
+  ],
+  "schema": {
+    "tables": [
+      "inbox_settings",
+      "inbox_messages",
+      "inbox_attachments"
+    ],
+    "rlsExcluded": []
+  },
+  "migrations": [
+    "inbox_settings — one row per tenant (unique tenant_id) plus a GLOBALLY unique local_part, the sender allow-list and require_authentication; RLS policy",
+    "inbox_messages — one row per accepted message, raw bytes in R2; partial unique (tenant_id, message_id_header); RLS policy",
+    "inbox_attachments — one row per kept part, cascading with its message, bytes in R2; unique (tenant_id, message_id, sha256); RLS policy"
+  ],
+  "subdir": "plugins/inbox"
+}
