@@ -39,7 +39,7 @@ analytics now compiles on React 19 with React Router 7 as well as on React 18 wi
 
 ## Verify
 
-1. `rg -c "'@nivo/heatmap'" apps/web/vite.config.ts` prints `1`, and the line uses `import.meta.dirname`.
+1. `rg -c "'@nivo/heatmap': path.resolve\(" apps/web/vite.config.ts` prints `1`, and `rg -c __dirname apps/web/vite.config.ts` prints nothing.
 2. `pnpm gate` passes and prints no `(!)` warning about `configLoader: 'native'`.
 3. `pnpm --filter @rocketflare/web why drizzle-cube` resolves `0.12.2` only.
 4. On a dashboard whose date filter was edited and saved in the editor, the page date control still changes every mapped chart.
