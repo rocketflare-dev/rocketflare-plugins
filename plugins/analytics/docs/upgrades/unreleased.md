@@ -29,8 +29,11 @@ analytics now compiles on React 19 with React Router 7 as well as on React 18 wi
 ## How to apply
 
 1. Run `pnpm plugin upgrade analytics --apply`. It replaces the changed source, test and skill files, the `'@nivo/heatmap'` line in `apps/web/vite.config.ts`, and the `drizzle-cube` pin in `apps/web/package.json`.
-2. Run `pnpm install`.
-3. Existing Organisation Overview pages keep the old mapping and show the warning on "Recent Members". To fix one, a member with manage Dashboard resets it: `POST /api/analytics/pages/:id/reset`, or `POST /api/analytics/templates/recreate` for every template page in the organisation. A reset discards that page's own edits, so skip it for a page the organisation has customised and remap the card in the editor instead.
+2. Run `pnpm exec biome format --write apps/web/vite.config.ts`. The upgrade writes the new alias as one line that is too long for Biome, and `pnpm gate` fails its lint step until the file is formatted.
+3. Run `pnpm install`.
+4. Pages saved before this release keep the old "Recent Members" mapping and show drizzle-cube's warning that the date filter does not narrow the card. This covers Organisation Overview template pages and any page copied from one.
+   - A template page: a member with manage Dashboard resets it with `POST /api/analytics/pages/:id/reset`, or resets every template page in the organisation with `POST /api/analytics/templates/recreate`. A reset discards that page's own edits.
+   - A customised or user-created page: in the grid editor, open the card's filter settings (the funnel icon) and set "Apply to field" for "Date Range" to "Joined" (`TenantUsers.joinedAt`). The grid editor needs a dashboard at least 1200 px wide.
 
 ## Conflicts to expect
 
