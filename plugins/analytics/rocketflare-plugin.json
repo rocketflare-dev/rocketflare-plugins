@@ -173,7 +173,7 @@
       "file": "apps/web/vite.config.ts",
       "after": "'@': path.resolve(",
       "lines": [
-        "'@nivo/heatmap': path.resolve(__dirname, './src/plugins/analytics/ui/lib/nivo-heatmap.tsx'),"
+        "'@nivo/heatmap': path.resolve(import.meta.dirname, './src/plugins/analytics/ui/lib/nivo-heatmap.tsx'),"
       ]
     }
   ],

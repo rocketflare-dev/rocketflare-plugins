@@ -87,12 +87,7 @@ describe('date filter — pure helpers', () => {
 describe('useDashboardDateFilter — URL sync', () => {
   function setup(initial = '/analytics/x') {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <MemoryRouter
-        initialEntries={[initial]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        {children}
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[initial]}>{children}</MemoryRouter>
     )
     return renderHook(() => ({ filter: useDashboardDateFilter(), location: useLocation() }), {
       wrapper,
