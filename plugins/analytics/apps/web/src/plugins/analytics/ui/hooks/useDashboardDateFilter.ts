@@ -6,8 +6,8 @@
  * override copies of every universal-time filter with the new `values`, and drizzle-cube merges
  * them into the dashboard by filter id (`AnalyticsDashboard dashboardFilters`). Only strings the
  * server's relative-range parser recognises are ever emitted (`last N days`, or an ISO pair):
- * an unknown string is not a harmless no-op — drizzle-cube drops the condition and silently
- * queries all time — so anything unparseable in the URL falls back to the default.
+ * the server rejects anything else with a 400, so anything unparseable in the URL falls back to
+ * the default.
  */
 import type { DashboardConfig } from 'drizzle-cube/client'
 import { useCallback, useMemo } from 'react'
@@ -78,9 +78,11 @@ export function dateRangeValue(state: DateFilterState): DateRangeValue {
 }
 
 /**
- * Overrides for every `isUniversalTime` filter in `config` carrying `range` as its values —
- * drizzle-cube merges them by `id`, so portlets mapped to the filter follow the page control and
- * portlets with their own window (a "last 30 days" KPI) are untouched. Pure — unit-tested.
+ * Overrides for every `isUniversalTime` filter in `config` carrying `range` as its values and its
+ * `dateRange` — drizzle-cube merges them by `id`, so portlets mapped to the filter follow the page
+ * control and portlets with their own window (a "last 30 days" KPI) are untouched. `dateRange`
+ * must be overridden too: drizzle-cube reads it before `values`, and its filter editor saves one.
+ * Pure — unit-tested.
  */
 export function dashboardDateFilters(
   config: Pick<DashboardConfig, 'filters'> | undefined,
@@ -89,7 +91,7 @@ export function dashboardDateFilters(
   const values = Array.isArray(range) ? range : [range]
   return (config?.filters ?? [])
     .filter(f => f.isUniversalTime && f.id)
-    .map(f => ({ ...f, filter: { ...f.filter, values } }))
+    .map(f => ({ ...f, filter: { ...f.filter, values, dateRange: range } }))
 }
 
 /** Human label for the control's current value. */

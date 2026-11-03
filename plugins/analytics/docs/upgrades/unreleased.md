@@ -22,6 +22,7 @@ analytics now compiles on React 19 with React Router 7 as well as on React 18 wi
   - A `timeDimensions` entry without `granularity` filters and no longer groups, so the Organisation Overview "Active Users (30d)" KPI is one distinct count over 30 days.
   - A date string drizzle-cube cannot parse, an unknown operator, or a measure filter in an ungrouped query is a 400 instead of being dropped.
 - `dashboards/general-templates/tenant-overview.ts`: the Organisation Overview "Recent Members" table pins the date filter to `TenantUsers.joinedAt`. It has no `timeDimensions`, so the filter never narrowed it, and drizzle-cube 0.10.1 and later shows a warning on such a card. `tests/config/all-templates.test.ts` now fails a portlet mapped to a universal time filter it cannot reach.
+- `ui/hooks/useDashboardDateFilter.ts`: the page date control overrides the universal time filter's `dateRange` as well as its `values`. drizzle-cube reads `dateRange` first, and its filter editor saves one, so after anyone edited a dashboard's date filter the 7/30/90-day control stopped changing that dashboard.
 - The `analytics*` skills, `README.md` and the dashboard docs name 0.12.2 and its query rules.
 
 ## How to apply
@@ -41,4 +42,5 @@ analytics now compiles on React 19 with React Router 7 as well as on React 18 wi
 1. `rg -c "'@nivo/heatmap'" apps/web/vite.config.ts` prints `1`, and the line uses `import.meta.dirname`.
 2. `pnpm gate` passes and prints no `(!)` warning about `configLoader: 'native'`.
 3. `pnpm --filter @rocketflare/web why drizzle-cube` resolves `0.12.2` only.
-4. On a reset Organisation Overview page, "Recent Members" shows no warning and follows the date control.
+4. On a dashboard whose date filter was edited and saved in the editor, the page date control still changes every mapped chart.
+5. On a reset Organisation Overview page, "Recent Members" shows no warning and follows the date control.

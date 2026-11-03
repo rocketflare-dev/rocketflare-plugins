@@ -82,6 +82,32 @@ describe('date filter — pure helpers', () => {
     // The source config is not mutated
     expect(TEMPLATE_CONFIG.filters[0].filter.values).toEqual(['last 90 days'])
   })
+
+  it('overrides a saved dateRange too, which drizzle-cube reads before values', () => {
+    const saved = {
+      filters: [
+        {
+          id: 'time-filter',
+          label: 'Date Range',
+          isUniversalTime: true,
+          filter: {
+            member: '__universal_time__',
+            operator: 'inDateRange' as const,
+            values: ['last 30 days'],
+            dateRange: 'last 30 days',
+          },
+        },
+      ],
+    }
+    expect(dashboardDateFilters(saved, 'last 7 days')[0]?.filter).toMatchObject({
+      values: ['last 7 days'],
+      dateRange: 'last 7 days',
+    })
+    expect(dashboardDateFilters(saved, ['2025-01-01', '2025-01-31'])[0]?.filter).toMatchObject({
+      values: ['2025-01-01', '2025-01-31'],
+      dateRange: ['2025-01-01', '2025-01-31'],
+    })
+  })
 })
 
 describe('useDashboardDateFilter — URL sync', () => {
