@@ -9,6 +9,29 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.8.1 — 2026-11-03
+
+**analytics** — `GET /api/analytics/facts/status` reports only the caller's organisation. It used to read `MAX()` across every tenant, so an organisation's admin saw when any other organisation last had activity, and a busy tenant could hide another's stale fact table.
+[Porting note](plugins/analytics/docs/upgrades/3.8.1.md).
+
+**connectors** — No change to connectors. This release exists because `analytics` scopes `GET /api/analytics/facts/status` to the caller's organisation, and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.8.1.md).
+
+**freeagent** — No change to freeagent. This release exists because `analytics` scopes `GET /api/analytics/facts/status` to the caller's organisation, and every plugin here ships at the repository's version.
+[Porting note](plugins/freeagent/docs/upgrades/3.8.1.md).
+
+**inbox** — No change to inbox. This release exists because `analytics` scopes `GET /api/analytics/facts/status` to the caller's organisation, and every plugin here ships at the repository's version.
+[Porting note](plugins/inbox/docs/upgrades/3.8.1.md).
+
+**issue-reports** — No change to issue-reports. This release exists because `analytics` scopes `GET /api/analytics/facts/status` to the caller's organisation, and every plugin here ships at the repository's version.
+[Porting note](plugins/issue-reports/docs/upgrades/3.8.1.md).
+
+**m365** — No change to m365. This release exists because `analytics` scopes `GET /api/analytics/facts/status` to the caller's organisation, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.8.1.md).
+
+**web-knowledge** — No change to web-knowledge. This release exists because `analytics` scopes `GET /api/analytics/facts/status` to the caller's organisation, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.8.1.md).
+
 ## 3.8.0 — 2026-11-03
 
 **analytics** — analytics now compiles on React 19 with React Router 7 as well as on React 18 with Router 6, so a host can move to either. Imports stay on `react-router-dom`. drizzle-cube moves from 0.8.3 to 0.12.2, which declares React 19 and fixes a stored XSS in markdown portlets (GHSA-g3qv-p2w6-c95h).
