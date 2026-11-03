@@ -285,7 +285,7 @@ analyticsPagesRouter.post('/templates/recreate', async c => {
 analyticsPagesRouter.get('/facts/status', async c => {
   const ctx: RequestCtx = requestCtx(c)
   guardFactTables(ctx, 'read fact-table status')
-  return c.json({ items: await checkFactTableFreshness(ctx.db) })
+  return c.json({ items: await checkFactTableFreshness(ctx.db, ctx.tenantId) })
 })
 
 /**

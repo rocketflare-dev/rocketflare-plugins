@@ -1,10 +1,12 @@
 /**
- * Fact-table freshness (D19): for each registry entry compare the newest source row
- * (`MAX(source.timestampColumn)`) with the newest rebuild (`MAX(fact_refreshed_at)`). `lagSeconds`
+ * Fact-table freshness (D19): for each registry entry compare one tenant's newest source row
+ * (`MAX(source.timestampColumn)`) with its newest rebuild (`MAX(fact_refreshed_at)`), both
+ * filtered on `tenant_id` — never across tenants, which would show one organisation another's
+ * activity and let a busy tenant hide a stale one. `lagSeconds`
  * is how long the newest source row has waited for a refresh — 0 when the fact table is newer than
  * the source; `stale` when that exceeds 2× the table's refresh interval (one missed cron is fine,
  * two is not). A table never built while the source has rows is measured against `now`.
- * Read by `GET /api/analytics/facts/status` (admin+) and `scripts/check-fact-table-freshness.ts`.
+ * Read by `GET /api/analytics/facts/status` (admin+) and so `rocketflare analytics check-facts`.
  */
 import type { FactTableStatus } from '@rocketflare/shared/plugins/analytics/index'
 import { sql } from 'drizzle-orm'
@@ -51,13 +53,17 @@ export function computeFreshness(
 
 export async function checkFactTableFreshness(
   db: Database,
+  tenantId: string,
   now: Date = new Date()
 ): Promise<FactTableStatus[]> {
   const out: FactTableStatus[] = []
+  const ofTenant = sql`where tenant_id = ${tenantId}`
   for (const def of factTables()) {
+    const { table, source } = def
+    const newest = source.timestampColumn
     const [refreshedAt, sourceMaxAt] = await Promise.all([
-      maxOf(db, sql`select max(fact_refreshed_at) as max_ts from ${def.table}`),
-      maxOf(db, sql`select max(${def.source.timestampColumn}) as max_ts from ${def.source.table}`),
+      maxOf(db, sql`select max(fact_refreshed_at) as max_ts from ${table} ${ofTenant}`),
+      maxOf(db, sql`select max(${newest}) as max_ts from ${source.table} ${ofTenant}`),
     ])
     out.push(computeFreshness(def, refreshedAt, sourceMaxAt, now))
   }

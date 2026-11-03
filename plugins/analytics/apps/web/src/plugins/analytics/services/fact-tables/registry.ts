@@ -2,7 +2,8 @@
  * Fact-table registry (D19, D31) — the ONE list that `refresh.ts`, `freshness.ts` and the `:15`
  * cron task (`api/scheduled.ts`) iterate. Adding a fact table = a schema file under
  * `db/schema/facts/`, a `queries/<name>.ts` SELECT builder, and one entry here. Every table
- * carries `tenant_id` (rebuilt per tenant) and `fact_refreshed_at` (the freshness watermark).
+ * carries `tenant_id` (rebuilt per tenant) and `fact_refreshed_at` (the freshness watermark), and
+ * every `source.table` carries `tenant_id` too: freshness filters both on it.
  *
  */
 import type { SQL } from 'drizzle-orm'
