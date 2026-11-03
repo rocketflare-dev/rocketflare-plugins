@@ -9,7 +9,7 @@ argument-hint: "[add-measure <Cube> | new-cube <table> | fact-table <name> | con
 Cubes live in `apps/web/src/plugins/analytics/cubes/`, one file per cube. They are registered in
 `cubes/index.ts` (`ANALYTICS_CUBES`, then `allCubes()`) and served per request by
 `api/routes/cube-api.ts`. **Read `cubes/CLAUDE.md` before you write anything.** `reference.md`
-beside this file has the drizzle-cube **0.8.3** API: measure and dimension types, join shapes and
+beside this file has the drizzle-cube **0.12.2** API: measure and dimension types, join shapes and
 the event-stream metadata.
 
 **Ground rules, in every mode:**
@@ -27,7 +27,7 @@ the event-stream metadata.
 1. The app runs (`pnpm dev`) and the test database is up (`pnpm test:db:up`).
 2. The plugin is healthy: the `analytics` skill, **Health** mode.
 
-## The shape of a cube in this app (0.8.3)
+## The shape of a cube in this app (0.12.2)
 
 ```ts
 import type { BaseQueryDefinition, Cube, QueryContext } from 'drizzle-cube/server'
@@ -65,7 +65,7 @@ export const ordersCube: Cube = defineCube('Orders', {   // name is the FIRST ar
 
 **Warning for anyone reading generic drizzle-cube examples**, including the upstream
 `dc-cube-definition` skill: they show `defineCube({ name, sql: securityContext => eq(...) })`,
-`sql: () => column` and `filters: [{ sql: () => … }]`. Those forms **do not type-check on 0.8.3**,
+`sql: () => column` and `filters: [{ sql: () => … }]`. Those forms **do not type-check on 0.12.2**,
 or on the current 0.9.x. In this app:
 - the name is the first argument;
 - `sql` returns `{ from, where }`;
@@ -208,7 +208,7 @@ cd apps/web && NODE_ENV=test pnpm exec dotenv -e .env.test -- vitest run --proje
 | Symptom | Cause | Fix |
 |---|---|---|
 | `Cube query without a tenant in the security context` | a cube was queried outside the route, e.g. from a script | only query through `/cubejs-api` or `/mcp`; the route builds the security context |
-| Type error on `defineCube({ name: … })` or `filters: [{ sql }]` | generic or upstream example syntax | use the 0.8.3 shape above |
+| Type error on `defineCube({ name: … })` or `filters: [{ sql }]` | generic or upstream example syntax | use the 0.12.2 shape above |
 | 400 on a table-style (ungrouped) query that mixes two cubes | a declared `hasMany` between them | declare the `belongsTo` side only |
 | isolation test: "keys differ from allCubes()" | a new cube with no case | add the case |
 | a tenant sees rows it shouldn't | the tenant predicate is missing, or on the wrong column, or a join reaches an unscoped table | fix `sql`; every cube reached through a join needs its own predicate |
@@ -218,6 +218,6 @@ cd apps/web && NODE_ENV=test pnpm exec dotenv -e .env.test -- vitest run --proje
 ## Sources
 
 - drizzle-cube docs, cube definitions: https://www.drizzle-cube.dev
-- drizzle-cube 0.8.3 types, checked against the published package (`npm pack drizzle-cube@0.8.3`: `dist/server/cube-utils.d.ts` `defineCube(name, definition)`, `dist/server/types/cube.d.ts` `Measure.filters: Array<(ctx) => SQL>`, `CubeJoin`): https://www.npmjs.com/package/drizzle-cube/v/0.8.3
+- drizzle-cube 0.12.2 types, checked against the published package (`npm pack drizzle-cube@0.12.2`: `dist/server/cube-utils.d.ts` `defineCube(name, definition)`, `dist/server/types/cube.d.ts` `Measure.filters: Array<(ctx) => SQL>`, `CubeJoin`): https://www.npmjs.com/package/drizzle-cube/v/0.12.2
 - Upstream skill this adapts (MIT, generic syntax corrected above): https://github.com/cliftonc/drizzle-cube-plugin/blob/main/skills/dc-cube-definition/SKILL.md
 - This app: `apps/web/src/plugins/analytics/cubes/CLAUDE.md`, `services/fact-tables/CLAUDE.md`, `extensions.ts`, `testing.ts`

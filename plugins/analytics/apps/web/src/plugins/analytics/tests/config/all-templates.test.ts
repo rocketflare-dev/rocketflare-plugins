@@ -212,6 +212,28 @@ describe.each(CASES)('%s template', (id, config: DashboardConfig) => {
     }
   })
 
+  it('lets every portlet mapped to a universal time filter reach it', () => {
+    const universal = new Set((config.filters ?? []).filter(f => f.isUniversalTime).map(f => f.id))
+    for (const p of portlets) {
+      const query = JSON.parse(p.query ?? '{}') as { timeDimensions?: unknown[] }
+      for (const entry of p.dashboardFilterMapping ?? []) {
+        const filterId = typeof entry === 'string' ? entry : entry.filterId
+        if (!universal.has(filterId)) continue
+        const member = typeof entry === 'string' ? undefined : entry.member
+        if (member) {
+          expect(KNOWN_MEMBERS.has(member), `${id} portlet ${p.id} pins unknown ${member}`).toBe(
+            true
+          )
+        } else {
+          expect(
+            query.timeDimensions?.length ?? 0,
+            `${id} portlet ${p.id} needs timeDimensions or a member for ${filterId}`
+          ).toBeGreaterThan(0)
+        }
+      }
+    }
+  })
+
   it('keeps gauges out of rows too short to draw them', () => {
     const rowOf = new Map<string, number>()
     const groupById = new Map(groups.map(g => [g.id, g]))

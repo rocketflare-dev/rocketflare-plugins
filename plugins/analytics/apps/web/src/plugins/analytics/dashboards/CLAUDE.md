@@ -6,8 +6,9 @@ categories are folders (`general-templates/`), each exporting `Record<key, Dashb
 
 - Read `DASHBOARD_PATTERNS.md` before writing one — the layout gotchas there are silent at runtime.
 - `layoutMode: 'rows'` + explicit `rows` (widths sum to 12); `groups` for KPI strips; one
-  `isUniversalTime` filter; `recordsTable` needs `ungrouped: true`; portlet x/y/w/h must mirror the
-  rows. `tests/config/all-templates.test.ts` (config project, no DB) asserts all of it AND that
+  `isUniversalTime` filter, pinned to a `member` on portlets without `timeDimensions`;
+  `recordsTable` needs `ungrouped: true`; portlet x/y/w/h must mirror the rows.
+  `tests/config/all-templates.test.ts` (config project, no DB) asserts all of it AND that
   every `Cube.member` in a portlet query exists in `allCubes()`; the cube isolation test
   additionally executes every portlet query against Postgres.
 - Member names are frozen: a template references `Cube.measure` strings that are also stored in

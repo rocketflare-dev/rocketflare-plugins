@@ -27,7 +27,7 @@ one is malformed.
 
 - Rocketflare kit **0.17.1** or later (`minKit`; earlier plugin releases support older kits).
 - No other plugin, no bindings and no secrets.
-- npm dependencies the install adds to `apps/web`: `drizzle-cube` (pinned 0.8.3), `recharts`, `d3`,
+- npm dependencies the install adds to `apps/web`: `drizzle-cube` (pinned 0.12.2), `recharts`, `d3`,
   `react-grid-layout`, `react-is`.
 
 ## Install
@@ -78,7 +78,7 @@ is an optional complement.
 
 ## Known gaps
 
-- drizzle-cube is pinned to 0.8.3; newer drizzle-cube features (for example the MCP chart tool) are
+- drizzle-cube is pinned to 0.12.2; newer drizzle-cube features (for example the MCP chart tool) are
   not enabled.
 - One example fact table; anything else you model is yours to add (the `analytics-cubes` skill
   walks through it).

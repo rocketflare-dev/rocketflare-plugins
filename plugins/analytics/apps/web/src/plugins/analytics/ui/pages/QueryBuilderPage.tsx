@@ -87,7 +87,7 @@ function SavePortletModal({
 }: {
   open: boolean
   onClose: () => void
-  builder: React.RefObject<AnalysisBuilderRef>
+  builder: React.RefObject<AnalysisBuilderRef | null>
 }) {
   const navigate = useNavigate()
   const pages = useAnalyticsPages()

@@ -3,7 +3,8 @@
  * no chart code: the grid editor, portlet editor, drill-down and charts are the library's. This
  * component owns the glue — the page config as local state (seeded from the row, re-seeded when
  * the server row changes and nothing is dirty, e.g. after a reset), the page-level date range
- * applied as `dashboardFilters` overrides of the template's `isUniversalTime` filter, and
+ * applied as `dashboardFilters` overrides of the template's `isUniversalTime` filter (and a change
+ * made in drizzle-cube's own filter bar handed back to the page through `onRangeChange`), and
  * autosave: in edit mode every `onConfigChange` schedules a debounced whole-config PATCH
  * (`useAutosaveDashboardConfig`), `onSave` (the editor's explicit save) flushes it, leaving edit
  * mode flushes it, and while anything is unsaved a `beforeunload` guard warns the reader.
@@ -17,13 +18,19 @@ import { AnalyticsDashboard, type DashboardConfig } from 'drizzle-cube/client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { LoadingIndicator } from '@/plugins/api/ui'
 import { useAutosaveDashboardConfig } from '../hooks/useAnalyticsPages'
-import { type DateRangeValue, dashboardDateFilters } from '../hooks/useDashboardDateFilter'
+import {
+  type DashboardFilter,
+  type DateRangeValue,
+  dashboardDateFilters,
+} from '../hooks/useDashboardDateFilter'
 
 interface DashboardLoaderProps {
   page: AnalyticsPage
   /** Edit mode (admin+, `manage Dashboard`) — the caller has already checked the ability. */
   editing: boolean
   range: DateRangeValue
+  /** A universal-time filter value chosen in drizzle-cube's filter bar. */
+  onRangeChange?: (value: unknown) => void
   onDirtyChange?: (dirty: boolean) => void
 }
 
@@ -32,7 +39,13 @@ export function asDashboardConfig(config: DashboardConfigJson): DashboardConfig 
   return config as unknown as DashboardConfig
 }
 
-export function DashboardLoader({ page, editing, range, onDirtyChange }: DashboardLoaderProps) {
+export function DashboardLoader({
+  page,
+  editing,
+  range,
+  onRangeChange,
+  onDirtyChange,
+}: DashboardLoaderProps) {
   const [config, setConfig] = useState<DashboardConfig>(() => asDashboardConfig(page.config))
   const autosave = useAutosaveDashboardConfig(page.id)
   const { dirty, flush, schedule } = autosave
@@ -82,12 +95,22 @@ export function DashboardLoader({ page, editing, range, onDirtyChange }: Dashboa
 
   const dashboardFilters = useMemo(() => dashboardDateFilters(config, range), [config, range])
 
+  const handleFiltersChange = useCallback(
+    (filters: DashboardFilter[], changedFilterId: string) => {
+      const changed = filters.find(f => f.id === changedFilterId)
+      if (!changed?.isUniversalTime || !('member' in changed.filter)) return
+      onRangeChange?.(changed.filter.dateRange ?? changed.filter.values)
+    },
+    [onRangeChange]
+  )
+
   return (
     <div data-testid="dashboard-loader" data-dirty={dirty} data-editing={editing}>
       <AnalyticsDashboard
         config={config}
         editable={editing}
         dashboardFilters={dashboardFilters}
+        onDashboardFiltersChange={handleFiltersChange}
         onConfigChange={handleConfigChange}
         onSave={editing ? handleSave : undefined}
         loadingComponent={<LoadingIndicator size="lg" centered />}

@@ -26,7 +26,7 @@ a tenant id, and you never could. Any member may query (`read Analytics`).
    - Never paste a key into a file that gets committed, and never echo a full key in a transcript.
 3. The plugin is healthy: the `analytics` skill, **Health** mode.
 
-## The query language (0.8.3)
+## The query language (0.12.2)
 
 A query is JSON. Field names are always `CubeName.member`, exactly two parts. Get the real names
 from `/meta` or the MCP `discover` tool; never guess them.
@@ -43,25 +43,32 @@ from `/meta` or the MCP `discover` tool; never guess them.
 ```
 
 - **Filtering by date is not grouping by date.** This is the most common mistake.
-  - "Total events in the last 30 days" needs a `filters` entry with `inDateRange`, and no
-    `timeDimensions`.
+  - "Total events in the last 30 days" needs a `filters` entry with `inDateRange`. A
+    `timeDimensions` entry with a `dateRange` and no `granularity` does the same: it filters and
+    does not group.
   - "Events per week" needs `timeDimensions` with a `granularity`, and a `dateRange` on it if you
     want a window.
+- **Missing time buckets are not filled.** `/load` and MCP `load` return only the buckets that
+  have rows; the dashboards fill the gaps themselves. For a zero row per empty bucket, set
+  `"fillMissingDates": true` on the time dimension.
 - **Granularities:** `second`, `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`.
-- **Relative ranges that are always understood:** `'last 7 days'`, `'last 30 days'`, `'last 90 days'`,
-  or an ISO pair `["2026-01-01", "2026-03-31"]`. An unrecognised relative string makes drizzle-cube
-  drop the condition and query all time, so the dashboards stick to those forms.
+- **Relative ranges, lower case only:** `'today'`, `'yesterday'`, `'tomorrow'`,
+  `'last N days|weeks|months|quarters|years'`, `'this|last|next week|month|quarter|year'`, or an
+  ISO pair `["2026-01-01", "2026-03-31"]`. Anything else (`'past 90 days'`) is a 400.
 - **Filter operators:**
   - comparison: `equals`, `notEquals`, `gt`, `gte`, `lt`, `lte`, `between`, `notBetween`
-  - text: `contains`, `notContains`, `startsWith`, `endsWith`, `like`, `ilike`, `regex`
+  - text: `contains`, `notContains`, `startsWith`, `notStartsWith`, `endsWith`, `notEndsWith`,
+    `like`, `ilike`, `regex`
   - sets and nulls: `in`, `notIn`, `set`, `notSet`, `isEmpty`, `isNotEmpty`
   - dates: `inDateRange`, `beforeDate`, `afterDate`
   - arrays: `arrayContains`, `arrayOverlaps`, `arrayContained`
 
-  `values` is always an array, even for one value.
+  `values` is always an array, even for one value. `set`, `notSet`, `isEmpty` and `isNotEmpty`
+  take none. An unknown operator is a 400.
 - **AND / OR groups:** `{ "type": "or", "filters": [ …, … ] }`, and groups can nest.
 - **Joins are automatic:** ask for `Users.email` next to `ActivityEvents.count` and it joins.
-- **Raw rows instead of aggregates:** add `"ungrouped": true`, with dimensions only.
+- **Raw rows instead of aggregates:** add `"ungrouped": true`, with dimensions only, and filter
+  on dimensions only: a measure filter in an ungrouped query is a 400.
 - **Comparing periods:** give the time dimension a `compareDateRange` (a list of ranges).
 - **Analysis modes** work on event-stream cubes (`ActivityEvents`):
   - `{ "funnel": { "bindingKey", "timeDimension", "steps": [ … ] } }`: conversion between steps, at
@@ -209,7 +216,7 @@ The key sits in plain text in that config file. Make it a dedicated key, and rev
 | 403 from `/mcp` in a browser-based client | drizzle-cube rejects browser `Origin`s it doesn't know; loopback and no-Origin clients (Claude Code, `mcp-remote`, curl) are allowed | use one of those clients. Allowing a browser origin means setting `mcp.allowedOrigins` in `api/routes/cube-api.ts`, which is a code change and needs review |
 | HTML instead of JSON | `/cubejs-api` or `/mcp` is missing from `run_worker_first` or the Vite proxy | the `analytics` skill, Health |
 | 400 `Unknown member …` | a guessed field name | copy names from `/meta` or `discover` |
-| totals look like all time | an unrecognised relative date string was dropped | use `last N days` or an ISO pair |
+| 400 naming a date range | a relative date string drizzle-cube does not parse | use `last N days` or an ISO pair |
 | numbers lag reality on `TenantActivityDaily` | the fact table rebuilds hourly at `:15` | `pnpm cli analytics check-facts`, then `refresh-facts` (admin) |
 | a cube missing from `/meta` | its feature is off for this organisation (`FEATURE_CUBES`) | turn the feature on for the tenant, or query another cube |
 
@@ -221,5 +228,5 @@ The key sits in plain text in that config file. Make it a dedicated key, and rev
 - No Bearer-header field for custom connectors: https://github.com/anthropics/claude-ai-mcp/issues/112
 - `mcp-remote` (`--header`, the no-space workaround, `--allow-http` for trusted private networks only, `-y` when npx prompts, Node 18+): https://github.com/geelen/mcp-remote
 - drizzle-cube docs: https://www.drizzle-cube.dev
-- drizzle-cube 0.8.3 package (routes in `dist/adapters/hono`: meta, load, sql, dry-run, explain, batch; MCP tools discover, validate, load; `MCPOptions.allowedOrigins` defaults; `FilterOperator` and `TimeGranularity` in `dist/server/types`): https://www.npmjs.com/package/drizzle-cube/v/0.8.3
+- drizzle-cube 0.12.2 package (routes in `dist/adapters/hono`: meta, load, sql, dry-run, explain, batch; MCP tools discover, validate, load; `MCPOptions.allowedOrigins` defaults; `FilterOperator` and `TimeGranularity` in `dist/server/types`): https://www.npmjs.com/package/drizzle-cube/v/0.12.2
 - Upstream skill this adapts (MIT): https://github.com/cliftonc/drizzle-cube-plugin/blob/main/skills/dc-query-building/SKILL.md

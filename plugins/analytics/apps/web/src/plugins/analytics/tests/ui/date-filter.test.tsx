@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import {
   dashboardDateFilters,
   dateFilterParams,
+  dateFilterStateOf,
   dateRangeLabel,
   dateRangeValue,
   parseDateFilterParams,
@@ -38,8 +39,48 @@ describe('date filter — pure helpers', () => {
       'range=custom&from=2025-01-31&to=2025-01-01', // inverted
       'range=custom&from=yesterday&to=2025-01-01',
       'range=custom&from=2025-13-40&to=2025-12-31',
+      'range=rel',
+      'range=rel&rel=past%2090%20days',
+      'range=rel&rel=Last%203%20months',
+      'range=rel&rel=last%200%20days',
     ]) {
       expect(parseDateFilterParams(params(q))).toEqual({ preset: '90d' })
+    }
+  })
+
+  it('parses any relative range the server accepts, folding our presets back into them', () => {
+    for (const rel of ['today', 'last 3 months', 'last 12 months', 'this year', 'next quarter']) {
+      expect(parseDateFilterParams(params(`range=rel&rel=${encodeURIComponent(rel)}`))).toEqual({
+        preset: 'rel',
+        rel,
+      })
+    }
+    expect(parseDateFilterParams(params('range=rel&rel=last%207%20days'))).toEqual({ preset: '7d' })
+    expect(dateFilterParams({ preset: 'rel', rel: 'last 3 months' })).toEqual({
+      range: 'rel',
+      rel: 'last 3 months',
+    })
+    expect(dateRangeValue({ preset: 'rel', rel: 'this year' })).toBe('this year')
+    expect(dateRangeLabel({ preset: 'rel', rel: 'last 3 months' })).toBe('Last 3 months')
+    expect(dateRangeValue({ preset: 'rel' })).toBe('last 90 days')
+  })
+
+  it("maps a filter bar's choice to state, or to nothing it cannot represent", () => {
+    expect(dateFilterStateOf('last 30 days')).toEqual({ preset: '30d' })
+    expect(dateFilterStateOf(['last 30 days'])).toEqual({ preset: '30d' })
+    expect(dateFilterStateOf('this quarter')).toEqual({ preset: 'rel', rel: 'this quarter' })
+    expect(dateFilterStateOf(['2025-01-01', '2025-01-31'])).toEqual({
+      preset: 'custom',
+      from: '2025-01-01',
+      to: '2025-01-31',
+    })
+    for (const bad of [
+      'since January',
+      [],
+      ['2025-01-31', '2025-01-01'],
+      ['2025-01-01', '2025-01-02', '2025-01-03'],
+    ]) {
+      expect(dateFilterStateOf(bad), JSON.stringify(bad)).toBeNull()
     }
   })
 
@@ -82,17 +123,38 @@ describe('date filter — pure helpers', () => {
     // The source config is not mutated
     expect(TEMPLATE_CONFIG.filters[0].filter.values).toEqual(['last 90 days'])
   })
+
+  it('overrides a saved dateRange too, which drizzle-cube reads before values', () => {
+    const saved = {
+      filters: [
+        {
+          id: 'time-filter',
+          label: 'Date Range',
+          isUniversalTime: true,
+          filter: {
+            member: '__universal_time__',
+            operator: 'inDateRange' as const,
+            values: ['last 30 days'],
+            dateRange: 'last 30 days',
+          },
+        },
+      ],
+    }
+    expect(dashboardDateFilters(saved, 'last 7 days')[0]?.filter).toMatchObject({
+      values: ['last 7 days'],
+      dateRange: 'last 7 days',
+    })
+    expect(dashboardDateFilters(saved, ['2025-01-01', '2025-01-31'])[0]?.filter).toMatchObject({
+      values: ['2025-01-01', '2025-01-31'],
+      dateRange: ['2025-01-01', '2025-01-31'],
+    })
+  })
 })
 
 describe('useDashboardDateFilter — URL sync', () => {
   function setup(initial = '/analytics/x') {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <MemoryRouter
-        initialEntries={[initial]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        {children}
-      </MemoryRouter>
+      <MemoryRouter initialEntries={[initial]}>{children}</MemoryRouter>
     )
     return renderHook(() => ({ filter: useDashboardDateFilter(), location: useLocation() }), {
       wrapper,

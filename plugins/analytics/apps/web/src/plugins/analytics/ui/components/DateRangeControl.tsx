@@ -5,14 +5,14 @@
  */
 import { useState } from 'react'
 import {
+  type ButtonPreset,
   DATE_RANGE_PRESETS,
   type DateFilterState,
-  type DateRangePreset,
 } from '../hooks/useDashboardDateFilter'
 
 interface DateRangeControlProps {
   state: DateFilterState
-  onPreset: (preset: Exclude<DateRangePreset, 'custom'>) => void
+  onPreset: (preset: ButtonPreset) => void
   onCustom: (from: string, to: string) => void
 }
 

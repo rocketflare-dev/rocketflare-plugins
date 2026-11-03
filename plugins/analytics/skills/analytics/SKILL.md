@@ -7,7 +7,7 @@ argument-hint: "[explain | health | cubes | query | dashboards | mcp]"
 # Analytics — orientation, health check and routing
 
 The `analytics` plugin adds a **semantic layer** to this app. It is built on
-[drizzle-cube](https://www.drizzle-cube.dev), pinned at **0.8.3**. It gives you:
+[drizzle-cube](https://www.drizzle-cube.dev), pinned at **0.12.2**. It gives you:
 
 - **Cubes**: named, tenant-scoped definitions of measures (counts, sums, distinct counts) and
   dimensions (role, event type, dates) over the app's own Postgres tables.
@@ -115,7 +115,7 @@ project root:
 Or set the environment variables `DRIZZLE_CUBE_SERVER_URL` and `DRIZZLE_CUBE_API_TOKEN`. It sends
 the token as `Authorization: Bearer …`, which is exactly what this app accepts. **Warn the person
 about two things:**
-- Its generic skills show an older cube syntax that does not compile on drizzle-cube 0.8.3
+- Its generic skills show an older cube syntax that does not compile on drizzle-cube 0.12.2
   (`analytics-cubes` explains the difference). Prefer this plugin's skills when writing code here.
 - `.drizzle-cube.json` holds a credential, so add it to `.gitignore`.
 
