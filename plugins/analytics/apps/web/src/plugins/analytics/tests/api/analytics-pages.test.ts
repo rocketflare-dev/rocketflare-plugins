@@ -21,6 +21,7 @@ import {
 } from '@testkit/integration'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
+import { activityEvents } from '@/db/schema/kit'
 import { analyticsPages } from '../../db/schema'
 
 const db = setupTestDatabase()
@@ -262,5 +263,20 @@ describe('templates and fact status', () => {
       headers: sessionCookieHeader(await createTestSession(db, member.id, o.tenant.id)),
     })
     expect(denied.status).toBe(403)
+  })
+
+  it("GET /facts/status reports the caller's organisation, not another one's backlog", async () => {
+    const o = await owner()
+    const other = await createTestTenantWithUser(db, 'owner')
+    // Another organisation has a source row five hours old that was never built.
+    await db.insert(activityEvents).values({
+      tenantId: other.tenant.id,
+      userId: other.user.id,
+      type: 'other',
+      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
+    })
+    const res = await request('/api/analytics/facts/status', { headers: o.cookie })
+    const body = await json<{ items: Array<{ lagSeconds: number; stale: boolean }> }>(res)
+    expect(body.items[0]).toMatchObject({ lagSeconds: 0, stale: false })
   })
 })

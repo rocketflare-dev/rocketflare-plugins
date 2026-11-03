@@ -101,10 +101,26 @@ the kit's move, copy them again rather than editing them in place.
 
 ## Releasing
 
-`node scripts/release.mjs X.Y.Z` — the kit's own release script. It detects a
-`rocketflare-plugin.json` with no `.rocketflare.json`, stamps that manifest's version and
-`package.json`, folds `docs/upgrades/unreleased.md` into `docs/upgrades/X.Y.Z.md` and prepends the
-`CHANGELOG.md` section.
+Every plugin ships at one version, so a release covers all of `plugins/*`, on a branch:
+
+1. Give every plugin a non-empty `docs/upgrades/unreleased.md`. A plugin with no change of its own
+   gets a "version stamps only" note (`plugins/<id>/docs/upgrades/3.7.0.md` is the pattern);
+   `release.mjs` refuses an empty one.
+2. Run the kit's release script with every plugin named. Without `--plugin` it finds no manifest at
+   the root and exits 1:
+
+   ```bash
+   args=(); for p in plugins/*/; do args+=(--plugin "${p%/}"); done
+   node scripts/release.mjs X.Y.Z "${args[@]}"
+   ```
+
+   It folds each `unreleased.md` into `X.Y.Z.md`, stamps every `rocketflare-plugin.json`, its
+   anchor `plugin.json` and the root `package.json`, and prepends the `CHANGELOG.md` section.
+3. Move the `rocketflare-plugins.git@<previous>` install refs in `README.md` and
+   `plugins/*/README.md` to `@X.Y.Z`; the script does not touch them.
+4. `node scripts/release-check.mjs --tag X.Y.Z` must report `release-check ok`.
+5. Commit `Release X.Y.Z`, open a PR, and once it merges tag the merge commit `X.Y.Z` and push the
+   tag.
 
 **Released history is never rewritten.** Every app pins a commit of this repository; a force-push
 to a released tag orphans them.

@@ -180,11 +180,36 @@ describe('freshness', () => {
     const { user, tenant } = await createTestTenantWithUser(db, 'owner')
     await db.insert(activityEvents).values({ tenantId: tenant.id, userId: user.id, type: 'f' })
     await refreshFactTable(db, TABLE, { tenantId: tenant.id })
-    const statuses = await checkFactTableFreshness(db)
+    const statuses = await checkFactTableFreshness(db, tenant.id)
     expect(statuses.map(s => s.table)).toEqual(factTables().map(t => t.name))
     const s = statuses[0]
     expect(s?.refreshedAt).toBeInstanceOf(Date)
     expect(typeof s?.lagSeconds).toBe('number')
     expect(typeof s?.stale).toBe('boolean')
+  })
+
+  it("checkFactTableFreshness sees only the caller's tenant", async () => {
+    const a = await createTestTenantWithUser(db, 'owner')
+    const b = await createTestTenantWithUser(db, 'owner')
+    await db.insert(activityEvents).values({
+      tenantId: a.tenant.id,
+      userId: a.user.id,
+      type: 'a',
+      createdAt: new Date(Date.now() - DAY),
+    })
+    await refreshFactTable(db, TABLE, { tenantId: a.tenant.id })
+    const [aRow] = await factRows(a.tenant.id)
+    // B's newest source row is later than A's build, and B is rebuilt after A.
+    await db.insert(activityEvents).values({
+      tenantId: b.tenant.id,
+      userId: b.user.id,
+      type: 'b',
+      createdAt: new Date(Date.now() + 60 * 60 * 1000),
+    })
+    await refreshFactTable(db, TABLE, { tenantId: b.tenant.id })
+
+    const [status] = await checkFactTableFreshness(db, a.tenant.id)
+    expect(status?.refreshedAt?.getTime()).toBe(aRow?.factRefreshedAt.getTime())
+    expect(status).toMatchObject({ lagSeconds: 0, stale: false })
   })
 })
