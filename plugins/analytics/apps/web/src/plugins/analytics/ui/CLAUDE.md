@@ -22,7 +22,7 @@ Paths below are relative to `apps/web/src/plugins/analytics/`.
 - **GM wrote no chart code.** drizzle-cube renders everything: `AnalyticsDashboard` (react-grid-layout
   editor, portlet editor with its own query builder, drill-down, charts) and `AnalysisBuilder`
   (`/analytics/explore`). The kit owns the glue only: pages, hooks over `/api/analytics/*`
-  (`@rocketflare/shared/analytics`), the provider wiring and the theme mapping. drizzle-cube 0.8.3 client
+  (`@rocketflare/shared/analytics`), the provider wiring and the theme mapping. drizzle-cube 0.12.2 client
   API actually used: `CubeProvider` from `drizzle-cube/client/providers` (`apiOptions`,
   `queryClient`, `features`), `AnalyticsDashboard` (`config`, `editable`, `dashboardFilters`,
   `onConfigChange`, `onSave`, `loadingComponent`), `AnalysisBuilder` + `AnalysisBuilderRef`

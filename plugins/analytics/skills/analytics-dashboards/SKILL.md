@@ -162,6 +162,6 @@ From the CLI: `pnpm cli analytics pages list` (add `--json` for the raw response
 ## Sources
 
 - drizzle-cube dashboards and `DashboardConfig`: https://www.drizzle-cube.dev
-- drizzle-cube 0.8.3 client types (`DashboardConfig`, `PortletConfig`, `AnalyticsDashboard`): https://www.npmjs.com/package/drizzle-cube/v/0.8.3
+- drizzle-cube 0.12.2 client types (`DashboardConfig`, `PortletConfig`, `AnalyticsDashboard`): https://www.npmjs.com/package/drizzle-cube/v/0.12.2
 - Upstream skills this adapts (MIT; they prefer `analysisConfig`, while this app's templates keep the `query`-string form its tests read): https://github.com/cliftonc/drizzle-cube-plugin/blob/main/skills/dc-dashboard-config/SKILL.md, https://github.com/cliftonc/drizzle-cube-plugin/blob/main/skills/dc-chart-config/SKILL.md
 - This app: `apps/web/src/plugins/analytics/dashboards/{CLAUDE.md,DASHBOARD_PATTERNS.md}`, `api/routes/analytics-pages.ts`, `ui/CLAUDE.md`, `tests/config/all-templates.test.ts`

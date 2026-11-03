@@ -1,6 +1,6 @@
-# drizzle-cube 0.8.3: cube API reference (as this app uses it)
+# drizzle-cube 0.12.2: cube API reference (as this app uses it)
 
-Checked against the published `drizzle-cube@0.8.3` type declarations (`dist/server/types/cube.d.ts`,
+Checked against the published `drizzle-cube@0.12.2` type declarations (`dist/server/types/cube.d.ts`,
 `core.d.ts`, `cube-utils.d.ts`). The current 0.9.x has the same `defineCube`, `Measure` and
 `CubeJoin` shapes. If you bump the pin, re-check this file against the new `.d.ts`.
 
@@ -85,5 +85,5 @@ Built in `api/routes/cube-api.ts` → `buildSecurityContext(ctx.detached())`:
 - `role` is present but **no cube should restrict rows by role**. Access is membership plus
   `read Analytics`; row filtering is by tenant (and by group, where you choose to).
 
-Sources: https://www.npmjs.com/package/drizzle-cube/v/0.8.3 · https://www.drizzle-cube.dev ·
+Sources: https://www.npmjs.com/package/drizzle-cube/v/0.12.2 · https://www.drizzle-cube.dev ·
 `apps/web/src/plugins/analytics/cubes/{CLAUDE.md,security.ts}`

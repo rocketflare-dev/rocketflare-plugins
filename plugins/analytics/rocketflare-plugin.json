@@ -152,7 +152,7 @@
   "dependencies": {
     "apps/web": {
       "d3": "^7.9.0",
-      "drizzle-cube": "0.8.3",
+      "drizzle-cube": "0.12.2",
       "react-grid-layout": "^2.2.4",
       "react-is": "^19.3.0",
       "recharts": "^3.10.1"

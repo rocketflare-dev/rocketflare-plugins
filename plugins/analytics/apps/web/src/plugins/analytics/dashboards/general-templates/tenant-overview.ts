@@ -190,7 +190,8 @@ export const TENANT_OVERVIEW_TEMPLATE: DashboardConfig = {
           'TenantUsers.joinedAt': { kind: 'date', dateGranularity: 'day' },
         },
       },
-      dashboardFilterMapping: [TIME_FILTER],
+      // No timeDimensions to carry the date range, so the filter is pinned to a member.
+      dashboardFilterMapping: [{ filterId: TIME_FILTER, member: 'TenantUsers.joinedAt' }],
       x: 0,
       y: 12,
       w: 12,

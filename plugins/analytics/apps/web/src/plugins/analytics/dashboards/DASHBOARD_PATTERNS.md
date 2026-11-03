@@ -108,6 +108,9 @@ Add `timeDimensions` with `granularity` to enable sparkline trends in KPI cards:
 - Don't put `dateRange` in portlet queries - let dashboard filters control it
 - `granularity: 'week'` is good for KPI sparklines over months
 - The date filter applies to the `timeDimensions.dimension` field
+- A portlet with no `timeDimensions` (a KPI, a breakdown, a `recordsTable`) cannot take the date
+  filter that way: pin it to a field, `{ filterId: 'my-date-filter', member: 'MyCube.dateField' }`,
+  or leave it unmapped. Mapped by id alone, drizzle-cube shows a warning on the card
 
 ## Stacked Percentage Area Charts
 
