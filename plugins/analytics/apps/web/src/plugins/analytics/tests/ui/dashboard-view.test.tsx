@@ -28,6 +28,10 @@ type FakeProps = {
   config: FakeConfig
   editable?: boolean
   dashboardFilters?: { id: string; filter: { values: unknown[] } }[]
+  onDashboardFiltersChange?: (
+    filters: { id: string; filter: Record<string, unknown> }[],
+    changedFilterId: string
+  ) => void
   onConfigChange?: (c: FakeConfig) => void
   onSave?: (c: FakeConfig) => Promise<void> | void
 }
@@ -60,6 +64,20 @@ vi.mock('drizzle-cube/client', () => ({
       </button>
       <button type="button" onClick={() => props.onSave?.(props.config)}>
         fake-save
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onDashboardFiltersChange?.(
+            (props.dashboardFilters ?? []).map(f => ({
+              ...f,
+              filter: { ...f.filter, values: ['last 3 months'], dateRange: 'last 3 months' },
+            })),
+            'time-filter'
+          )
+        }
+      >
+        fake-bar-3m
       </button>
     </div>
   ),
@@ -112,6 +130,28 @@ describe('Dashboard view page', () => {
       expect(
         JSON.parse(screen.getByTestId('analytics-dashboard').getAttribute('data-filters') ?? '[]')
       ).toMatchObject([{ filter: { values: ['last 7 days'] } }])
+    )
+  })
+
+  it("follows drizzle-cube's own filter bar, and the page control follows it back", async () => {
+    mount(analyticsPage())
+    await screen.findByTestId('analytics-dashboard')
+
+    fireEvent.click(screen.getByRole('button', { name: 'fake-bar-3m' }))
+    await waitFor(() =>
+      expect(
+        JSON.parse(screen.getByTestId('analytics-dashboard').getAttribute('data-filters') ?? '[]')
+      ).toMatchObject([{ filter: { values: ['last 3 months'], dateRange: 'last 3 months' } }])
+    )
+    for (const name of ['Last 7 days', 'Last 30 days', 'Last 90 days']) {
+      expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false')
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Last 30 days' }))
+    await waitFor(() =>
+      expect(
+        JSON.parse(screen.getByTestId('analytics-dashboard').getAttribute('data-filters') ?? '[]')
+      ).toMatchObject([{ filter: { values: ['last 30 days'], dateRange: 'last 30 days' } }])
     )
   })
 

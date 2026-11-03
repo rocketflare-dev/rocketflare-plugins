@@ -25,8 +25,8 @@ Paths below are relative to `apps/web/src/plugins/analytics/`.
   (`@rocketflare/shared/analytics`), the provider wiring and the theme mapping. drizzle-cube 0.12.2 client
   API actually used: `CubeProvider` from `drizzle-cube/client/providers` (`apiOptions`,
   `queryClient`, `features`), `AnalyticsDashboard` (`config`, `editable`, `dashboardFilters`,
-  `onConfigChange`, `onSave`, `loadingComponent`), `AnalysisBuilder` + `AnalysisBuilderRef`
-  (`getAnalysisConfig()`), types `DashboardConfig`/`PortletConfig`/`CubeApiOptions`/
+  `onDashboardFiltersChange`, `onConfigChange`, `onSave`, `loadingComponent`), `AnalysisBuilder`
+  + `AnalysisBuilderRef` (`getAnalysisConfig()`), types `DashboardConfig`/`PortletConfig`/`CubeApiOptions`/
   `FeaturesConfig` from `drizzle-cube/client`, and `drizzle-cube/client/styles.css`.
 - **Same-origin cookie auth**: `CubeClientProvider` passes `apiOptions = { apiUrl:
   '/cubejs-api/v1', credentials: 'include', headers: { 'X-Requested-With': 'fetch' } }` — the
@@ -66,11 +66,14 @@ Paths below are relative to `apps/web/src/plugins/analytics/`.
   Template pages (`templateKey !== null`) offer "Reset to template", never delete (server: 403
   `template_page`); user pages the reverse. "Start from template" copies the config from the
   pure `src/dashboards` registry client-side (`getTemplate(key).config` → `POST /pages`).
-- **Date range** is URL state (`useDashboardDateFilter`), never a store: presets emit exactly
-  `'last 7|30|90 days'` or an ISO pair — an unknown relative string makes drizzle-cube DROP the
-  condition and silently query all time, so anything unparseable falls back to 90 days.
-  `dashboardDateFilters(config, range)` returns override copies of the `isUniversalTime` filters;
-  `AnalyticsDashboard dashboardFilters` merges them by id, so a KPI with its own window is untouched.
+- **Date range** is URL state (`useDashboardDateFilter`), never a store: the page buttons emit
+  `'last 7|30|90 days'` or an ISO pair, and drizzle-cube's own filter bar may set any relative
+  range its server parses (`?range=rel&rel=last 3 months`, checked against `RELATIVE_RANGE`). The
+  server rejects anything else with a 400, so anything unparseable falls back to 90 days.
+  `dashboardDateFilters(config, range)` returns override copies of the `isUniversalTime` filters,
+  `values` and `dateRange` both; `AnalyticsDashboard dashboardFilters` merges them by id, so a KPI
+  with its own window is untouched. The bar's changes come back through
+  `onDashboardFiltersChange`; without that callback drizzle-cube disables a host-owned filter.
 - **Explore → Save to dashboard** (admin+): `ref.getAnalysisConfig()` becomes a portlet
   (`analysisConfig`, the canonical format) appended as a full-width `rows` entry with mirrored
   x/y/w/h (`appendPortlet`, pure) and saved with `PATCH /pages/:id`.

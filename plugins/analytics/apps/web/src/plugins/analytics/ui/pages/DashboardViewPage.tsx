@@ -200,6 +200,7 @@ export default function DashboardViewPage() {
           page={row}
           editing={editing && canManage}
           range={dateFilter.range}
+          onRangeChange={dateFilter.setFromFilter}
           onDirtyChange={onDirtyChange}
         />
       </CubeClientProvider>

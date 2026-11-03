@@ -23,6 +23,7 @@ analytics now compiles on React 19 with React Router 7 as well as on React 18 wi
   - A date string drizzle-cube cannot parse, an unknown operator, or a measure filter in an ungrouped query is a 400 instead of being dropped.
 - `dashboards/general-templates/tenant-overview.ts`: the Organisation Overview "Recent Members" table pins the date filter to `TenantUsers.joinedAt`. It has no `timeDimensions`, so the filter never narrowed it, and drizzle-cube 0.10.1 and later shows a warning on such a card. `tests/config/all-templates.test.ts` now fails a portlet mapped to a universal time filter it cannot reach.
 - `ui/hooks/useDashboardDateFilter.ts`: the page date control overrides the universal time filter's `dateRange` as well as its `values`. drizzle-cube reads `dateRange` first, and its filter editor saves one, so after anyone edited a dashboard's date filter the 7/30/90-day control stopped changing that dashboard.
+- `ui/components/DashboardLoader.tsx`, `ui/hooks/useDashboardDateFilter.ts`: drizzle-cube 0.12.2 shows its own date filter bar to viewers too, and disables a filter the host owns unless the host takes its changes. The dashboard now passes `onDashboardFiltersChange`, so the bar and the page's 7/30/90-day control drive the same URL state. A bar choice the buttons don't offer is kept as `?range=rel&rel=<range>`, such as `last 3 months` or `this quarter`; existing `?range=` links are unchanged.
 - The `analytics*` skills, `README.md` and the dashboard docs name 0.12.2 and its query rules.
 
 ## How to apply
@@ -43,4 +44,5 @@ analytics now compiles on React 19 with React Router 7 as well as on React 18 wi
 2. `pnpm gate` passes and prints no `(!)` warning about `configLoader: 'native'`.
 3. `pnpm --filter @rocketflare/web why drizzle-cube` resolves `0.12.2` only.
 4. On a dashboard whose date filter was edited and saved in the editor, the page date control still changes every mapped chart.
-5. On a reset Organisation Overview page, "Recent Members" shows no warning and follows the date control.
+5. On a dashboard, choosing 3M in drizzle-cube's filter bar sets `?range=rel&rel=last+3+months`, and choosing "Last 30 days" in the page control selects 30D in the bar.
+6. On a reset Organisation Overview page, "Recent Members" shows no warning and follows the date control.
