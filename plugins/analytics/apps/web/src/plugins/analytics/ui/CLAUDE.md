@@ -66,6 +66,10 @@ Paths below are relative to `apps/web/src/plugins/analytics/`.
   Template pages (`templateKey !== null`) offer "Reset to template", never delete (server: 403
   `template_page`); user pages the reverse. "Start from template" copies the config from the
   pure `src/dashboards` registry client-side (`getTemplate(key).config` → `POST /pages`).
+- **Fact-table freshness is admin-only** (`GET /api/analytics/facts/status`, admin+): a member must
+  never request it. Pass `useFactTableStatus({ enabled: can('manage', 'Dashboard') })`, or call it
+  only inside a component rendered under that check (`{canManage && <FactTableFreshness />}` in
+  `DashboardListPage`) — never `enabled: true` from a component every reader mounts.
 - **Date range** is URL state (`useDashboardDateFilter`), never a store: the page buttons emit
   `'last 7|30|90 days'` or an ISO pair, and drizzle-cube's own filter bar may set any relative
   range its server parses (`?range=rel&rel=last 3 months`, checked against `RELATIVE_RANGE`). The

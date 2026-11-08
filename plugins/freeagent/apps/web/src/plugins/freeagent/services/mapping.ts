@@ -39,7 +39,22 @@ const optionalBoolean = z
   .nullish()
   .transform(v => (v === undefined || v === null ? null : v === true || v === 'true'))
 
-function parse<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, raw: unknown, what: string): T {
+/**
+ * What `parse` / `input` need from a schema: `safeParse` alone. Written structurally because the
+ * host's zod is its own — 3 below kit 0.25.0, 4 from it — and zod 3's `ZodType<T, ZodTypeDef, In>`
+ * does not exist in 4, while `ZodType<T>` pins the INPUT to `T` in 3 (a schema with a
+ * `.transform` or `.default` would not fit). Both majors' schemas satisfy this.
+ */
+export interface SafeParser<T> {
+  safeParse(value: unknown):
+    | { success: true; data: T }
+    | {
+        success: false
+        error: { issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; message: string }> }
+      }
+}
+
+function parse<T>(schema: SafeParser<T>, raw: unknown, what: string): T {
   const result = schema.safeParse(raw)
   if (!result.success) {
     const issue = result.error.issues[0]
