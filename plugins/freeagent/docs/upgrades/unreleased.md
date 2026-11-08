@@ -1,10 +1,10 @@
 ---
 version: unreleased
-previous: 3.8.1
+previous: 3.8.2
 date: null
 breaking: false
 migrations: []
-areas: [api]
+areas: []
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,20 +12,11 @@ manual: false
 
 ## What changed
 
-freeagent typechecks on kit 0.25.0 and later again: its two schema-parsing helpers named zod 3's `z.ZodTypeDef`, which zod 4 (the kit's from 0.25.0) does not have.
-
-- `services/mapping.ts`: a structural `SafeParser<T>` (only `safeParse`) types `parse`, so a zod 3 or zod 4 schema fits, transforms and defaults included.
-- `services/writes.ts`: `input` takes the same `SafeParser<T>`; its unused `zod` import is gone.
-- Types only — no runtime, schema or API change.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Run `pnpm plugin upgrade freeagent --apply`. It replaces `services/mapping.ts` and `services/writes.ts`.
-
 ## Conflicts to expect
 
-- `services/mapping.ts` / `services/writes.ts` → helper signatures changed → if you edited either, keep your edits and type the schema parameter as `SafeParser<T>` from `./mapping`.
-
 ## Verify
-
-1. `pnpm typecheck` passes with freeagent installed on kit 0.25.0 or later.

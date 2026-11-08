@@ -9,6 +9,29 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.8.2 — 2026-11-08
+
+**analytics** — The analytics UI guide now says fact-table freshness is requested by admins only; no code changed.
+[Porting note](plugins/analytics/docs/upgrades/3.8.2.md).
+
+**connectors** — No change to connectors. This release exists because `freeagent` typechecks on kit 0.25.0 and later again, and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.8.2.md).
+
+**freeagent** — freeagent typechecks on kit 0.25.0 and later again: its two schema-parsing helpers named zod 3's `z.ZodTypeDef`, which zod 4 (the kit's from 0.25.0) does not have.
+[Porting note](plugins/freeagent/docs/upgrades/3.8.2.md).
+
+**inbox** — No change to inbox. This release exists because `freeagent` typechecks on kit 0.25.0 and later again, and every plugin here ships at the repository's version.
+[Porting note](plugins/inbox/docs/upgrades/3.8.2.md).
+
+**issue-reports** — No change to issue-reports. This release exists because `freeagent` typechecks on kit 0.25.0 and later again, and every plugin here ships at the repository's version.
+[Porting note](plugins/issue-reports/docs/upgrades/3.8.2.md).
+
+**m365** — No change to m365. This release exists because `freeagent` typechecks on kit 0.25.0 and later again, and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.8.2.md).
+
+**web-knowledge** — No change to web-knowledge. This release exists because `freeagent` typechecks on kit 0.25.0 and later again, and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.8.2.md).
+
 ## 3.8.1 — 2026-11-03
 
 **analytics** — `GET /api/analytics/facts/status` reports only the caller's organisation. It used to read `MAX()` across every tenant, so an organisation's admin saw when any other organisation last had activity, and a busy tenant could hide another's stale fact table.
