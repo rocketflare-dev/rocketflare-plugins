@@ -3,9 +3,8 @@
 > Dashboards, a tenant-scoped semantic layer and an MCP endpoint for your Rocketflare app, built on
 > [drizzle-cube](https://www.drizzle-cube.dev).
 
-The analytics plugin was the kit's own analytics subsystem until kit 0.6.0; it is now a plugin, and
-the kit's bootstrap installs it by default (`defaultPlugins` in `.rocketflare.json`). Everything it
-answers is scoped to the reader's organisation.
+An opt-in plugin: a fresh copy of the kit does not have it, and `/rf-plugin add analytics` (or the
+commands below) adds it. Everything it answers is scoped to the reader's organisation.
 
 ## What it adds
 
@@ -32,13 +31,12 @@ one is malformed.
 
 ## Install
 
-A fresh copy of the kit already has it. To add it yourself — the first command prints the plan and
-stops, the second applies it:
+The first command prints the plan and stops, the second applies it:
 
 ```bash
 pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.8.2 --subdir plugins/analytics
 pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.8.2 --subdir plugins/analytics --apply
-pnpm db:generate --name plugin-analytics-3.4.0 && pnpm db:migrate
+pnpm db:generate --name plugin-analytics-3.8.2 && pnpm db:migrate
 ```
 
 The plan lists the steps a plugin cannot make in your files, and `pnpm provision cloudflare <env>`
