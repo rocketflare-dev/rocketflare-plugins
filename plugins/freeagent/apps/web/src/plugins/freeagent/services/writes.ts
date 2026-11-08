@@ -19,7 +19,6 @@ import {
   freeagentExplainInputSchema,
 } from '@rocketflare/shared/plugins/freeagent/index'
 import { and, asc, desc, eq, gte, lte, type SQL } from 'drizzle-orm'
-import type { z } from 'zod'
 import {
   type FreeAgentBankTransactionRow,
   freeagentBankAccounts,
@@ -30,11 +29,11 @@ import type { FreeAgentClient } from './client'
 import { type FreeAgentCtx, freeagentClientFor } from './connection'
 import { type FreeAgentDeps, freeagentHttp } from './env'
 import { FreeAgentError } from './errors'
-import { mapBankTransaction, mapBill, mapExplanation } from './mapping'
+import { mapBankTransaction, mapBill, mapExplanation, type SafeParser } from './mapping'
 import { deleteByUrl, MIRROR_TABLES, pruneExplanations, upsertMirror } from './mirror'
 
 /** Parse with a shared schema, turning a zod failure into `FreeAgentError('validation')`. */
-function input<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, value: unknown): T {
+function input<T>(schema: SafeParser<T>, value: unknown): T {
   const parsed = schema.safeParse(value)
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
