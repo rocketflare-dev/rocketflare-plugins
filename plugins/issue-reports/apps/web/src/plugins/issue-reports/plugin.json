@@ -5,7 +5,7 @@
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "subdir": "plugins/issue-reports",
   "anchor": "apps/web/src/plugins/issue-reports/plugin.json",
-  "minKit": "0.21.0",
+  "minKit": "0.29.0",
   "uses": {},
   "paths": [
     "apps/web/src/plugins/issue-reports/**",

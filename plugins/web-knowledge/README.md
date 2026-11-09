@@ -57,6 +57,8 @@ provider, ask your agent — the plugin's `CLAUDE.md` lists the three steps it t
 - Routes only ever answer `hasCredential`, never the key; the activity log records that a key was
   set, kept or cleared, never its value.
 - The key is decrypted only at the moment of the outbound call, inside the tool or the test route.
+- `fetch_page` reads only URLs `web_search` returned in the same chat turn or agent-run attempt; a
+  URL pasted into the conversation is refused, so search for the page first.
 - `fetch_page` refuses non-http(s) URLs, non-default ports, IP literals and local or private host
   names, re-checks every redirect, caps pages at 2 MB, and marks page text as untrusted for the
   model.

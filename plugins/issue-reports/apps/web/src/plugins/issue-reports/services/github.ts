@@ -5,6 +5,10 @@
  *
  * The token is read from config by the caller and passed in; it never appears in an error, a log
  * line or anything the agent hands the model.
+ *
+ * One repository serves every organisation on a deployment, so the client is bound to a tenant:
+ * an issue it files carries that tenant's marker in a hidden comment, and search, lookup and
+ * comment touch only issues carrying it. An issue without the marker does not exist here.
  */
 import {
   type IssueReportsConfig,
@@ -42,16 +46,42 @@ export interface GithubClient {
 
 type Fetch = typeof fetch
 
+/**
+ * What ties an issue to the organisation that filed it: a hash of the tenant id, opaque on a
+ * public repository, as one search-friendly token.
+ */
+export async function issueMarkerFor(tenantId: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tenantId))
+  const hex = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('')
+  return `rftenant${hex.slice(0, 16)}`
+}
+
 export function issueReportsConfig(config: PluginConfig): IssueReportsConfig {
   return issueReportsConfigSchema.parse(config)
 }
 
-/** The client, or `null` when the deployment has not named both a repository and a token. */
-export function githubFor(config: PluginConfig, fetchImpl: Fetch = fetch): GithubClient | null {
+/** Has the deployment named both a repository and a token? */
+export function githubConfigured(config: PluginConfig): boolean {
+  const { ISSUE_REPORTS_GITHUB_TOKEN: token, ISSUE_REPORTS_GITHUB_REPO: repo } =
+    issueReportsConfig(config)
+  return Boolean(token && repo)
+}
+
+/** The client bound to one tenant, or `null` when the deployment has not configured GitHub. */
+export async function githubFor(
+  config: PluginConfig,
+  tenantId: string,
+  fetchImpl: Fetch = fetch
+): Promise<GithubClient | null> {
   const { ISSUE_REPORTS_GITHUB_TOKEN: token, ISSUE_REPORTS_GITHUB_REPO: repo } =
     issueReportsConfig(config)
   if (!token || !repo) return null
-  return createGithubClient({ token, repo, fetch: fetchImpl })
+  return createGithubClient({
+    token,
+    repo,
+    marker: await issueMarkerFor(tenantId),
+    fetch: fetchImpl,
+  })
 }
 
 interface RawIssue {
@@ -59,6 +89,7 @@ interface RawIssue {
   title: string
   state: 'open' | 'closed'
   html_url: string
+  body?: string | null
   pull_request?: unknown
 }
 
@@ -72,10 +103,12 @@ const toRef = (issue: RawIssue): GithubIssueRef => ({
 export function createGithubClient(options: {
   token: string
   repo: string
+  marker: string
   fetch?: Fetch
 }): GithubClient {
   const doFetch = options.fetch ?? fetch
-  const { repo } = options
+  const { repo, marker } = options
+  const ours = (issue: RawIssue) => Boolean(issue.body?.includes(marker))
 
   async function call<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
     const res = await doFetch(`${API}${path}`, {
@@ -105,15 +138,15 @@ export function createGithubClient(options: {
   return {
     repo,
     async searchIssues(query, limit = 8) {
-      const q = `repo:${repo} is:issue ${query.replace(/\s+/g, ' ').trim()}`
+      const q = `repo:${repo} is:issue "${marker}" in:body ${query.replace(/\s+/g, ' ').trim()}`
       const params = new URLSearchParams({ q, per_page: String(limit) })
       const body = await call<{ items: RawIssue[] }>(`/search/issues?${params}`)
-      return body.items.filter(item => !item.pull_request).map(toRef)
+      return body.items.filter(item => !item.pull_request && ours(item)).map(toRef)
     },
     async getIssue(issueNumber) {
       try {
         const issue = await call<RawIssue>(`/repos/${repo}/issues/${issueNumber}`)
-        return issue.pull_request ? null : toRef(issue)
+        return issue.pull_request || !ours(issue) ? null : toRef(issue)
       } catch (err) {
         if (err instanceof GithubError && (err.status === 404 || err.status === 410)) return null
         throw err
@@ -121,10 +154,16 @@ export function createGithubClient(options: {
     },
     async createIssue({ title, body }) {
       return toRef(
-        await call<RawIssue>(`/repos/${repo}/issues`, { method: 'POST', body: { title, body } })
+        await call<RawIssue>(`/repos/${repo}/issues`, {
+          method: 'POST',
+          body: { title, body: `${body}\n\n<!-- ${marker} -->` },
+        })
       )
     },
     async commentOnIssue(issueNumber, body) {
+      if (!ours(await call<RawIssue>(`/repos/${repo}/issues/${issueNumber}`))) {
+        throw new GithubError('GitHub 404: not found', 404)
+      }
       const comment = await call<{ html_url: string }>(
         `/repos/${repo}/issues/${issueNumber}/comments`,
         { method: 'POST', body: { body } }

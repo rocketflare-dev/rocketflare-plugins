@@ -44,6 +44,8 @@ const CONNECT_ERRORS: Record<string, string> = {
   admin_consent_required: 'An administrator of that organisation has to grant consent.',
   external_tenant_mismatch:
     'This organisation is already connected to a different directory. Disconnect it first.',
+  external_tenant_in_use:
+    'That organisation is already connected to another workspace on this app.',
   feature_disabled: 'Connections are turned off for this organisation.',
 }
 

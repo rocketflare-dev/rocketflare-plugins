@@ -87,6 +87,69 @@ async function page(
   return id
 }
 
+describe('template pages', () => {
+  it('a member who first opens the list does not become the creator of a restricted template', async () => {
+    const tenant = (await createTestTenant(db)).id
+    const add = async (role: 'owner' | 'member') => {
+      const user = await createTestUser(db)
+      await linkUserToTenant(db, user.id, tenant, role)
+      return sessionCookieHeader(await createTestSession(db, user.id, tenant))
+    }
+    const owner = await add('owner')
+    const reader = await add('member')
+
+    const list = await request('/api/analytics/pages', { headers: reader })
+    expect(list.status).toBe(200)
+    const [seeded] = await db
+      .select()
+      .from(analyticsPages)
+      .where(eq(analyticsPages.tenantId, tenant))
+    expect(seeded?.createdByUserId).toBeNull()
+
+    const restricted = await request(
+      `/api/analytics/pages/${seeded?.id}/visibility`,
+      { method: 'PUT', headers: { ...owner, Origin: 'http://localhost:3001' } },
+      { json: { visibility: 'groups', groupIds: [] } }
+    )
+    expect(restricted.status).toBe(200)
+    const read = await request(`/api/analytics/pages/${seeded?.id}`, { headers: reader })
+    expect(read.status).toBe(404)
+  })
+
+  it('reading the list clears a person recorded as a template page’s creator', async () => {
+    const tenant = (await createTestTenant(db)).id
+    const user = await createTestUser(db)
+    await linkUserToTenant(db, user.id, tenant, 'member')
+    const cookie = sessionCookieHeader(await createTestSession(db, user.id, tenant))
+    const [template, own] = await db
+      .insert(analyticsPages)
+      .values([
+        {
+          tenantId: tenant,
+          slug: 'tenant-overview',
+          name: 'T',
+          templateKey: 'tenant-overview',
+          config: EMPTY_CONFIG,
+          createdByUserId: user.id,
+        },
+        {
+          tenantId: tenant,
+          slug: 'mine',
+          name: 'Mine',
+          config: EMPTY_CONFIG,
+          createdByUserId: user.id,
+        },
+      ])
+      .returning()
+
+    expect((await request('/api/analytics/pages', { headers: cookie })).status).toBe(200)
+
+    const after = await db.select().from(analyticsPages).where(eq(analyticsPages.tenantId, tenant))
+    expect(after.find(r => r.id === template?.id)?.createdByUserId).toBeNull()
+    expect(after.find(r => r.id === own?.id)?.createdByUserId).toBe(user.id)
+  })
+})
+
 beforeAll(async () => {
   const tenant = await createTestTenant(db)
   tenantId = tenant.id

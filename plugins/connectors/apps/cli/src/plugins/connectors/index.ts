@@ -18,7 +18,7 @@ import {
   syncInstallationResponseSchema,
 } from '@rocketflare/shared/plugins/connectors/index'
 import type { CliPlugin, CommandContext } from '../api'
-import { CliError, EXIT_ERROR, formatDate, renderTable, requireClient } from '../api'
+import { CliError, EXIT_ERROR, formatDate, neutralise, renderTable, requireClient } from '../api'
 
 export async function runConnectorsStatus(ctx: CommandContext): Promise<void> {
   const { data, raw } = await requireClient(ctx).request('GET', '/api/connectors/installations', {
@@ -29,9 +29,9 @@ export async function runConnectorsStatus(ctx: CommandContext): Promise<void> {
     return data.items
       .map(i =>
         [
-          `${i.provider}: ${i.status}${i.displayName ? ` — ${i.displayName}` : ''}`,
+          `${neutralise(i.provider)}: ${i.status}${i.displayName ? ` — ${neutralise(i.displayName)}` : ''}`,
           `  people ${i.counts.users} (${i.counts.matchedUsers} members) · groups ${i.counts.groups} · calendars ${i.counts.mailboxes} · events ${i.counts.events}`,
-          ...(i.lastError ? [`  error: ${i.lastError}`] : []),
+          ...(i.lastError ? [`  error: ${neutralise(i.lastError)}`] : []),
           renderTable(i.cursors, [
             { header: 'Resource', value: c => c.resource },
             { header: 'Cursors', value: c => String(c.count) },
@@ -84,7 +84,7 @@ export async function runConnectorsSync(
     results.push({ provider: installation.provider, queued: queued.queued })
   }
   ctx.out.data(results, () =>
-    results.map(r => `${r.provider}: queued ${r.queued} sync job(s)`).join('\n')
+    results.map(r => `${neutralise(r.provider)}: queued ${r.queued} sync job(s)`).join('\n')
   )
 }
 

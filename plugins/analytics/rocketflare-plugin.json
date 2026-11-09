@@ -3,7 +3,7 @@
   "label": "Analytics",
   "version": "3.8.2",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.17.1",
+  "minKit": "0.29.0",
   "skills": ["analytics", "analytics-cubes", "analytics-queries", "analytics-dashboards"],
   "anchor": "apps/web/src/plugins/analytics/plugin.json",
   "paths": [
@@ -23,28 +23,6 @@
     "plugins": []
   },
   "uses": {
-    "'../api' (apps/cli/src/plugins/api.ts)": [
-      "CliError",
-      "CliPlugin",
-      "CommandContext",
-      "EXIT_ERROR",
-      "formatDate",
-      "renderTable",
-      "requireClient"
-    ],
-    "@/db/schema/kit": [
-      "activityEvents",
-      "groupMembers",
-      "groups",
-      "groupTypes",
-      "RESOURCE_VISIBILITY_VALUES",
-      "tenantIsolation",
-      "tenantRef",
-      "tenants",
-      "tenantUsers",
-      "timestamps",
-      "users"
-    ],
     "@/plugins/api": [
       "AccessScope",
       "createRouter",
@@ -56,10 +34,12 @@
       "jobCtx",
       "JobCtx",
       "JobHandler",
+      "pgErrorCode",
       "PluginLogger",
       "recordActivity",
       "requestCtx",
       "RequestCtx",
+      "rows",
       "ScheduledTask",
       "SeedCtx",
       "ServerPlugin",
@@ -68,11 +48,8 @@
       "validate",
       "VisibilityResource"
     ],
-    "@/plugins/api/peers": [
-      "allTables",
-      "extensions",
-      "extensionSources"
-    ],
+    "@/plugins/api/peers": ["allTables", "extensions", "extensionSources"],
+    "@/plugins/api/ui-wiring": ["NavGuard", "UiPlugin"],
     "@/plugins/api/ui": [
       "AccessBadge",
       "api",
@@ -96,29 +73,28 @@
       "useToastStore",
       "VisibilityModal"
     ],
-    "@/plugins/api/ui-wiring": [
-      "NavGuard",
-      "UiPlugin"
+    "@/db/schema/kit": [
+      "activityEvents",
+      "groupMembers",
+      "groups",
+      "groupTypes",
+      "RESOURCE_VISIBILITY_VALUES",
+      "tenantIsolation",
+      "tenantRef",
+      "tenants",
+      "tenantUsers",
+      "timestamps",
+      "users"
     ],
-    "@rocketflare/shared/errors": [
-      "ERROR_CODES"
-    ],
-    "@rocketflare/shared/groups": [
-      "GroupRef",
-      "groupRefSchema",
-      "resourceVisibilitySchema",
-      "SetVisibilityRequest",
-      "setVisibilityRequestSchema"
-    ],
-    "@rocketflare/shared/jobs": [
-      "JobOf"
-    ],
-    "@rocketflare/shared/plugins/types": [
-      "SharedPlugin"
-    ],
-    "@rocketflare/shared/tenants": [
-      "MembershipRole",
-      "slugify"
+    "'../api' (apps/cli/src/plugins/api.ts)": [
+      "CliError",
+      "CliPlugin",
+      "CommandContext",
+      "EXIT_ERROR",
+      "formatDate",
+      "neutralise",
+      "renderTable",
+      "requireClient"
     ],
     "@testkit/integration": [
       "createExecutionContext",
@@ -144,10 +120,18 @@
       "unauthorizedResponse",
       "waitOnExecutionContext"
     ],
-    "@testkit/unit": [
-      "makeCronCtx",
-      "makeRequestCtx"
-    ]
+    "@testkit/unit": ["makeCronCtx", "makeRequestCtx"],
+    "@rocketflare/shared/errors": ["ERROR_CODES"],
+    "@rocketflare/shared/groups": [
+      "GroupRef",
+      "groupRefSchema",
+      "resourceVisibilitySchema",
+      "SetVisibilityRequest",
+      "setVisibilityRequestSchema"
+    ],
+    "@rocketflare/shared/jobs": ["JobOf"],
+    "@rocketflare/shared/plugins/types": ["SharedPlugin"],
+    "@rocketflare/shared/tenants": ["MembershipRole", "slugify"]
   },
   "dependencies": {
     "apps/web": {

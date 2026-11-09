@@ -15,7 +15,7 @@ exist.
 | `api/routes.ts` | `GET/PUT /api/web-knowledge/settings` and `POST /settings/test`. The test route always answers 200 with a verdict |
 | `services/providers/` | One adapter per provider (Tavily, Brave, Exa, Serper, Firecrawl), normalised to `SearchHit`. `providerJson` maps 401/403 → `key_rejected`, 429 → `rate_limited`, a timeout → `timeout`, and anything else → `provider_error` |
 | `services/fetch-page.ts` | `guardUrl` (http/https only, default ports, no IP literals, no localhost or private suffixes) and a direct fetch with manual redirects that runs the guard again on every hop, a 2 MB cap, and `AI.toMarkdown` with a tag-strip fallback |
-| `tools/` | `web_search` and `fetch_page`, each via `defineTool`. Failures come back as `{ error, message, hint }` (`tools/errors.ts`). `fetch_page` windows by the caller's `maxDocumentChars` and marks page text as untrusted in `note` |
+| `tools/` | `web_search` and `fetch_page`, each via `defineTool`; `reachable-urls.ts` is the per-turn set of URLs `fetch_page` may read. Failures come back as `{ error, message, hint }` (`tools/errors.ts`). `fetch_page` windows by the caller's `maxDocumentChars` and marks page text as untrusted in `note` |
 | `ui/` | One settings tab, lazy page `pages/WebSearchSettings.tsx`, in its own `Suspense` |
 | `apps/cli/src/plugins/web-knowledge/` | `rocketflare web-knowledge status [--json]`. Read-only by design: keys don't belong in shell history |
 
@@ -24,6 +24,10 @@ exist.
 - **The key never leaves the server.** Routes answer `hasCredential`. The activity row records
   `key: keep|clear|set`, never the value. The key is opened only inside a tool handler or the test
   route, at the moment of the outbound call, never in the `agentTools` builder.
+- **`fetch_page` reads only what `web_search` returned.** A URL can carry whatever the model has
+  read, so the set in `tools/reachable-urls.ts` is the boundary and the `note` is only advice.
+- **Page text is scanned in linear time** (`stripMarkup`). Never put a lazy or backreferencing regex
+  over a whole page: pages are written by strangers.
 - **Every adapter takes `fetch` from its call**, so tests inject one and nothing reaches a provider.
   In production, pass `(input, init) => fetch(input, init)`: an unbound `fetch` called as a method
   throws "Illegal invocation" on Workers.
@@ -37,6 +41,9 @@ exist.
 
 ## Known gaps
 
+- `fetch_page` reads only URLs `web_search` returned to the same `agentTools` call. A URL the person
+  pasted is refused, because the tool context does not carry their words; an agent run that parks
+  and resumes starts with an empty set and has to search again.
 - `guardUrl` checks names, not addresses. A public hostname that resolves to a private address
   gets through, because a Worker has no DNS API. On Cloudflare's network a Worker can't reach
   private space anyway; under `wrangler dev` it can.

@@ -27,8 +27,8 @@ import { refreshAllFactTables } from '../services/fact-tables'
  * does not exist yet — and its page arrives on that tenant's first `GET /api/analytics/pages`
  * instead, through the same lazy path.
  */
-export async function onTenantCreated({ db, tenantId, userId, features }: HookCtx): Promise<void> {
-  await ensureDefaultDashboards(db, tenantId, userId, features)
+export async function onTenantCreated({ db, tenantId, features }: HookCtx): Promise<void> {
+  await ensureDefaultDashboards(db, tenantId, features)
 }
 
 /**
@@ -43,9 +43,9 @@ export async function onTenantCreated({ db, tenantId, userId, features }: HookCt
 export async function seedDemo(ctx: SeedCtx): Promise<void> {
   const { db, tenantId, ownerId, demoId, log } = ctx
 
-  await ensureDefaultDashboards(db, tenantId, ownerId)
+  await ensureDefaultDashboards(db, tenantId)
   const siblings = await db.select({ id: tenants.id }).from(tenants).where(ne(tenants.id, tenantId))
-  for (const sibling of siblings) await ensureDefaultDashboards(db, sibling.id, null)
+  for (const sibling of siblings) await ensureDefaultDashboards(db, sibling.id)
 
   const [overview] = await db
     .select()

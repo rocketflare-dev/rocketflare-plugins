@@ -10,7 +10,7 @@ everything you see belongs to `connectors`, which it requires.
 
 | Area | What you get |
 |---|---|
-| Consent | Entra admin consent through `/organizations/v2.0/adminconsent`; the organisation's tenant id comes back on the callback |
+| Consent | Entra admin consent through `/organizations/v2.0/adminconsent`, then one OpenID Connect sign-in at that tenant: the connection goes active on a verified `id_token` naming the organisation and an administrator. One organisation can back one workspace |
 | Tokens | Client-credentials tokens per organisation, cached sealed and re-minted before expiry; a bearer token is only ever sent to `graph.microsoft.com` |
 | Directory | `users/delta` and `groups/delta` with memberships |
 | Calendars | `calendarView/delta` per member mailbox, over a rolling window from 30 days back to 90 days ahead |
@@ -18,7 +18,7 @@ everything you see belongs to `connectors`, which it requires.
 
 ## Requirements
 
-- Rocketflare kit **0.12.0** or later, and the [`connectors`](../connectors/) plugin (kit 0.13.0).
+- Rocketflare kit **0.29.0** or later, and the [`connectors`](../connectors/) plugin (kit 0.29.0).
 - An app registered in Microsoft Entra ID as **multitenant**, with the web redirect URI
   `<APP_URL>/api/hooks/connectors/m365/callback` for each environment and three Microsoft Graph
   **application** permissions: `User.Read.All`, `Group.Read.All`, `Calendars.Read`.
@@ -47,14 +47,17 @@ and reminds you when the secret expires (24 months at most).
    (locally `http://localhost:3000/api/hooks/connectors/m365/callback`).
 3. API permissions → Microsoft Graph → **Application permissions** → `User.Read.All`,
    `Group.Read.All`, `Calendars.Read`.
-4. Certificates & secrets → New client secret; copy the value (shown once).
-5. Set `M365_CLIENT_ID` and `M365_CLIENT_SECRET` — `apps/web/.dev.vars` locally,
+4. Token configuration → Add groups claim → **Directory roles** (ID token), so a consenting
+   administrator can be recognised.
+5. Certificates & secrets → New client secret; copy the value (shown once).
+6. Set `M365_CLIENT_ID` and `M365_CLIENT_SECRET` — `apps/web/.dev.vars` locally,
    `pnpm provision secrets <env>` when deployed.
-6. Before offering it to other organisations, complete **publisher verification** (Branding &
+7. Before offering it to other organisations, complete **publisher verification** (Branding &
    properties) — unverified multitenant apps show a warning at consent.
 
 Then an admin of each customer organisation presses **Connect Microsoft 365** in Settings →
-Connections and a Global Administrator (or Privileged Role Administrator) consents.
+Connections and a Global Administrator (or Privileged Role Administrator) consents, then signs in
+once more so the app can confirm the organisation.
 
 ## Troubleshooting
 

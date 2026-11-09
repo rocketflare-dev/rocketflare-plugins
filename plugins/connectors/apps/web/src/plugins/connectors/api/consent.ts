@@ -19,6 +19,8 @@ export const consentStateSchema = z.object({
   userId: z.string().uuid(),
   provider: z.string().min(1),
   installationId: z.string().uuid(),
+  /** What a provider's earlier step asked to have handed back (`ConsentContinue`). */
+  continuation: z.record(z.string(), z.string()).optional(),
 })
 export type ConsentState = z.infer<typeof consentStateSchema>
 

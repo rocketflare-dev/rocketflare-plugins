@@ -9,6 +9,7 @@
  * callback route swaps `freeagentHttp.fetch` for its duration.
  */
 import { readFileSync } from 'node:fs'
+import { FREEAGENT_SUBJECT } from '@rocketflare/shared/plugins/freeagent/index'
 import {
   createExecutionContext,
   createTestEnv,
@@ -28,6 +29,7 @@ import {
 import { makeCronCtx, makeJobCtx, makeToolCtx } from '@testkit/unit'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { tenantUsers } from '@/db/schema/kit'
 import { openSecret, signState } from '@/plugins/api'
 import { CONNECT_STATE_PURPOSE } from '../../api/hooks'
 import { enqueueSyncs, FREEAGENT_CRON } from '../../api/scheduled'
@@ -406,6 +408,40 @@ describe('connecting', () => {
     })
     expect(body).not.toContain('refresh-1')
     expect(body).not.toContain('access-1')
+  })
+
+  it('saves no connection for an admin who can no longer manage FreeAgent', async () => {
+    const owner = await tenantWithOwner()
+    const env = freeagentEnv()
+    const config = makeJobCtx({ db, env }).config
+    const state = await signState(config, CONNECT_STATE_PURPOSE, {
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+    })
+    await db
+      .update(tenantUsers)
+      .set({ role: 'member' })
+      .where(and(eq(tenantUsers.tenantId, owner.tenantId), eq(tenantUsers.userId, owner.userId)))
+    const fake = fakeFreeAgent({
+      'POST /v2/token_endpoint': () => tokenReply(1),
+      'GET /v2/company': () => reply(company),
+    })
+    freeagentHttp.fetch = fake.deps.fetch
+    const res = await request(
+      `/api/hooks/freeagent/callback?code=the-code&state=${encodeURIComponent(state)}`,
+      {},
+      { env }
+    )
+    expect(res.status).toBe(302)
+    expect(new URL(res.headers.get('location') ?? '').searchParams.get('connectError')).toBe(
+      'approval_failed'
+    )
+    const rows = await db
+      .select()
+      .from(freeagentConnections)
+      .where(eq(freeagentConnections.tenantId, owner.tenantId))
+    expect(rows).toEqual([])
+    expect(stubs(env).queue.messages).toEqual([])
   })
 
   it('sends a denied approval back to Settings with the reason', async () => {
@@ -866,7 +902,11 @@ describe('agent tools', () => {
     // Configured AND connected: connected alone, on a deployment without the app, is not enough.
     expect(await freeagentAgentTools(makeToolCtx({ db, tenantId }))).toEqual([])
 
-    const admin = await freeagentAgentTools(makeToolCtx({ db, env, tenantId, bypass: true }))
+    const manages = (action: string, subject: string) =>
+      action === 'manage' && subject === FREEAGENT_SUBJECT
+    const admin = await freeagentAgentTools(
+      makeToolCtx({ db, env, tenantId, bypass: true, can: manages as never })
+    )
     expect(admin.map(t => t.name).sort()).toEqual(Object.values(FREEAGENT_TOOL_NAMES).sort())
     for (const t of admin) {
       const writes =
@@ -879,6 +919,14 @@ describe('agent tools', () => {
     )
     expect(member.map(t => t.name)).not.toContain(FREEAGENT_TOOL_NAMES.explainTransaction)
     expect(member.map(t => t.name)).toContain(FREEAGENT_TOOL_NAMES.searchTransactions)
+
+    // Admin-level row visibility on its own is not `manage FreeAgent`: a support reader holds read.
+    const readOnly = await freeagentAgentTools(
+      makeToolCtx({ db, env, tenantId, bypass: true, userId, can: () => false })
+    )
+    expect(readOnly.map(t => t.name)).not.toContain(FREEAGENT_TOOL_NAMES.explainTransaction)
+    expect(readOnly.map(t => t.name)).not.toContain(FREEAGENT_TOOL_NAMES.createBill)
+    expect(readOnly.map(t => t.name)).toContain(FREEAGENT_TOOL_NAMES.searchTransactions)
 
     await syncTenant(makeJobCtx({ db, env }), tenantId, {
       deps: fakeFreeAgent(booksRoutes({ pass: 1 })).deps,

@@ -19,10 +19,11 @@ import { toolCtx } from '@/plugins/api'
 import { webKnowledgeRouter } from './api/routes'
 import { loadEnabledSearch } from './api/settings'
 import { fetchPageTool } from './tools/fetch-page'
+import { reachableUrls } from './tools/reachable-urls'
 import { type WebToolDeps, webSearchTool } from './tools/web-search'
 
 /** Unbound `fetch` throws "Illegal invocation" on Workers once it is called as a method. */
-const deps: WebToolDeps = { fetch: (input, init) => fetch(input, init) }
+const boundFetch: WebToolDeps['fetch'] = (input, init) => fetch(input, init)
 
 export const webKnowledgeServer = {
   shared: webKnowledgeShared,
@@ -31,6 +32,7 @@ export const webKnowledgeServer = {
     const ctx = toolCtx(raw)
     const search = await loadEnabledSearch(ctx.db, ctx.tenantId)
     if (!search) return []
+    const deps: WebToolDeps = { fetch: boundFetch, reachable: reachableUrls() }
     return [webSearchTool(ctx, search, deps) as Tool, fetchPageTool(ctx, search, deps) as Tool]
   },
   /** Additive, over this plugin's own subject: admins configure, everyone may see what is set. */

@@ -32,7 +32,7 @@ import {
 } from '@rocketflare/shared/plugins/analytics/index'
 // The CLI plugin API (D31) — one declared entry, rather than four reaches into the kit's internals.
 import type { CliPlugin, CommandContext } from '../api'
-import { CliError, EXIT_ERROR, formatDate, renderTable, requireClient } from '../api'
+import { CliError, EXIT_ERROR, formatDate, neutralise, renderTable, requireClient } from '../api'
 
 export async function runAnalyticsPagesList(ctx: CommandContext): Promise<void> {
   const { data, raw } = await requireClient(ctx).request('GET', '/api/analytics/pages', {
@@ -65,7 +65,7 @@ export async function runAnalyticsCheckFacts(ctx: CommandContext): Promise<void>
   // Same contract as the script it replaces: a pipeline reads the exit code, not the table.
   if (stale.length > 0) {
     throw new CliError(
-      `${stale.length} fact table(s) stale: ${stale.map(f => f.table).join(', ')}`,
+      `${stale.length} fact table(s) stale: ${stale.map(f => neutralise(f.table)).join(', ')}`,
       { exitCode: EXIT_ERROR, hint: 'run `rocketflare analytics refresh-facts`' }
     )
   }
@@ -75,7 +75,11 @@ export async function runAnalyticsRefreshFacts(ctx: CommandContext): Promise<voi
   const { data, raw } = await requireClient(ctx).request('POST', '/api/analytics/facts/refresh', {
     schema: analyticsRefreshFactsResponseSchema,
   })
-  ctx.out.data(raw, () => `Queued ${data.type} (${data.jobId}) at ${data.enqueuedAt}`)
+  ctx.out.data(
+    raw,
+    () =>
+      `Queued ${neutralise(data.type)} (${neutralise(data.jobId)}) at ${neutralise(String(data.enqueuedAt))}`
+  )
 }
 
 export const analyticsCli: CliPlugin<typeof analyticsShared> = {

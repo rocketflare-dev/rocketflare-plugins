@@ -15,8 +15,8 @@ job. Other plugins subscribe to parsed messages through the `inbox:consumers` ex
 |---|---|
 | Email | A catch-all `emailHandlers` entry. Unknown addresses, senders that aren't allowed and failed authentication are bounced with a reason the forwarding mailbox shows |
 | UI | **Inbox**: messages, sender and forwarder, authentication verdicts, text body, attachments, raw/HTML downloads, reprocess and delete. **Settings → Inbox**: address, allow-list, require authentication, on/off |
-| Forward as attachment | Each `message/rfc822` part of a message (Gmail's "Forward as attachment", with or without a disposition) becomes a **message of its own**, linked to the forward it came in: its own sender, subject, date and attachments, the forward's authentication verdict, and who forwarded it. An embedded email already received is linked, not stored again. Nesting stops at 3 levels and 50 emails per message |
-| Forwarding | Gmail and Proton forwarding confirmations are let through before anyone is allow-listed, and their **code and link** are shown at the top of the message |
+| Forward as attachment | Each `message/rfc822` part of a message (Gmail's "Forward as attachment", with or without a disposition) becomes a **message of its own**, linked to the forward it came in: its own sender, subject, date and attachments, the forward's authentication verdict, and who forwarded it. An embedded email already received is linked, not stored again. Nesting stops at 3 levels, 50 emails per message and 50 in total per delivery |
+| Forwarding | Gmail and Proton forwarding confirmations are let through ahead of the allow-list during a 24-hour setup window (opened when the address is set, or from Settings), must authenticate as the provider, and show their **code and link** (on the provider's host only) at the top of the message |
 | Knowledge | Each parsed message (headers + text) and its PDF/Office/HTML/text attachments are indexed into the kit's knowledge base (`inbox:message`, `inbox:attachment`), so chat can search your mail. Upserted on reprocess, removed on delete, switchable in Settings |
 | Agent tools | `inbox_list_messages` and `inbox_get_message`, both read-only |
 | Extension | `inbox:consumers`: a plugin contributes `{ id, onMessage(message, ctx) }` and is called once per parsed message — so once per embedded email of a forward — with attachment refs it reads through `readInboxAttachment`, and `parentMessageId` / `forwardedBy` / `forwardedMessageIds` for forwarded mail |
@@ -27,7 +27,7 @@ job. Other plugins subscribe to parsed messages through the `inbox:consumers` ex
 
 ## Requirements
 
-- Rocketflare kit **0.22.0** or later (the `emailHandlers` slot and `storage()` on background contexts).
+- Rocketflare kit **0.29.0** or later (the `emailHandlers` slot and `storage()` on background contexts).
 - The receiving domain on Cloudflare, with Email Routing enabled and a rule that sends the address to the Worker.
 - The kit's `FILES` (R2) and `JOBS_QUEUE` bindings, which every kit app already has, and its knowledge surface (`feature-knowledge`) for indexing.
 

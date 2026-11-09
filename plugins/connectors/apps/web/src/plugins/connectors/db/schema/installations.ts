@@ -46,6 +46,8 @@ export const connectorsInstallations = pgTable(
   },
   table => [
     uniqueIndex('connectors_installations_tenant_provider_idx').on(table.tenantId, table.provider),
+    // One external organisation backs at most one workspace; NULLs (pending rows) never collide.
+    uniqueIndex('connectors_installations_external_idx').on(table.provider, table.externalTenantId),
     tenantIsolation('connectors_installations'),
   ]
 )

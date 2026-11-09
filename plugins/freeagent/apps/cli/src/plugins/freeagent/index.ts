@@ -11,7 +11,7 @@ import {
   freeagentSyncResponseSchema,
 } from '@rocketflare/shared/plugins/freeagent/index'
 import type { CliPlugin, CommandContext } from '../api'
-import { formatDate, requireClient } from '../api'
+import { formatDate, neutralise, requireClient } from '../api'
 
 export async function runFreeagentStatus(ctx: CommandContext): Promise<void> {
   const { data, raw } = await requireClient(ctx).request('GET', '/api/freeagent/status', {
@@ -26,11 +26,11 @@ export async function runFreeagentStatus(ctx: CommandContext): Promise<void> {
     [
       `FreeAgent:     ${data.configured ? `configured (${data.environment})` : 'not configured on this deployment'}`,
       `Connection:    ${connection}`,
-      `Company:       ${data.companyName ?? '-'}${data.companyCurrency ? ` (${data.companyCurrency})` : ''}`,
+      `Company:       ${neutralise(data.companyName ?? '-')}${data.companyCurrency ? ` (${neutralise(data.companyCurrency)})` : ''}`,
       `Last sync:     ${formatDate(data.lastSyncAt)}`,
       `Mirrored:      ${data.counts.transactions} transactions (${data.counts.unexplained} unexplained), ${data.counts.invoices} invoices, ${data.counts.bills} bills`,
       ...(data.lastError
-        ? [`Last error:    ${data.lastError} (${formatDate(data.lastErrorAt)})`]
+        ? [`Last error:    ${neutralise(data.lastError)} (${formatDate(data.lastErrorAt)})`]
         : []),
     ].join('\n')
   )
@@ -40,7 +40,7 @@ export async function runFreeagentSync(ctx: CommandContext): Promise<void> {
   const { data, raw } = await requireClient(ctx).request('POST', '/api/freeagent/sync', {
     schema: freeagentSyncResponseSchema,
   })
-  ctx.out.data(raw, () => `Sync queued (job ${data.jobId}).`)
+  ctx.out.data(raw, () => `Sync queued (job ${neutralise(data.jobId)}).`)
 }
 
 export const freeagentCli: CliPlugin<typeof freeagentShared> = {

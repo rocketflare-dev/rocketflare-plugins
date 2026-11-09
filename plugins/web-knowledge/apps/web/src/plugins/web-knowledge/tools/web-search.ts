@@ -16,6 +16,7 @@ import type { EnabledSearch } from '../api/settings'
 import { openKey } from '../api/settings'
 import { SEARCH_ADAPTERS } from '../services/providers'
 import { toolFailure } from './errors'
+import type { ReachableUrls } from './reachable-urls'
 
 export const WEB_SEARCH_TOOL = 'web_search'
 
@@ -33,6 +34,8 @@ export type WebSearchInput = z.infer<typeof webSearchInputSchema>
 
 export interface WebToolDeps {
   fetch: typeof fetch
+  /** What `fetch_page` may read; this tool adds every result it returns. */
+  reachable: ReachableUrls
 }
 
 export function webSearchTool(
@@ -58,6 +61,7 @@ export function webSearchTool(
           input.query,
           limit
         )
+        for (const hit of results) deps.reachable.add(hit.url)
         return JSON.stringify({
           query: input.query,
           provider: search.provider,

@@ -63,6 +63,7 @@ export const inboxServer = {
       can('read', INBOX_SETTINGS_SUBJECT)
     },
   },
+  rlsExcludedTables: ['inbox_local_part_holds'],
   unscopedAllowlist: {
     'src/plugins/inbox/services/receive.ts':
       'settingsForLocalPart resolves the organisation FROM the recipient address — an inbound ' +

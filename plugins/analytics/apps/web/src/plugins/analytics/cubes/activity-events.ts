@@ -9,18 +9,23 @@
  */
 import type { BaseQueryDefinition, Cube, QueryContext } from 'drizzle-cube/server'
 import { defineCube } from 'drizzle-cube/server'
-import { eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { activityEvents, users } from '@/db/schema/kit'
-import { tenantIdOf } from './security'
+import { type AnalyticsSecurityContext, tenantIdOf } from './security'
 import { usersCube } from './users'
 
 export const activityEventsCube: Cube = defineCube('ActivityEvents', {
   title: 'Activity Events',
   description: 'Everything that happened in the organisation, one row per event',
 
+  // Admin-level readers only, as on the kit's own activity route: anyone else gets no rows, in
+  // every query mode and through every join.
   sql: (ctx: QueryContext): BaseQueryDefinition => ({
     from: activityEvents,
-    where: eq(activityEvents.tenantId, tenantIdOf(ctx)),
+    where: and(
+      eq(activityEvents.tenantId, tenantIdOf(ctx)),
+      (ctx.securityContext as Partial<AnalyticsSecurityContext>).isAdmin ? undefined : sql`false`
+    ),
   }),
 
   meta: {

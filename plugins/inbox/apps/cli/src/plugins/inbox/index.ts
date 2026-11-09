@@ -11,7 +11,7 @@ import {
   inboxShared,
 } from '@rocketflare/shared/plugins/inbox/index'
 import type { CliPlugin, CommandContext } from '../api'
-import { formatDate, renderTable, requireClient } from '../api'
+import { formatDate, neutralise, renderTable, requireClient } from '../api'
 
 export async function runInboxList(
   ctx: CommandContext,
@@ -41,8 +41,8 @@ export async function runInboxStatus(ctx: CommandContext): Promise<void> {
   ctx.out.data(raw, () =>
     [
       `Inbox:           ${data.enabled ? 'on' : 'off'}`,
-      `Address:         ${data.localPart ?? 'not set'}`,
-      `Allowed senders: ${data.allowedSenders.length ? data.allowedSenders.join(', ') : 'none'}`,
+      `Address:         ${neutralise(data.localPart ?? 'not set')}`,
+      `Allowed senders: ${data.allowedSenders.length ? neutralise(data.allowedSenders.join(', ')) : 'none'}`,
       `Authentication:  ${data.requireAuthentication ? 'required' : 'not required'}`,
     ].join('\n')
   )

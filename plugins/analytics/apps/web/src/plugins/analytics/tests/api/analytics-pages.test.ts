@@ -88,7 +88,7 @@ describe('tenant creation seeds dashboards', () => {
     const { id } = await json<{ id: string }>(res)
     const rows = await db.select().from(analyticsPages).where(eq(analyticsPages.tenantId, id))
     expect(rows.map(r => r.templateKey)).toEqual(['tenant-overview'])
-    expect(rows[0]?.createdByUserId).toBe(user.id)
+    expect(rows[0]?.createdByUserId).toBeNull()
   })
 })
 

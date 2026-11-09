@@ -21,7 +21,7 @@ import ReactMarkdown from 'react-markdown'
 import { useParams } from 'react-router-dom'
 import remarkGfm from 'remark-gfm'
 import { z } from 'zod'
-import { EmptyState, LoadingIndicator, PageHeader } from '@/plugins/api/ui'
+import { EmptyState, LoadingIndicator, MarkdownImageLink, PageHeader } from '@/plugins/api/ui'
 import {
   useAnswerIssueReport,
   useDiscardIssueReport,
@@ -31,7 +31,7 @@ import {
 type Item =
   | { kind: 'reporter'; id: string; at: Date; text: string }
   | { kind: 'agent'; id: string; at: Date; text: string }
-  | { kind: 'draft'; id: string; at: Date; title: string; body: string }
+  | { kind: 'draft'; id: string; at: Date; title: string; heading: string; body: string }
   | { kind: 'note'; id: string; at: Date; text: string }
 
 const textPayload = z.object({ text: z.string() })
@@ -63,12 +63,13 @@ export function conversationOf(run: AgentRunWithEvents): Item[] {
         text: interrupt.spec.message,
       })
     } else if (interrupt.spec.kind === 'choice') {
-      const [, ...body] = interrupt.spec.message.split('\n\n')
+      const [heading = '', ...body] = interrupt.spec.message.split('\n\n')
       items.push({
         kind: 'draft',
         id: interrupt.id,
         at: interrupt.createdAt,
         title: interrupt.spec.title ?? 'Draft',
+        heading,
         body: body.join('\n\n'),
       })
     }
@@ -104,6 +105,27 @@ export function conversationOf(run: AgentRunWithEvents): Item[] {
   return items.sort((a, b) => a.at.getTime() - b.at.getTime())
 }
 
+/** Model-written Markdown: an image is a link the person can choose to open, never a request. */
+export function DraftBody({ body }: { body: string }) {
+  return (
+    <div className="prose prose-sm max-w-none">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{ img: MarkdownImageLink }}>
+        {body}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
+/** What leaves with the draft, said before the person chooses to send it. */
+export function FilingNotice() {
+  return (
+    <p className="text-xs text-base-content/70">
+      Logging this posts the draft above, your name, the page you were on and the whole conversation
+      above to GitHub, where anyone with access to the repository can read it.
+    </p>
+  )
+}
+
 function Bubble({ item }: { item: Item }) {
   if (item.kind === 'note') {
     return <p className="text-center text-xs text-base-content/60">{item.text}</p>
@@ -112,11 +134,8 @@ function Bubble({ item }: { item: Item }) {
     return (
       <div className="surface-panel border border-primary/30 p-4 space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-primary">{item.title}</p>
-        <div className="prose prose-sm max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>
-            {item.body}
-          </ReactMarkdown>
-        </div>
+        <p className="text-sm font-semibold">{item.heading}</p>
+        <DraftBody body={item.body} />
       </div>
     )
   }
@@ -240,6 +259,7 @@ export default function ReportConversationPage() {
 
       {!thinking && pending?.spec.kind === 'choice' && (
         <div className="space-y-3">
+          <FilingNotice />
           <button
             type="button"
             className="btn btn-primary w-full"

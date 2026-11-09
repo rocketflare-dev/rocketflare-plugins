@@ -27,6 +27,7 @@ import {
 import { makeCronCtx, makeJobCtx } from '@testkit/unit'
 import { and, eq, inArray } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { tenantUsers } from '@/db/schema/kit'
 import { signState } from '@/plugins/api'
 import { allTables } from '@/plugins/api/peers'
 import { CONSENT_STATE_PURPOSE } from '../../api/consent'
@@ -108,9 +109,18 @@ const fakeProvider: ConnectorProvider = {
   operatorCredentials: () => ({ clientId: 'operator-client', clientSecret: 'operator-secret' }),
   consentUrl: ({ credentials, redirectUri, state }) =>
     `https://consent.example.test/?client_id=${credentials.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`,
-  completeConsent: ({ query }) => {
+  completeConsent: ({ query, continuation }) => {
     if (query.get('ok') !== '1') throw new ConsentError('Cancelled', 'consent_not_granted')
-    return { externalTenantId: query.get('tenant') ?? EXTERNAL_TENANT, displayName: 'Contoso' }
+    if (query.get('twoStep') === '1' && !continuation) {
+      return {
+        continueAt: state => `https://signin.example.test/?state=${state}`,
+        continuation: { claimed: query.get('tenant') ?? EXTERNAL_TENANT },
+      }
+    }
+    return {
+      externalTenantId: continuation?.claimed ?? query.get('tenant') ?? EXTERNAL_TENANT,
+      displayName: 'Contoso',
+    }
   },
   mintToken: async () => {
     script.mints++
@@ -420,6 +430,117 @@ describe('routes', () => {
 })
 
 describe('the consent callback', () => {
+  /** Start a consent as `cookie` and answer the signed state it handed out. */
+  async function startConsent(cookie: Record<string, string>, env = createTestEnv()) {
+    const started = await request(
+      `${BASE}/installations`,
+      { method: 'POST', headers: cookie },
+      { json: { provider: 'fake' }, env }
+    )
+    expect(started.status).toBe(201)
+    const { consentUrl, installationId } = await json<{
+      consentUrl: string
+      installationId: string
+    }>(started)
+    return { state: new URL(consentUrl).searchParams.get('state') ?? '', installationId, env }
+  }
+
+  it('completes nothing once the admin who started it can no longer manage connectors', async () => {
+    const tenant = (await createTestTenant(db)).id
+    const admin = await member(`admin-${crypto.randomUUID()}@example.test`, 'owner', tenant)
+    const { state, installationId, env } = await startConsent(admin.cookie)
+    await db
+      .update(tenantUsers)
+      .set({ role: 'member' })
+      .where(and(eq(tenantUsers.tenantId, tenant), eq(tenantUsers.userId, admin.id)))
+
+    const res = await request(
+      `/api/hooks/connectors/fake/callback?ok=1&tenant=${crypto.randomUUID()}&state=${state}`,
+      {},
+      { env }
+    )
+
+    expect(res.headers.get('location')).toContain('connectError=invalid_state')
+    const [row] = await db
+      .select()
+      .from(connectorsInstallations)
+      .where(
+        and(
+          eq(connectorsInstallations.id, installationId),
+          eq(connectorsInstallations.tenantId, tenant)
+        )
+      )
+    expect(row).toMatchObject({ status: 'pending', externalTenantId: null })
+  })
+
+  it('binds one external organisation to one workspace', async () => {
+    const shared = crypto.randomUUID()
+    const first = (await createTestTenant(db)).id
+    const second = (await createTestTenant(db)).id
+    const firstAdmin = await member(`a-${crypto.randomUUID()}@example.test`, 'owner', first)
+    const secondAdmin = await member(`b-${crypto.randomUUID()}@example.test`, 'owner', second)
+
+    const a = await startConsent(firstAdmin.cookie)
+    const accepted = await request(
+      `/api/hooks/connectors/fake/callback?ok=1&tenant=${shared}&state=${a.state}`,
+      {},
+      { env: a.env }
+    )
+    expect(accepted.headers.get('location')).toContain('connected=fake')
+
+    const b = await startConsent(secondAdmin.cookie)
+    const refused = await request(
+      `/api/hooks/connectors/fake/callback?ok=1&tenant=${shared}&state=${b.state}`,
+      {},
+      { env: b.env }
+    )
+    expect(refused.headers.get('location')).toContain('connectError=external_tenant_in_use')
+    const [row] = await db
+      .select()
+      .from(connectorsInstallations)
+      .where(
+        and(
+          eq(connectorsInstallations.id, b.installationId),
+          eq(connectorsInstallations.tenantId, second)
+        )
+      )
+    expect(row).toMatchObject({ status: 'pending', externalTenantId: null })
+  })
+
+  it('carries a second consent step through a fresh signed state', async () => {
+    const tenant = (await createTestTenant(db)).id
+    const admin = await member(`c-${crypto.randomUUID()}@example.test`, 'owner', tenant)
+    const claimed = crypto.randomUUID()
+    const { state, installationId, env } = await startConsent(admin.cookie)
+
+    const first = await request(
+      `/api/hooks/connectors/fake/callback?ok=1&twoStep=1&tenant=${claimed}&state=${state}`,
+      {},
+      { env }
+    )
+    const onward = new URL(first.headers.get('location') ?? '')
+    expect(onward.host).toBe('signin.example.test')
+    const load = () =>
+      db
+        .select()
+        .from(connectorsInstallations)
+        .where(
+          and(
+            eq(connectorsInstallations.id, installationId),
+            eq(connectorsInstallations.tenantId, tenant)
+          )
+        )
+    expect((await load())[0]).toMatchObject({ status: 'pending', externalTenantId: null })
+
+    const done = await request(
+      `/api/hooks/connectors/fake/callback?ok=1&state=${onward.searchParams.get('state')}`,
+      {},
+      { env }
+    )
+    expect(done.headers.get('location')).toContain('connected=fake')
+    expect((await load())[0]).toMatchObject({ status: 'active', externalTenantId: claimed })
+  })
+
   it('refuses a tampered, foreign-purpose or cross-provider state', async () => {
     const env = createTestEnv()
     const config = makeJobCtx({ db, env }).config

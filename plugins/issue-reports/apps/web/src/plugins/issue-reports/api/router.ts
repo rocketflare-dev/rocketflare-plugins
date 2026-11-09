@@ -11,14 +11,14 @@
 import type { IssueReportsStatus } from '@rocketflare/shared/plugins/issue-reports/index'
 import type { RequestCtx } from '@/plugins/api'
 import { createRouter, requestCtx } from '@/plugins/api'
-import { githubFor, issueReportsConfig } from '../services/github'
+import { githubConfigured, issueReportsConfig } from '../services/github'
 
 export const issueReportsRouter = createRouter()
 
 issueReportsRouter.get('/status', c => {
   const ctx: RequestCtx = requestCtx(c)
   ctx.guard('create', 'AgentRun')
-  const configured = githubFor(ctx.config) !== null
+  const configured = githubConfigured(ctx.config)
   const body: IssueReportsStatus = {
     configured,
     repo: configured ? (issueReportsConfig(ctx.config).ISSUE_REPORTS_GITHUB_REPO ?? null) : null,
