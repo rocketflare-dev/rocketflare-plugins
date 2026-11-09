@@ -4,6 +4,7 @@
  * rule is a table test (`tests/config/rules.test.ts`).
  */
 import type { InboxAuth, InboxConfirmation } from '@rocketflare/shared/plugins/inbox/index'
+import { addressParser } from 'postal-mime'
 
 /** `Me+Tag@Example.com` → `me@example.com`: lower-cased, subaddress dropped. */
 export function normaliseAddress(address: string): string {
@@ -25,39 +26,155 @@ export function senderMatches(address: string, allowList: readonly string[]): bo
   })
 }
 
-const AUTH_METHODS = ['spf', 'dkim', 'dmarc'] as const
-
-/**
- * The verdicts in `Authentication-Results` (RFC 8601) — the FIRST result per method across every
- * such header, which is the one the receiving edge (Cloudflare) prepended. `null` where absent.
- */
-export function parseAuthenticationResults(headers: readonly string[]): InboxAuth {
-  const auth: InboxAuth = { spf: null, dkim: null, dmarc: null }
-  for (const header of headers) {
-    for (const method of AUTH_METHODS) {
-      if (auth[method] !== null) continue
-      const match = new RegExp(`\\b${method}=([a-z]+)`, 'i').exec(header)
-      if (match?.[1]) auth[method] = match[1].toLowerCase()
-    }
-  }
-  return auth
+/** The `From:` mailbox the allow-list and the stored row both use: one, or null when it is not one. */
+export function parseAddressHeader(
+  value: string | null
+): { address: string; name: string | null } | null {
+  if (!value) return null
+  const mailboxes = addressParser(value)
+  // Several mailboxes, or a group, name no single sender to compare or attribute.
+  const [only] = mailboxes
+  if (mailboxes.length !== 1 || !only || 'group' in only) return null
+  if (!only.address?.includes('@')) return null
+  return { address: only.address.trim().toLowerCase(), name: only.name?.trim() || null }
 }
 
-/** Any one of SPF, DKIM or DMARC passing. Forwarded mail usually passes SPF for the forwarder. */
-export function isAuthenticated(auth: InboxAuth): boolean {
-  return auth.spf === 'pass' || auth.dkim === 'pass' || auth.dmarc === 'pass'
+/** The domain half of an address, lower-cased, or the value itself when it has no `@`. */
+export function domainOf(address: string): string {
+  const unquoted = address.trim().replace(/^"|"$/g, '').toLowerCase()
+  const at = unquoted.lastIndexOf('@')
+  return at === -1 ? unquoted : unquoted.slice(at + 1)
+}
+
+/** DMARC's relaxed alignment, without a public-suffix list: the same domain, or a parent of it. */
+function domainsAlign(a: string, b: string): boolean {
+  return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`)
+}
+
+/** The verdicts in `Authentication-Results`, with the identity each one vouches for. */
+export interface AuthenticationResults extends InboxAuth {
+  /** The `smtp.mailfrom` domain of the SPF result. */
+  spfDomain: string | null
+  /** The `header.d` domain of every DKIM signature that passed. */
+  dkimDomains: readonly string[]
+  /** The `header.from` domain of the DMARC result. */
+  dmarcDomain: string | null
+}
+
+/**
+ * The verdicts of the receiving edge. Cloudflare prepends one `Authentication-Results` naming
+ * itself (authserv-id `mx.cloudflare.net`); everything else in the message is the sender's text.
+ */
+const EDGE_AUTHSERV_ID = 'mx.cloudflare.net'
+
+/** Split on any of `separators`, outside quoted strings and `(comments)`, dropping the comments. */
+function splitAuthHeader(value: string, separators: string): string[] {
+  const parts: string[] = []
+  let current = ''
+  let depth = 0
+  let quoted = false
+  for (let i = 0; i < value.length; i += 1) {
+    const ch = value[i] as string
+    if (ch === '\\') {
+      if (depth === 0) current += `${ch}${value[i + 1] ?? ''}`
+      i += 1
+    } else if (quoted) {
+      current += ch
+      if (ch === '"') quoted = false
+    } else if (depth > 0) {
+      if (ch === '(') depth += 1
+      else if (ch === ')') depth -= 1
+    } else if (ch === '(') {
+      depth = 1
+    } else if (separators.includes(ch)) {
+      parts.push(current)
+      current = ''
+    } else {
+      current += ch
+      if (ch === '"') quoted = true
+    }
+  }
+  parts.push(current)
+  return parts.map(part => part.trim())
+}
+
+/**
+ * Which edge said what. `Headers.get` joins repeated headers with commas, so the joined value is
+ * split first and only the first header naming the edge is read; within it, a result's method and
+ * verdict are its first token, so an address the edge reflects into a property is never a verdict.
+ */
+export function parseAuthenticationResults(headers: readonly string[]): AuthenticationResults {
+  const results: AuthenticationResults = {
+    spf: null,
+    dkim: null,
+    dmarc: null,
+    spfDomain: null,
+    dkimDomains: [],
+    dmarcDomain: null,
+  }
+  const edge = headers
+    .flatMap(header => splitAuthHeader(header, ','))
+    .find(header => splitAuthHeader(header, ';')[0]?.toLowerCase() === EDGE_AUTHSERV_ID)
+  if (!edge) return results
+
+  const dkimDomains: string[] = []
+  for (const result of splitAuthHeader(edge, ';').slice(1)) {
+    const [method, ...properties] = splitAuthHeader(result, ' \t\r\n').filter(Boolean)
+    const verdict = /^(spf|dkim|dmarc)(?:\/\d+)?=([a-z]+)$/i.exec(method ?? '')
+    if (!verdict?.[1] || !verdict[2]) continue
+    const name = verdict[1].toLowerCase() as 'spf' | 'dkim' | 'dmarc'
+    const value = verdict[2].toLowerCase()
+    const property = (key: string) => {
+      const found = properties.find(p => p.toLowerCase().startsWith(`${key}=`))
+      return found ? domainOf(found.slice(key.length + 1)) : null
+    }
+    if (name === 'dkim') {
+      if (value === 'pass') {
+        const domain = property('header.d')
+        if (domain) dkimDomains.push(domain)
+      }
+      if (results.dkim !== 'pass') results.dkim = value
+    } else if (results[name] === null) {
+      results[name] = value
+      if (name === 'spf') results.spfDomain = property('smtp.mailfrom')
+      else results.dmarcDomain = property('header.from')
+    }
+  }
+  return { ...results, dkimDomains }
+}
+
+/** Did SPF, DKIM or DMARC pass for this domain (or one aligned with it)? */
+export function authenticatesDomain(auth: AuthenticationResults, domain: string): boolean {
+  const aligned = (candidate: string | null) =>
+    candidate !== null && domainsAlign(candidate, domain)
+  return (
+    (auth.spf === 'pass' && aligned(auth.spfDomain)) ||
+    (auth.dmarc === 'pass' && aligned(auth.dmarcDomain)) ||
+    (auth.dkim === 'pass' && auth.dkimDomains.some(aligned))
+  )
 }
 
 /** Senders of forwarding confirmations — accepted before an allow-list exists, so the code shows. */
-const CONFIRMATION_SENDERS: Record<string, InboxConfirmation['provider']> = {
+const CONFIRMATION_SENDERS: Record<string, Exclude<InboxConfirmation['provider'], 'other'>> = {
   'forwarding-noreply@google.com': 'gmail',
   '@proton.me': 'proton',
   '@protonmail.com': 'proton',
   '@protonmail.ch': 'proton',
 }
 
+/** The domains a provider's confirmation must authenticate as. */
+const CONFIRMATION_DOMAINS: Record<
+  Exclude<InboxConfirmation['provider'], 'other'>,
+  readonly string[]
+> = {
+  gmail: ['google.com'],
+  proton: ['proton.me', 'protonmail.com', 'protonmail.ch'],
+}
+
 /** Which provider a confirmation sender belongs to, or null for everyone else. */
-export function confirmationProvider(envelopeFrom: string): InboxConfirmation['provider'] | null {
+export function confirmationProvider(
+  envelopeFrom: string
+): Exclude<InboxConfirmation['provider'], 'other'> | null {
   for (const [entry, provider] of Object.entries(CONFIRMATION_SENDERS)) {
     if (senderMatches(envelopeFrom, [entry])) return provider
   }
@@ -69,10 +186,12 @@ export type AcceptVerdict =
   | { accept: false; reason: 'disabled' | 'sender' | 'authentication' }
 
 /**
- * Whether to take a message at all. A forwarding confirmation is accepted from its provider even
- * before the allow-list names anybody (that is the only way to see the code), but it still has to
- * authenticate — anyone can claim to be Google. Everything else needs an allow-listed envelope
- * sender OR `From:` header, and authentication when the organisation requires it.
+ * Whether to take a message at all. A forwarding confirmation is accepted from its provider while
+ * the organisation's setup window is open (that is the only way to see the code), and it has to
+ * authenticate AS the provider — anyone can claim to be Google. Everything else needs an
+ * allow-listed envelope sender OR `From:` header, and when the organisation requires
+ * authentication the pass has to be for the identity that matched: forwarding keeps working by
+ * listing the forwarding mailbox, and a From-only match is refused on an explicit DMARC failure.
  */
 export function acceptMessage(input: {
   enabled: boolean
@@ -80,24 +199,54 @@ export function acceptMessage(input: {
   requireAuthentication: boolean
   envelopeFrom: string
   headerFrom: string | null
-  auth: InboxAuth
+  auth: AuthenticationResults
+  /** Whether the organisation's forwarding-confirmation setup window is open now. */
+  confirmationWindowOpen: boolean
 }): AcceptVerdict {
-  const authenticated = isAuthenticated(input.auth)
-  const allowed =
-    senderMatches(input.envelopeFrom, input.allowedSenders) ||
-    (input.headerFrom !== null && senderMatches(input.headerFrom, input.allowedSenders))
-  const provider = allowed ? null : confirmationProvider(input.envelopeFrom)
+  const envelopeAllowed = senderMatches(input.envelopeFrom, input.allowedSenders)
+  const fromAllowed =
+    input.headerFrom !== null && senderMatches(input.headerFrom, input.allowedSenders)
+  const allowed = envelopeAllowed || fromAllowed
+  const provider =
+    !allowed && input.confirmationWindowOpen ? confirmationProvider(input.envelopeFrom) : null
   if (provider) {
-    return authenticated
+    return CONFIRMATION_DOMAINS[provider].some(domain => authenticatesDomain(input.auth, domain))
       ? { accept: true, confirmationProvider: provider }
       : { accept: false, reason: 'authentication' }
   }
   if (!input.enabled) return { accept: false, reason: 'disabled' }
   if (!allowed) return { accept: false, reason: 'sender' }
-  if (input.requireAuthentication && !authenticated) {
-    return { accept: false, reason: 'authentication' }
+  if (input.requireAuthentication) {
+    const proven = envelopeAllowed
+      ? authenticatesDomain(input.auth, domainOf(input.envelopeFrom))
+      : input.auth.dmarc !== 'fail' &&
+        input.headerFrom !== null &&
+        authenticatesDomain(input.auth, domainOf(input.headerFrom))
+    if (!proven) return { accept: false, reason: 'authentication' }
   }
   return { accept: true, confirmationProvider: null }
+}
+
+/** The hosts a provider's confirmation link may point at (or a subdomain of one). */
+const CONFIRMATION_HOSTS: Record<
+  Exclude<InboxConfirmation['provider'], 'other'>,
+  readonly string[]
+> = {
+  gmail: ['mail-settings.google.com', 'mail.google.com'],
+  proton: ['proton.me', 'protonmail.com', 'protonmail.ch'],
+}
+
+function isProviderUrl(provider: InboxConfirmation['provider'], candidate: string): boolean {
+  if (provider === 'other') return false
+  let url: URL
+  try {
+    url = new URL(candidate)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'https:' || url.port !== '' || url.username !== '') return false
+  const host = url.hostname.toLowerCase()
+  return CONFIRMATION_HOSTS[provider].some(h => host === h || host.endsWith(`.${h}`))
 }
 
 /**
@@ -116,13 +265,7 @@ export function extractConfirmation(
     /\(#(\d{6,})\)/.exec(subject ?? '')?.[1] ??
     null
   const urls = body.match(/https:\/\/[^\s<>"')]+/g) ?? []
-  const pattern =
-    provider === 'gmail'
-      ? /mail-settings\.google\.com|mail\.google\.com\/mail\/vf-/
-      : provider === 'proton'
-        ? /proton\.me|protonmail\./
-        : /./
-  const url = urls.find(u => pattern.test(u)) ?? null
+  const url = urls.find(u => isProviderUrl(provider, u)) ?? null
   return { provider, code, url }
 }
 
@@ -152,13 +295,10 @@ export function extractForwardedOriginal(text: string | null): ForwardedOriginal
   const block = marker ? text.slice(marker.index, marker.index + 2000) : text.slice(0, 2000)
   const from = /^\s*>?\s*From:\s*(.+)$/im.exec(block)?.[1]?.trim()
   if (!from) return null
-  const angle = /^(.*?)<([^>]+@[^>]+)>/.exec(from)
-  const bare = /([^\s<>"]+@[^\s<>"]+)/.exec(from)
-  const fromAddress = (angle?.[2] ?? bare?.[1])?.trim().toLowerCase()
-  if (!fromAddress) return null
-  const name = angle?.[1]?.trim().replace(/^"|"$/g, '') || null
+  const mailbox = parseAddressHeader(from)
+  if (!mailbox) return null
   const subject = /^\s*>?\s*Subject:\s*(.+)$/im.exec(block)?.[1]?.trim() ?? null
-  return { fromAddress, fromName: name, subject }
+  return { fromAddress: mailbox.address, fromName: mailbox.name, subject }
 }
 
 /** A filename safe for an R2 key and a `Content-Disposition` header. */

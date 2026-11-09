@@ -4,6 +4,9 @@
  * - **Consent** — the Entra admin-consent endpoint on `/organizations`: a Global Administrator (or
  *   Privileged Role Administrator) of the customer tenant grants the deployment's multi-tenant app
  *   its APPLICATION permissions, and Entra redirects back with `admin_consent=True&tenant=<guid>`.
+ *   That redirect is a claim, so the admin then signs in at that tenant and the `id_token` from
+ *   the back-channel code exchange — verified against the tenant's keys, `tid` and an admin role
+ *   included — is what binds the installation to the organisation.
  * - **Tokens** — client credentials against that tenant: one app-only token reads every mailbox,
  *   so `tokenPerSubject` is false and the engine caches it once, on the organisation's connection.
  * - **Directory** — `users/delta` and `groups/delta` (with `members@delta`), `$select`ed down to
@@ -25,10 +28,12 @@ import {
 } from '@/plugins/connectors'
 import {
   clientCredentialsToken,
+  exchangeCodeForIdToken,
   GRAPH_DEFAULT_SCOPE,
   graphGet,
   LOGIN_ORIGIN,
   tokenRoles,
+  verifyConsentIdToken,
 } from './graph'
 
 /** Delta pages Graph may send at once; it may send fewer. */
@@ -189,7 +194,7 @@ export const m365Provider: ConnectorProvider = {
   docsUrl: 'https://learn.microsoft.com/en-us/entra/identity-platform/v2-admin-consent',
   adminSteps: [
     'Sign in here as an organisation admin and press Connect Microsoft 365.',
-    'Microsoft asks a Global Administrator (or Privileged Role Administrator) of your Microsoft 365 tenant to consent to the permissions below. Accept.',
+    'Microsoft asks a Global Administrator (or Privileged Role Administrator) of your Microsoft 365 tenant to consent to the permissions below. Accept, then sign in once more as that administrator so this app can confirm the organisation.',
     'You are brought back here. The directory syncs first; calendars follow for people who are members of this app, matched by email.',
     'To disconnect later, press Disconnect here AND remove the app under Entra admin center → Enterprise applications.',
   ],
@@ -197,6 +202,7 @@ export const m365Provider: ConnectorProvider = {
     'Entra admin center → App registrations → New registration. Supported account types: "Accounts in any organizational directory (multitenant)".',
     'Redirect URI (Web): <APP_URL>/api/hooks/connectors/m365/callback — one per environment.',
     'API permissions → Microsoft Graph → Application permissions: User.Read.All, Group.Read.All, Calendars.Read. Do not grant consent in your own tenant unless you use it too.',
+    'Token configuration → Add groups claim → Directory roles (for the ID token), so a consenting administrator can be recognised.',
     'Certificates & secrets → New client secret (max 24 months — diarise the rotation).',
     'Set the secrets M365_CLIENT_ID and M365_CLIENT_SECRET: `pnpm provision secrets <env>`, or apps/web/.dev.vars locally.',
     'Before selling to other organisations, complete publisher verification (Branding & properties → Publisher domain, then a verified Microsoft AI Cloud Partner Program account).',
@@ -226,7 +232,7 @@ export const m365Provider: ConnectorProvider = {
     return url.toString()
   },
 
-  completeConsent({ query }) {
+  async completeConsent({ query, credentials, redirectUri, fetch, continuation }) {
     const error = query.get('error')
     if (error) {
       // `access_denied` is the admin pressing Cancel; `consent_required` a non-admin who tried.
@@ -236,14 +242,47 @@ export const m365Provider: ConnectorProvider = {
         error === 'access_denied' ? 'consent_not_granted' : 'admin_consent_required'
       )
     }
+    if (continuation) {
+      const code = query.get('code')
+      if (!code) throw new ConsentError('Microsoft returned no sign-in', 'consent_not_granted')
+      const tenant = continuation.tenant ?? ''
+      const idToken = await exchangeCodeForIdToken(fetch, {
+        tenant,
+        clientId: credentials.clientId,
+        clientSecret: credentials.clientSecret,
+        code,
+        redirectUri,
+      })
+      await verifyConsentIdToken(fetch, idToken, {
+        tenant,
+        clientId: credentials.clientId,
+        nonce: continuation.nonce ?? '',
+      })
+      return { externalTenantId: tenant }
+    }
     if (query.get('admin_consent')?.toLowerCase() !== 'true') {
       throw new ConsentError('Microsoft did not report admin consent', 'consent_not_granted')
     }
-    const tenant = query.get('tenant') ?? ''
-    if (!TENANT_ID_RE.test(tenant)) {
+    const claimed = query.get('tenant') ?? ''
+    if (!TENANT_ID_RE.test(claimed)) {
       throw new ConsentError('Microsoft returned no tenant id', 'consent_not_granted')
     }
-    return { externalTenantId: tenant.toLowerCase() }
+    const tenant = claimed.toLowerCase()
+    const nonce = crypto.randomUUID()
+    return {
+      continuation: { tenant, nonce },
+      continueAt: state => {
+        const url = new URL(`${LOGIN_ORIGIN}/${tenant}/oauth2/v2.0/authorize`)
+        url.searchParams.set('client_id', credentials.clientId)
+        url.searchParams.set('response_type', 'code')
+        url.searchParams.set('response_mode', 'query')
+        url.searchParams.set('redirect_uri', redirectUri)
+        url.searchParams.set('scope', 'openid')
+        url.searchParams.set('nonce', nonce)
+        url.searchParams.set('state', state)
+        return url.toString()
+      },
+    }
   },
 
   async mintToken({ credentials, installation, fetch }) {

@@ -2,9 +2,9 @@
 version: unreleased
 previous: 3.8.2
 date: null
-breaking: false
+breaking: true
 migrations: []
-areas: []
+areas: [api, ui]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,21 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+Filed issues now carry a per-organisation marker that search, lookup and comment enforce, and the review page shows what goes to GitHub.
+
+- Every filed issue carries a hidden marker (a hash of the tenant id); any issue without the caller's marker reads as missing.
+- `githubFor(config, tenantId, fetch?)` is async and tenant-bound; `githubConfigured(config)` answers the status route.
+- The review page shows the issue title, says what is sent to GitHub, and renders images in the draft as links.
 
 ## How to apply
 
+1. Install on kit 0.29.0 or later, which carries the plugin entries this version imports.
+2. To bring back an issue filed before this version, add `<!-- <marker> -->` to its body; other older issues stay on GitHub, out of the agent's reach.
+
 ## Conflicts to expect
 
+None.
+
 ## Verify
+
+1. `pnpm plugin check` passes.

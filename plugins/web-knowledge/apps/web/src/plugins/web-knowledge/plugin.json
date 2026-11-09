@@ -38,9 +38,7 @@
       "ToolCtx",
       "validate"
     ],
-    "@/plugins/api/ui-wiring": [
-      "UiPlugin"
-    ],
+    "@/plugins/api/ui-wiring": ["UiPlugin"],
     "@/plugins/api/ui": [
       "api",
       "ApiError",
@@ -51,13 +49,7 @@
       "showToast",
       "usePermissions"
     ],
-    "@/db/schema/kit": [
-      "tenantIsolation",
-      "tenantRef",
-      "tenants",
-      "timestamps",
-      "users"
-    ],
+    "@/db/schema/kit": ["tenantIsolation", "tenantRef", "tenants", "timestamps", "users"],
     "'../api' (apps/cli/src/plugins/api.ts)": [
       "CliPlugin",
       "CommandContext",
@@ -82,12 +74,8 @@
       "setupTestDatabase",
       "stubFetch"
     ],
-    "@testkit/unit": [
-      "makeToolCtx"
-    ],
-    "@rocketflare/shared/plugins/types": [
-      "SharedPlugin"
-    ]
+    "@testkit/unit": ["makeToolCtx"],
+    "@rocketflare/shared/plugins/types": ["SharedPlugin"]
   },
   "dependencies": {
     "apps/web": {},
@@ -101,9 +89,7 @@
   "vars": [],
   "workerExports": [],
   "schema": {
-    "tables": [
-      "web_search_settings"
-    ],
+    "tables": ["web_search_settings"],
     "rlsExcluded": []
   },
   "migrations": [

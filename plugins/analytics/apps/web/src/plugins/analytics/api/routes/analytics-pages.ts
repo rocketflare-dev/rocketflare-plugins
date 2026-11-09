@@ -69,7 +69,7 @@ export const analyticsPagesRouter = createRouter()
 
 analyticsPagesRouter.get('/pages', async c => {
   const ctx: RequestCtx = requestCtx(c)
-  await ensureDefaultDashboards(ctx.db, ctx.tenantId, ctx.userId, ctx.features)
+  await ensureDefaultDashboards(ctx.db, ctx.tenantId, ctx.features)
   const rows = await ctx.db
     .select()
     .from(analyticsPages)
@@ -132,7 +132,10 @@ analyticsPagesRouter.get('/pages/:id', async c => {
   // A dashboard this reader may not see is the SAME 404 as one that does not exist.
   if (!row) ctx.notFound('Dashboard not found')
   return c.json(
-    toAnalyticsPageDto(row, (await ctx.visibility.grantsFor(ANALYTICS_PAGE_VISIBILITY, [id])).get(id) ?? [])
+    toAnalyticsPageDto(
+      row,
+      (await ctx.visibility.grantsFor(ANALYTICS_PAGE_VISIBILITY, [id])).get(id) ?? []
+    )
   )
 })
 
@@ -178,7 +181,10 @@ analyticsPagesRouter.put(
       .limit(1)
     if (!updated) ctx.notFound('Dashboard not found')
     return c.json(
-      toAnalyticsPageDto(updated, (await ctx.visibility.grantsFor(ANALYTICS_PAGE_VISIBILITY, [id])).get(id) ?? [])
+      toAnalyticsPageDto(
+        updated,
+        (await ctx.visibility.grantsFor(ANALYTICS_PAGE_VISIBILITY, [id])).get(id) ?? []
+      )
     )
   }
 )
@@ -279,7 +285,7 @@ analyticsPagesRouter.get('/templates', c => {
 analyticsPagesRouter.post('/templates/recreate', async c => {
   const ctx: RequestCtx = requestCtx(c)
   ctx.guard('manage', DASHBOARD_SUBJECT)
-  return c.json(await recreateTemplates(ctx.db, ctx.tenantId, ctx.userId, ctx.features))
+  return c.json(await recreateTemplates(ctx.db, ctx.tenantId, ctx.features))
 })
 
 analyticsPagesRouter.get('/facts/status', async c => {

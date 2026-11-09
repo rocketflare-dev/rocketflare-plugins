@@ -296,7 +296,11 @@ describe('receive', () => {
       '',
     ].join('\r\n')
     const outcome = await receiveMessage(
-      message(raw, { from: 'forwarding-noreply@google.com', to: `${localPart}@example.test` }),
+      message(raw, {
+        from: 'forwarding-noreply@google.com',
+        to: `${localPart}@example.test`,
+        auth: 'mx.cloudflare.net; dkim=pass header.d=google.com; spf=pass smtp.mailfrom=forwarding-noreply@google.com; dmarc=pass header.from=google.com',
+      }),
       makeEmailCtx({ db, env })
     )
     if (outcome.status !== 'stored') throw new Error('not stored')

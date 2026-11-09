@@ -4,7 +4,7 @@
  * comes back, and the status → error-code mapping the tools' hints depend on.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fetchPageDirect, guardUrl, htmlToText } from '../../services/fetch-page'
+import { fetchPageDirect, guardUrl, htmlToText, titleOf } from '../../services/fetch-page'
 import { SEARCH_ADAPTERS, WebSearchError } from '../../services/providers'
 
 type Captured = { url: string; init: RequestInit | undefined }
@@ -235,6 +235,34 @@ describe('fetchPageDirect', () => {
     await expect(
       fetchPageDirect('https://example.com/', { fetch, converter: null })
     ).rejects.toThrow(/image\/png/)
+  })
+})
+
+describe('page text extraction on a large page', () => {
+  const size = 1_000_000
+  const repeated = (fragment: string) => fragment.repeat(Math.floor(size / fragment.length))
+
+  it.each([
+    ['unclosed title tags', '<title>'],
+    ['unclosed script tags', '<script>'],
+    ['unclosed comments', '<!-- '],
+    ['open angle brackets', '<'],
+  ])('reads %s in linear time', (_label, fragment) => {
+    const started = performance.now()
+    htmlToText(repeated(fragment))
+    titleOf(repeated(fragment))
+    expect(performance.now() - started).toBeLessThan(2_000)
+  })
+
+  it('finds a title only within the leading part of a page', () => {
+    expect(titleOf(`<html><head><title>Near the top</title></head>`)).toBe('Near the top')
+    expect(titleOf(`${' '.repeat(200_000)}<title>Too far down</title>`)).toBeUndefined()
+  })
+
+  it('keeps content that follows an unclosed non-content tag', () => {
+    expect(htmlToText('<script>alert(1)')).toBe('alert(1)')
+    expect(htmlToText('<head><title>T</title></head><p>Body text</p>')).toBe('Body text')
+    expect(htmlToText('a < b > c <br>d')).toBe('a c\nd')
   })
 })
 

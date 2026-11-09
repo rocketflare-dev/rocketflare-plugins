@@ -74,5 +74,5 @@ predicate.
 |---|---|---|---|
 | `Users` | `users` | membership subquery | global table pattern |
 | `TenantUsers` | `tenant_users` | direct `tenant_id` | filtered role counts, join to `Users` |
-| `ActivityEvents` | `activity_events` | direct | event stream (`meta.eventStream`) |
+| `ActivityEvents` | `activity_events` | direct, admin-level readers only (`false` otherwise) | event stream (`meta.eventStream`) |
 | `TenantActivityDaily` | `analytics_tenant_activity_daily_facts` | direct | fact-table cube (`sum`, `countDistinct`) |

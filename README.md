@@ -15,13 +15,13 @@ sees what and its known gaps. They are also published at
 
 | Plugin | What it adds | Needs |
 |---|---|---|
-| [**analytics**](plugins/analytics/README.md) | Dashboards, tenant-scoped drizzle-cube cubes at `/cubejs-api` and `/mcp`, an hourly fact table, CLI, and four `analytics-*` agent skills. Installed by the kit's bootstrap | kit 0.17.1 |
+| [**analytics**](plugins/analytics/README.md) | Dashboards, tenant-scoped drizzle-cube cubes at `/cubejs-api` and `/mcp`, an hourly fact table, CLI, and four `analytics-*` agent skills. Installed by the kit's bootstrap | kit 0.29.0 |
 | [**web-knowledge**](plugins/web-knowledge/README.md) | `web_search` and `fetch_page` tools for agents and chat on each organisation's own key (Tavily, Brave, Exa, Serper, Firecrawl), Settings → Web search | kit 0.9.0 |
-| [**connectors**](plugins/connectors/README.md) | Organisation connections: admin consent once, then directory and calendar sync every 15 minutes; Settings → Connections, My calendar, CLI and the `connectors` setup skill | kit 0.13.0 and a provider |
-| [**m365**](plugins/m365/README.md) | Microsoft 365 as a `connectors` provider: Entra admin consent, app-only Graph delta sync of users, groups and calendars | kit 0.12.0 and `connectors` |
-| [**issue-reports**](plugins/issue-reports/README.md) | Ideas & issues: anyone talks a bug or an idea through with an agent that asks until it is clear, checks for a duplicate, and logs it as a GitHub issue (or a comment) once they approve the draft | kit 0.21.0 and a GitHub token |
-| [**inbox**](plugins/inbox/README.md) | Inbound email through Cloudflare Email Routing: per-organisation address and sender allow-list, SPF/DKIM/DMARC checks, parsed bodies and attachments, Gmail/Proton forwarding-confirmation codes, an Inbox page, CLI, read-only agent tools, and an `inbox:consumers` extension other plugins build on | kit 0.22.0 and Email Routing on the domain |
-| [**freeagent**](plugins/freeagent/README.md) | FreeAgent (UK accounting) per organisation: OAuth connection, a 30-minute incremental mirror of bank transactions, explanations, categories, contacts, bills and invoices, Settings → FreeAgent and a FreeAgent page, read tools plus approval-gated write tools for agents, analytics cubes, CLI, a service API and a `freeagent:sync-listeners` extension for plugins built on top | kit 0.21.0 and a FreeAgent app |
+| [**connectors**](plugins/connectors/README.md) | Organisation connections: admin consent once, then directory and calendar sync every 15 minutes; Settings → Connections, My calendar, CLI and the `connectors` setup skill | kit 0.29.0 and a provider |
+| [**m365**](plugins/m365/README.md) | Microsoft 365 as a `connectors` provider: Entra admin consent, app-only Graph delta sync of users, groups and calendars | kit 0.29.0 and `connectors` |
+| [**issue-reports**](plugins/issue-reports/README.md) | Ideas & issues: anyone talks a bug or an idea through with an agent that asks until it is clear, checks for a duplicate, and logs it as a GitHub issue (or a comment) once they approve the draft | kit 0.29.0 and a GitHub token |
+| [**inbox**](plugins/inbox/README.md) | Inbound email through Cloudflare Email Routing: per-organisation address and sender allow-list, SPF/DKIM/DMARC checks, parsed bodies and attachments, Gmail/Proton forwarding-confirmation codes, an Inbox page, CLI, read-only agent tools, and an `inbox:consumers` extension other plugins build on | kit 0.29.0 and Email Routing on the domain |
+| [**freeagent**](plugins/freeagent/README.md) | FreeAgent (UK accounting) per organisation: OAuth connection, a 30-minute incremental mirror of bank transactions, explanations, categories, contacts, bills and invoices, Settings → FreeAgent and a FreeAgent page, read tools plus approval-gated write tools for agents, analytics cubes, CLI, a service API and a `freeagent:sync-listeners` extension for plugins built on top | kit 0.29.0 and a FreeAgent app |
 
 ## Installing one
 

@@ -18,7 +18,7 @@ the `freeagent:sync-listeners` extension.
 | Sync | `freeagent.sync`, queued every 30 minutes per connected organisation, after connecting, and by **Sync now**. Incremental by `updated_since`, paged, across every bank account. The first sync reaches back about 400 days for transactions |
 | Client | One typed wrapper: always `X-Api-Version: 2026-09-01`, token refresh 2 minutes before expiry (single-flight), bounded back-off on 429 `Retry-After`, `Link` pagination, typed `FreeAgentError`, and the token never sent off the FreeAgent API host |
 | UI | **Settings → FreeAgent**: connect, reconnect, disconnect, environment, company, last sync, errors, Sync now. **FreeAgent** page: unexplained transactions and invoices (overdue filter) |
-| Agent tools | Read: `freeagent_company`, `freeagent_search_transactions`, `freeagent_list_categories`, `freeagent_list_invoices`, `freeagent_list_bills`. Write, approval required, admin requesters only: `freeagent_explain_transaction`, `freeagent_create_bill`. None offered until the organisation is connected |
+| Agent tools | Read: `freeagent_company`, `freeagent_search_transactions`, `freeagent_list_categories`, `freeagent_list_invoices`, `freeagent_list_bills`. Write, approval required: `freeagent_explain_transaction`, `freeagent_create_bill`, offered only to a requester holding `manage FreeAgent` (owner, admin), and only in agent runs, where the approval gate applies. Chat never offers them. None offered until the organisation is connected |
 | Service API | `freeagentClientFor`, `explainTransaction`, `attachToExplanation`, `deleteExplanation`, `createBill`, `listUnexplainedTransactions` — each write updates the mirror row it touched |
 | Extension | `freeagent:sync-listeners`: a plugin contributes `{ id, onSync(summary, ctx) }`, called after every successful sync |
 | Analytics | When the `analytics` plugin is installed: cubes `FreeAgentTransactions`, `FreeAgentExplanations` (+ `FreeAgentCategories`), `FreeAgentInvoices`, `FreeAgentBills` — spend and income by month and category, unexplained count and amount, outstanding and overdue. Inert without analytics |
@@ -28,7 +28,7 @@ the `freeagent:sync-listeners` extension.
 
 ## Requirements
 
-- Rocketflare kit **0.21.0** or later.
+- Rocketflare kit **0.29.0** or later.
 - A FreeAgent app registered at [dev.freeagent.com](https://dev.freeagent.com) with the redirect
   URI `{APP_URL}/api/hooks/freeagent/callback`.
 - `OAUTH_ENCRYPTION_KEY` (the kit's bootstrap sets it) and the kit's `JOBS_QUEUE`.

@@ -37,7 +37,7 @@ subscribe to parsed messages (`inbox:consumers`). Rules for the code:
 Say, in this order: mail reaches the Worker only for addresses Email Routing sends to it (a
 dashboard rule); the inbox resolves the organisation from the local part; it accepts a message
 when the **forwarding mailbox or the original sender** is on the allow-list AND SPF, DKIM or DMARC
-passed; it stores the raw message in R2 and parses it in a queued job; attachments and the text
+passed for that same identity; it stores the raw message in R2 and parses it in a queued job; attachments and the text
 body appear on the Inbox page; consumer plugins (e.g. a receipts matcher) are then called. A
 message forwarded **as an attachment** (Gmail's "Forward as attachment", several at once) is split:
 each embedded email becomes its own message — its own sender, subject and attachments, the
@@ -64,13 +64,15 @@ separately. An embedded email the organisation already has is linked, not stored
    address** → the inbox address. Google sends a confirmation message there.
 2. In the app, open **Inbox**: the message from `forwarding-noreply@google.com` is marked
    *confirmation* and shows the **code** (and a link). It is accepted even before the allow-list
-   names anyone. Paste the code into Gmail → **Verify**.
+   names anyone, as long as the 24-hour setup window is open: it opens when the address is set, or
+   by **Open the setup window** in Settings → Inbox when you add a forwarding address later. Paste the code into Gmail → **Verify**.
 3. Forward selectively: Gmail search for the mail you want (e.g. `from:(stripe.com) has:attachment`
    or `subject:(receipt OR invoice)`) → **Create filter** → **Forward it to** the inbox address.
    Use a `+tag` per source (`receipts+gmail@`) to see where each message came from.
 4. Backfilling older receipts: select them in Gmail → ⋮ → **Forward as attachment** → the inbox
    address. One message arrives and is split into one inbox message per receipt (up to 50 per
-   forward); only the forwarding mailbox needs to be allow-listed.
+   forward, and up to 50 in total however deep the forward nests); only the forwarding mailbox needs
+   to be allow-listed.
 5. Make sure the Gmail address itself is in **Allowed senders** — Gmail forwards with your address
    as the envelope sender, and passes SPF for gmail.com.
 
@@ -97,9 +99,10 @@ separately. An embedded email the organisation already has is linked, not stored
 |---|---|---|
 | Bounce "Unknown recipient" | No organisation has that local part, or no Email Routing rule | Settings → Inbox address; check the routing rule's address |
 | Bounce "Sender not allowed" | Neither the envelope sender nor `From:` is allow-listed | Add the forwarding mailbox (not the vendor) |
-| Bounce "Sender could not be authenticated" | SPF, DKIM and DMARC all failed/missing | Usually a misconfigured forwarder; check the message headers in the mailbox |
+| Bounce "Sender could not be authenticated" | No SPF, DKIM or DMARC pass for the identity on the allow-list | Allow-list the forwarding mailbox; a message matched only on `From:` needs that domain's own SPF/DKIM/DMARC |
 | Bounce "This inbox is not accepting mail" | Accept mail is off | Settings → Inbox |
+| A forwarding confirmation bounces | The setup window has closed | Settings → Inbox → Open the setup window, then have the provider send it again |
 | Nothing in `wrangler tail` at all | Email Routing never sent it to the Worker | The routing rule, or the subdomain's MX records |
 | Message `failed` | Parse error (corrupt MIME, R2 missing) | Inbox → Reprocess; read the error on the message |
-| A forward shows as one message with `.eml` files | It was parsed before inbox 3.7.0, or it is nested deeper than 3 levels, or it carried more than 50 emails (the message's error says so) | Reprocess it (3.7.0+) — children are made once, however often it runs |
+| A forward shows as one message with `.eml` files | It was parsed before inbox 3.7.0, or it is nested deeper than 3 levels, or it carried more than 50 emails — per message or across the whole forward (the message's error says so) | Reprocess it (3.7.0+) — children are made once, however often it runs |
 | Message parsed but a consumer did nothing | The consumer threw — the message's error names it | Fix the consumer, then Reprocess |

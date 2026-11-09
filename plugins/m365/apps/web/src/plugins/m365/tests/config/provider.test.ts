@@ -9,6 +9,7 @@ import {
   ConnectorAuthError,
   ConsentError,
   CursorExpiredError,
+  type FetchLike,
   RetryLaterError,
   type SourceCtx,
 } from '@/plugins/connectors'
@@ -20,6 +21,7 @@ import {
   toDirectoryUser,
   userEmail,
 } from '../../provider'
+import { ENTRA_CLIENT_ID as CLIENT_ID, fakeEntra as fakeEntraFor } from '../entra-fixture'
 
 type Captured = { url: string; init: RequestInit | undefined }
 
@@ -36,6 +38,15 @@ function fakeFetch(...answers: Response[]) {
 
 const header = (c: Captured | undefined, name: string) => new Headers(c?.init?.headers).get(name)
 const TENANT = '0b1c2d3e-4f50-4a61-8b72-9c83d4e5f607'
+const OTHER_TENANT = '11111111-2222-4333-8444-555555555555'
+const REDIRECT_URI = 'https://app.example/api/hooks/connectors/m365/callback'
+const neverFetch: FetchLike = async input => {
+  throw new Error(`unexpected request to ${String(input)}`)
+}
+const fakeEntra = (
+  claims: Record<string, unknown> = {},
+  options: { signWith?: 'other-key' } = {}
+) => fakeEntraFor(TENANT, claims, options)
 
 function ctx(fetch: SourceCtx['fetch']): SourceCtx {
   return {
@@ -79,30 +90,109 @@ describe('consent', () => {
     })
   })
 
-  it('reads the tenant from a granted consent', () => {
-    const query = new URLSearchParams({ admin_consent: 'True', tenant: TENANT.toUpperCase() })
-    expect(m365Provider.completeConsent({ query })).toEqual({ externalTenantId: TENANT })
+  describe('consent', () => {
+    const consent = (
+      query: URLSearchParams,
+      fetch: FetchLike = neverFetch,
+      continuation?: Record<string, string>
+    ) =>
+      m365Provider.completeConsent({
+        query,
+        credentials: { clientId: CLIENT_ID, clientSecret: 'shh' },
+        redirectUri: REDIRECT_URI,
+        fetch,
+        continuation,
+      })
+
+    it('treats the admin-consent redirect as a claim and sends the admin to sign in to it', async () => {
+      const result = await consent(
+        new URLSearchParams({ admin_consent: 'True', tenant: TENANT.toUpperCase() })
+      )
+      if (!('continueAt' in result)) throw new Error('expected a continuation')
+      const url = new URL(result.continueAt('STATE'))
+      expect(url.origin + url.pathname).toBe(
+        `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/authorize`
+      )
+      expect(Object.fromEntries(url.searchParams)).toMatchObject({
+        client_id: CLIENT_ID,
+        response_type: 'code',
+        redirect_uri: REDIRECT_URI,
+        scope: 'openid',
+        state: 'STATE',
+        nonce: result.continuation.nonce,
+      })
+      expect(result.continuation.tenant).toBe(TENANT)
+    })
+
+    it('completes on an id token Microsoft signed for that tenant and an administrator', async () => {
+      const entra = await fakeEntra()
+      const result = await consent(new URLSearchParams({ code: 'the-code' }), entra.fetch, {
+        tenant: TENANT,
+        nonce: 'n-1',
+      })
+      expect(result).toEqual({ externalTenantId: TENANT })
+      expect(entra.tokenRequests).toEqual([`/${TENANT}/oauth2/v2.0/token`])
+    })
+
+    it('refuses evidence that does not hold', async () => {
+      const claimsWrong: Record<string, unknown>[] = [
+        { tid: OTHER_TENANT },
+        { aud: 'someone-else' },
+        { iss: `https://login.microsoftonline.com/${OTHER_TENANT}/v2.0` },
+        { nonce: 'n-other' },
+        { wids: ['b79fbf4d-3ef9-4689-8143-76b194e85509'] },
+        { wids: undefined },
+      ]
+      for (const claims of claimsWrong) {
+        const entra = await fakeEntra(claims)
+        await expect(
+          consent(new URLSearchParams({ code: 'the-code' }), entra.fetch, {
+            tenant: TENANT,
+            nonce: 'n-1',
+          })
+        ).rejects.toBeInstanceOf(ConsentError)
+      }
+      const unsigned = await fakeEntra({}, { signWith: 'other-key' })
+      await expect(
+        consent(new URLSearchParams({ code: 'c' }), unsigned.fetch, {
+          tenant: TENANT,
+          nonce: 'n-1',
+        })
+      ).rejects.toBeInstanceOf(ConsentError)
+      await expect(
+        consent(new URLSearchParams(), neverFetch, { tenant: TENANT, nonce: 'n-1' })
+      ).rejects.toBeInstanceOf(ConsentError)
+    })
+
+    it('never completes from the redirect query alone', async () => {
+      const result = await consent(new URLSearchParams({ admin_consent: 'True', tenant: TENANT }))
+      expect(result).not.toHaveProperty('externalTenantId')
+    })
   })
 
-  it('maps a refusal to a code the settings page can explain', () => {
+  it('maps a refusal to a code the settings page can explain', async () => {
+    const run = async (query: URLSearchParams) =>
+      m365Provider.completeConsent({
+        query,
+        credentials: { clientId: CLIENT_ID, clientSecret: 'shh' },
+        redirectUri: REDIRECT_URI,
+        fetch: neverFetch,
+      })
     const cancel = new URLSearchParams({
       error: 'access_denied',
       error_description: 'AADSTS65004: declined\r\nTrace ID: x',
     })
-    expect(() => m365Provider.completeConsent({ query: cancel })).toThrowError(
-      expect.objectContaining({ code: 'consent_not_granted', message: 'AADSTS65004: declined' })
-    )
+    await expect(run(cancel)).rejects.toMatchObject({
+      code: 'consent_not_granted',
+      message: 'AADSTS65004: declined',
+    })
     const notAdmin = new URLSearchParams({ error: 'consent_required' })
-    expect(() => m365Provider.completeConsent({ query: notAdmin })).toThrowError(
-      expect.objectContaining({ code: 'admin_consent_required' })
-    )
+    await expect(run(notAdmin)).rejects.toMatchObject({ code: 'admin_consent_required' })
     for (const q of [
       { admin_consent: 'False', tenant: TENANT },
       { admin_consent: 'True', tenant: 'common' },
     ]) {
-      expect(() => m365Provider.completeConsent({ query: new URLSearchParams(q) })).toThrow(
-        ConsentError
-      )
+      await expect(run(new URLSearchParams(q))).rejects.toBeInstanceOf(ConsentError)
     }
   })
 

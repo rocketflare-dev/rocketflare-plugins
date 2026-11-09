@@ -13,6 +13,7 @@ import {
   INBOX_EXTENSION_KEYS,
   INBOX_FORWARD_MAX_CHILDREN,
   INBOX_FORWARD_MAX_DEPTH,
+  INBOX_FORWARD_MAX_TOTAL,
   INBOX_MESSAGES_ENTITY,
   INBOX_TEXT_BODY_MAX,
   type InboxConfirmation,
@@ -187,6 +188,7 @@ export async function parseMessage(
   // Confirmations are never split, and a message at the depth cap keeps its parts as attachments.
   const mayExpand = row.kind === 'message' && row.forwardDepth < INBOX_FORWARD_MAX_DEPTH
   let overflow = 0
+  let overTotal = 0
   for (const [index, part] of (email.attachments ?? []).entries()) {
     const bytes = toArrayBuffer(part.content)
     const contentType = (part.mimeType || 'application/octet-stream').toLowerCase()
@@ -244,7 +246,8 @@ export async function parseMessage(
   const forwardedMessageIds: string[] = []
   for (const part of embedded) {
     const outcome = await expandEmbeddedMessage(ctx, row, part)
-    if (outcome.status === 'skipped') {
+    if (outcome.status === 'skipped' || outcome.status === 'limit') {
+      if (outcome.status === 'limit') overTotal += 1
       kept.push(part.ref)
       continue
     }
@@ -260,6 +263,12 @@ export async function parseMessage(
       `${overflow} forwarded email(s) beyond the first ${INBOX_FORWARD_MAX_CHILDREN} were kept as attachments`
     )
   }
+  if (overTotal > 0) {
+    ctx.logger.warn({ messageId, overTotal }, 'inbox.parse: delivery reached its split limit')
+    failures.push(
+      `${overTotal} forwarded email(s) were kept as attachments: this delivery reached its limit of ${INBOX_FORWARD_MAX_TOTAL} split messages`
+    )
+  }
 
   const text = email.text ?? null
   let confirmation = row.confirmation as InboxConfirmation | null
@@ -267,9 +276,10 @@ export async function parseMessage(
     confirmation = extractConfirmation(confirmation.provider, row.subject, text)
   }
 
-  // A hand-forwarded message names its real sender in the quoted header block.
-  let fromAddress = email.from?.address?.toLowerCase() ?? row.fromAddress
-  let fromName = email.from?.name || row.fromName
+  // The sender stays the mailbox the message was accepted on; a hand-forwarded message names its
+  // real sender in the quoted header block.
+  let fromAddress = row.fromAddress
+  let fromName = row.fromName
   if (row.kind === 'message' && isForwardSubject(email.subject ?? row.subject)) {
     const original = extractForwardedOriginal(text)
     if (original) {

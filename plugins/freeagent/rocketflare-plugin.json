@@ -3,7 +3,7 @@
   "label": "FreeAgent",
   "version": "3.8.2",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.21.0",
+  "minKit": "0.29.0",
   "anchor": "apps/web/src/plugins/freeagent/plugin.json",
   "paths": [
     "apps/web/src/plugins/freeagent/**",
@@ -33,6 +33,7 @@
       "JobCtx",
       "JobHandler",
       "JobInput",
+      "memberCan",
       "openSecret",
       "PluginConfig",
       "publicCtx",
@@ -77,6 +78,7 @@
       "tenantIsolation",
       "tenantRef",
       "tenants",
+      "tenantUsers",
       "timestamps",
       "users"
     ],
@@ -84,6 +86,7 @@
       "CliPlugin",
       "CommandContext",
       "formatDate",
+      "neutralise",
       "requireClient"
     ],
     "@testkit/integration": [

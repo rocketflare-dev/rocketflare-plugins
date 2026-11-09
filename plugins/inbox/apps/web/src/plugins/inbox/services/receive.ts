@@ -17,7 +17,7 @@ import { and, eq } from 'drizzle-orm'
 import type { Database, EmailCtx } from '@/plugins/api'
 import { emailLocalPart, emailSubaddress } from '@/plugins/api'
 import { type InboxSettingsRow, inboxMessages, inboxSettings } from '../db/schema'
-import { acceptMessage, parseAuthenticationResults } from './rules'
+import { acceptMessage, parseAddressHeader, parseAuthenticationResults } from './rules'
 
 /** The R2 prefix for one message: raw bytes, HTML body and attachments all live beneath it. */
 export function messagePrefix(tenantId: string, messageId: string): string {
@@ -38,20 +38,6 @@ export async function settingsForLocalPart(
     .where(eq(inboxSettings.localPart, localPart))
     .limit(1)
   return row
-}
-
-/** `"Name" <a@b.com>` → `{ address, name }`; null when no address can be read. */
-export function parseAddressHeader(
-  value: string | null
-): { address: string; name: string | null } | null {
-  if (!value) return null
-  const angle = /^(.*?)<([^>]+@[^>]+)>/.exec(value)
-  if (angle?.[2]) {
-    const name = angle[1]?.trim().replace(/^"|"$/g, '') || null
-    return { address: angle[2].trim().toLowerCase(), name }
-  }
-  const bare = /([^\s<>",]+@[^\s<>",]+)/.exec(value)
-  return bare?.[1] ? { address: bare[1].toLowerCase(), name: null } : null
 }
 
 /** `Date:` → a Date, or null when absent or unparseable. */
@@ -105,6 +91,8 @@ export async function receiveMessage(
     envelopeFrom: message.from,
     headerFrom: headerFrom?.address ?? null,
     auth,
+    confirmationWindowOpen:
+      settings.confirmationWindowUntil !== null && settings.confirmationWindowUntil > new Date(),
   })
   if (!verdict.accept) return reject(verdict.reason)
 
@@ -151,7 +139,7 @@ export async function receiveMessage(
       sentAt: headerDate(message.headers.get('date')),
       rawKey,
       rawSize: raw.byteLength,
-      auth,
+      auth: { spf: auth.spf, dkim: auth.dkim, dmarc: auth.dmarc },
       confirmation,
     })
     // Two deliveries racing past the lookup above: the unique index decides, the loser is a no-op.

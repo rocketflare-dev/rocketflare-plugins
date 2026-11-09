@@ -11,7 +11,7 @@
 import type { GroupRef } from '@rocketflare/shared/groups'
 import type { AnalyticsPage as AnalyticsPageDto } from '@rocketflare/shared/plugins/analytics/index'
 import { slugify } from '@rocketflare/shared/tenants'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNotNull } from 'drizzle-orm'
 import type { Database, RequestCtx } from '@/plugins/api'
 import { getTemplate, listTemplates } from '../dashboards'
 import { type AnalyticsPage, analyticsPages } from '../db/schema/analytics-pages'
@@ -36,13 +36,29 @@ export function toAnalyticsPageDto(row: AnalyticsPage, groups: GroupRef[] = []):
   }
 }
 
-/** Insert every template the tenant lacks. Returns how many were created (0 = nothing to do). */
+/**
+ * Insert every template the tenant lacks. Returns how many were created (0 = nothing to do).
+ *
+ * A template page is the system's, so it never has a human creator: the visibility predicate lets
+ * a creator keep reading a page later restricted to groups. Rows written when the first reader was
+ * recorded as creator are cleared here, on the path every list read takes; the update touches
+ * nothing once a tenant's rows are clean.
+ */
 export async function ensureDefaultDashboards(
   db: Database,
   tenantId: string,
-  createdByUserId: string | null = null,
   features: readonly string[] = []
 ): Promise<number> {
+  await db
+    .update(analyticsPages)
+    .set({ createdByUserId: null })
+    .where(
+      and(
+        eq(analyticsPages.tenantId, tenantId),
+        isNotNull(analyticsPages.templateKey),
+        isNotNull(analyticsPages.createdByUserId)
+      )
+    )
   // D30: a template behind a feature this deployment does not ship must not be seeded. This runs
   // lazily on every `GET /pages`, so an ungated one would appear in every tenant after a deploy.
   const templates = listTemplates(features)
@@ -59,7 +75,6 @@ export async function ensureDefaultDashboards(
         config: t.config,
         isDefault: t.isDefault ?? false,
         sortOrder: t.order,
-        createdByUserId,
       }))
     )
     .onConflictDoNothing({ target: [analyticsPages.tenantId, analyticsPages.slug] })
@@ -101,10 +116,9 @@ export async function resetToTemplate(ctx: RequestCtx, pageId: string): Promise<
 export async function recreateTemplates(
   db: Database,
   tenantId: string,
-  createdByUserId: string | null = null,
   features: readonly string[] = []
 ): Promise<{ created: number; reset: number }> {
-  const created = await ensureDefaultDashboards(db, tenantId, createdByUserId, features)
+  const created = await ensureDefaultDashboards(db, tenantId, features)
   let reset = 0
   for (const template of listTemplates(features)) {
     const rows = await db

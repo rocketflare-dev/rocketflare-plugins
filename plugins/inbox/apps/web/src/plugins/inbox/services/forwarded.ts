@@ -15,8 +15,12 @@
  * redelivered or reprocessed parent finds the child it already made, and an embedded Message-ID
  * the organisation has already received links to that message instead of storing it twice.
  */
-import { INBOX_MESSAGES_ENTITY, INBOX_PARSE_JOB } from '@rocketflare/shared/plugins/inbox/index'
-import { and, eq } from 'drizzle-orm'
+import {
+  INBOX_FORWARD_MAX_TOTAL,
+  INBOX_MESSAGES_ENTITY,
+  INBOX_PARSE_JOB,
+} from '@rocketflare/shared/plugins/inbox/index'
+import { and, eq, lt, sql } from 'drizzle-orm'
 import PostalMime from 'postal-mime'
 import type { JobCtx } from '@/plugins/api'
 import { type InboxMessageRow, inboxMessages } from '../db/schema'
@@ -122,11 +126,46 @@ export type ExpandOutcome =
   | { status: 'existing'; messageId: string }
   | { status: 'linked'; messageId: string }
   | { status: 'skipped' }
+  | { status: 'limit' }
+
+/** The top of `parent`'s tree, or null when that message has been deleted. */
+function treeRootOf(parent: InboxMessageRow): string | null {
+  if (parent.rootMessageId) return parent.rootMessageId
+  return parent.forwardDepth === 0 ? parent.id : null
+}
+
+/**
+ * One slot of the delivery's split budget. The claim is the conditional increment on the root row:
+ * parse jobs for one tree run concurrently, so a count taken before the insert would not hold.
+ */
+async function claimTreeSlot(ctx: JobCtx, tenantId: string, rootId: string): Promise<boolean> {
+  const claimed = await ctx.db
+    .update(inboxMessages)
+    .set({ forwardTreeCount: sql`${inboxMessages.forwardTreeCount} + 1` })
+    .where(
+      and(
+        eq(inboxMessages.tenantId, tenantId),
+        eq(inboxMessages.id, rootId),
+        lt(inboxMessages.forwardTreeCount, INBOX_FORWARD_MAX_TOTAL)
+      )
+    )
+    .returning({ id: inboxMessages.id })
+  return claimed.length > 0
+}
+
+async function releaseTreeSlot(ctx: JobCtx, tenantId: string, rootId: string): Promise<void> {
+  await ctx.db
+    .update(inboxMessages)
+    .set({ forwardTreeCount: sql`greatest(${inboxMessages.forwardTreeCount} - 1, 0)` })
+    .where(and(eq(inboxMessages.tenantId, tenantId), eq(inboxMessages.id, rootId)))
+}
 
 /**
  * Split one embedded message out of `parent`. `existing` is the child this parent made on an
  * earlier run; `linked` is an earlier message with the same Message-ID (stored once, linked from
- * here); `skipped` means "keep it as a plain attachment" (it claims the parent's own Message-ID).
+ * here); `skipped` means "keep it as a plain attachment" (it claims the parent's own Message-ID);
+ * `limit` means the delivery has spent its split budget (`INBOX_FORWARD_MAX_TOTAL`), or its top
+ * message is gone, so this part stays an attachment too.
  */
 export async function expandEmbeddedMessage(
   ctx: JobCtx,
@@ -158,41 +197,52 @@ export async function expandEmbeddedMessage(
   const before = await resolveExisting(headers)
   if (before) return before
 
+  const rootId = treeRootOf(parent)
+  if (!rootId || !(await claimTreeSlot(ctx, parent.tenantId, rootId))) return { status: 'limit' }
+
   const id = crypto.randomUUID()
   const rawKey = `${messagePrefix(parent.tenantId, id)}/raw.eml`
   const storage = ctx.storage()
-  await storage.put(rawKey, part.bytes, { contentType: EMBEDDED_MESSAGE_TYPE })
-  const inserted = await ctx.db
-    .insert(inboxMessages)
-    .values({
-      id,
-      tenantId: parent.tenantId,
-      kind: 'message',
-      // The envelope it actually arrived in; `forwardedBy` says who put it there.
-      envelopeFrom: parent.envelopeFrom,
-      fromAddress: headers.fromAddress,
-      fromName: headers.fromName,
-      toAddress: parent.toAddress,
-      subaddress: parent.subaddress,
-      subject: headers.subject,
-      messageIdHeader: headers.messageIdHeader,
-      sentAt: headers.sentAt,
-      receivedAt: parent.receivedAt,
-      rawKey,
-      rawSize: part.bytes.byteLength,
-      // The forward's verdict: the embedded message's own signatures cannot be verified.
-      auth: parent.auth,
-      parentMessageId: parent.id,
-      forwardedBy: parent.forwardedBy ?? parent.envelopeFrom,
-      forwardDepth: parent.forwardDepth + 1,
-      sourceSha256: part.sha256,
-    })
-    // A concurrent run of the same parent (the part key) or an earlier copy of the same email (the
-    // Message-ID key) won: the unique indexes decide, and this run links to the winner.
-    .onConflictDoNothing()
-    .returning({ id: inboxMessages.id })
+  let inserted: { id: string }[]
+  try {
+    await storage.put(rawKey, part.bytes, { contentType: EMBEDDED_MESSAGE_TYPE })
+    inserted = await ctx.db
+      .insert(inboxMessages)
+      .values({
+        id,
+        tenantId: parent.tenantId,
+        kind: 'message',
+        // The envelope it actually arrived in; `forwardedBy` says who put it there.
+        envelopeFrom: parent.envelopeFrom,
+        fromAddress: headers.fromAddress,
+        fromName: headers.fromName,
+        toAddress: parent.toAddress,
+        subaddress: parent.subaddress,
+        subject: headers.subject,
+        messageIdHeader: headers.messageIdHeader,
+        sentAt: headers.sentAt,
+        receivedAt: parent.receivedAt,
+        rawKey,
+        rawSize: part.bytes.byteLength,
+        // The forward's verdict: the embedded message's own signatures cannot be verified.
+        auth: parent.auth,
+        parentMessageId: parent.id,
+        rootMessageId: rootId,
+        forwardedBy: parent.forwardedBy ?? parent.envelopeFrom,
+        forwardDepth: parent.forwardDepth + 1,
+        sourceSha256: part.sha256,
+      })
+      // A concurrent run of the same parent (the part key) or an earlier copy of the same email
+      // (the Message-ID key) won: the unique indexes decide, and this run links to the winner.
+      .onConflictDoNothing()
+      .returning({ id: inboxMessages.id })
+  } catch (err) {
+    await releaseTreeSlot(ctx, parent.tenantId, rootId)
+    throw err
+  }
   if (inserted.length === 0) {
     await storage.delete(rawKey)
+    await releaseTreeSlot(ctx, parent.tenantId, rootId)
     return (await resolveExisting(headers)) ?? { status: 'skipped' }
   }
 

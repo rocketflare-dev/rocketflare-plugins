@@ -30,7 +30,9 @@ Inbound email for an organisation: Cloudflare Email Routing → the kit's `email
   email already received is LINKED, not stored again) — never memory. Caps:
   `INBOX_FORWARD_MAX_DEPTH` (3; at the cap parts stay plain `.eml`s) and
   `INBOX_FORWARD_MAX_CHILDREN` (50 per message; the rest stay attachments and the message's
-  `error` says so). A child still `received` when its parent is re-run is re-enqueued, so a
+  `error` says so) and `INBOX_FORWARD_MAX_TOTAL` (50 per delivery, however deep it nests:
+  `root_message_id` carries the top message through the tree and a conditional increment of its
+  `forward_tree_count` is the claim — the rest stay attachments, the message's `error` says so). A child still `received` when its parent is re-run is re-enqueued, so a
   failed enqueue cannot strand it — consumers must tolerate the rare second call. Deleting a
   parent leaves its children (`parent_message_id` is `set null`); each is deleted on its own.
 - **Consumers** (`InboxConsumer`, exported from `index.ts`) are called for `kind = 'message'` only,
@@ -43,6 +45,19 @@ Inbound email for an organisation: Cloudflare Email Routing → the kit's `email
   row's id as `externalId` — upserts, so a reprocess is safe. Best-effort: failures land on the
   message's `error`, never fail the job. Files need an owner: the settings' last editor, else the
   oldest owner. Deleting a message calls `forgetMessage` BEFORE the rows go (the ids are the keys).
+- **Who a message says it is.** `parseAddressHeader` (postal-mime's `addressParser`) reads exactly
+  one mailbox from `From:` for both the allow-list and the stored row; a list, a group or an address
+  in a display name or comment matches nothing. `parseAuthenticationResults` reads only the first
+  `mx.cloudflare.net` header, per result by position, keeping the domain each verdict vouches for.
+  `acceptMessage` requires that the pass be for the identity that matched: an allow-listed envelope
+  needs its domain authenticated (SPF, or an aligned DKIM/DMARC), a From-only match needs the From
+  domain authenticated and is refused on `dmarc=fail`. Forwarding keeps working by listing the
+  forwarding mailbox.
 - **Forwarding confirmations** (Gmail's `forwarding-noreply@google.com`, Proton domains) are
-  accepted before the allow-list names anyone — that is the only way to read the code — but must
-  still authenticate. Logic and tables: `services/rules.ts`, `tests/config/rules.test.ts`.
+  accepted ahead of the allow-list and the off switch only while the setup window is open
+  (`confirmation_window_until`, `INBOX_CONFIRMATION_WINDOW_HOURS`: set when the address is set, or
+  `expectForwardingConfirmation` on PUT), and must authenticate as the provider's own domain.
+  Outside the window the ordinary rules apply. Links are kept only on the provider's host.
+- **A local part stays with its organisation** for `INBOX_LOCAL_PART_HOLD_DAYS` after it is given
+  up (`inbox_local_part_holds`, which outlives the tenant): another organisation gets 409
+  `inbox_local_part_taken`, the former holder may take it back.

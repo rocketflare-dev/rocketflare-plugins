@@ -233,7 +233,7 @@ export async function runIssueReport(
   /** Tests hand GitHub a recording `fetch`; the runtime never passes one. */
   deps: { fetch?: typeof fetch } = {}
 ): Promise<IssueReportOutput> {
-  const github = githubFor(ctx.config, deps.fetch)
+  const github = await githubFor(ctx.config, ctx.tenantId, deps.fetch)
   if (!github) {
     throw new Error(
       'Ideas & issues is not set up: ISSUE_REPORTS_GITHUB_REPO and ISSUE_REPORTS_GITHUB_TOKEN are both needed.'

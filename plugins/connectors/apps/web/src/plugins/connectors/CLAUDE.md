@@ -27,7 +27,11 @@ skills from 0.13.0).
 ## Rules
 
 - **Only the signed state names a tenant on the public mount.** Parse it with zod after
-  `verifyState`; every failure redirects to Settings with a code, never a stack.
+  `verifyState`; every failure redirects to Settings with a code, never a stack. Right after,
+  `memberCan(… 'manage', CONNECTOR_SUBJECT)` re-reads the admin's standing; on `false`, change nothing.
+- **A provider proves the external organisation.** `completeConsent` answers `ConsentComplete` only
+  on a vendor-authenticated token, and may continue through `continueAt` first. One external
+  organisation backs one workspace (`connectors_installations_external_idx`).
 - **Calendar data is per person inside a tenant.** Every events query carries `tenant_id` AND the
   owner predicate unless the reader has `manage Connector`. Never add a read path elsewhere.
 - **Only members are calendared.** A directory person who never joined the app is synced as a

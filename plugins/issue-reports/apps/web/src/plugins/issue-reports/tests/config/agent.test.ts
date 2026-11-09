@@ -13,6 +13,7 @@ import { ISSUE_REPORT_FILE_CHOICE } from '@rocketflare/shared/plugins/issue-repo
 import { describe, expect, it } from 'vitest'
 import type { AgentCtx, AgentInterruptAnswer, AgentInterruptAsk, PluginConfig } from '@/plugins/api'
 import { runIssueReport } from '../../agent/refine'
+import { issueMarkerFor } from '../../services/github'
 
 class Parked extends Error {
   constructor(readonly key: string) {
@@ -26,8 +27,12 @@ interface FetchCall {
   body: unknown
 }
 
-function fakeGithub() {
+const TENANT_A = '00000000-0000-4000-8000-000000000001'
+const TENANT_B = '00000000-0000-4000-8000-00000000000b'
+
+function fakeGithub(tenantId = TENANT_A) {
   const calls: FetchCall[] = []
+  const marked = issueMarkerFor(tenantId).then(marker => `Filed report.\n\n<!-- ${marker} -->`)
   const fetchImpl = (async (url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
@@ -46,6 +51,14 @@ function fakeGithub() {
             title: 'Calendar shows a moved order on the old day',
             state: 'open',
             html_url: 'https://github.com/acme/app/issues/12',
+            body: await marked,
+          },
+          {
+            number: 13,
+            title: 'Another organisation’s report',
+            state: 'open',
+            html_url: 'https://github.com/acme/app/issues/13',
+            body: 'Filed report.\n\n<!-- rftenantffffffffffffffff -->',
           },
         ],
       })
@@ -56,6 +69,16 @@ function fakeGithub() {
         title: 'Calendar shows a moved order on the old day',
         state: 'open',
         html_url: 'https://github.com/acme/app/issues/12',
+        body: await marked,
+      })
+    }
+    if (method === 'GET' && path === '/repos/acme/app/issues/13') {
+      return reply({
+        number: 13,
+        title: 'Another organisation’s report',
+        state: 'open',
+        html_url: 'https://github.com/acme/app/issues/13',
+        body: 'Filed report.\n\n<!-- rftenantffffffffffffffff -->',
       })
     }
     if (method === 'GET' && path.startsWith('/repos/acme/app/issues/')) {
@@ -95,19 +118,20 @@ const DRAFT = {
 }
 
 /** A conversation: scripted model turns, and the person's answers keyed by the ask's key. */
-function conversation(script: unknown[], config: PluginConfig = CONFIGURED) {
+function conversation(script: unknown[], config: PluginConfig = CONFIGURED, tenantId = TENANT_A) {
   const recorded = new Map<string, unknown>()
   const answers = new Map<string, unknown>()
   const asks: AgentInterruptAsk[] = []
   let modelCalls = 0
-  const github = fakeGithub()
+  const modelTurns: unknown[] = []
+  const github = fakeGithub(tenantId)
 
   const ctx = {
     db: {},
     config,
     env: {},
     logger: { warn: () => {}, info: () => {}, error: () => {}, debug: () => {} },
-    tenantId: '00000000-0000-4000-8000-000000000001',
+    tenantId,
     runId: '00000000-0000-4000-8000-000000000002',
     userId: null,
     input: INPUT,
@@ -121,9 +145,11 @@ function conversation(script: unknown[], config: PluginConfig = CONFIGURED) {
       return recorded.get(key) as T
     },
     structured: async (options: {
+      messages: unknown
       tool: { schema: { parse: (v: unknown) => unknown } }
       onUsage?: (u: { inputTokens: number; outputTokens: number }) => void
     }) => {
+      modelTurns.push(options.messages)
       const turn = script[modelCalls]
       modelCalls += 1
       if (turn === undefined) throw new Error('the script ran out')
@@ -149,6 +175,8 @@ function conversation(script: unknown[], config: PluginConfig = CONFIGURED) {
     github,
     asks,
     modelCalls: () => modelCalls,
+    /** The messages each model turn was handed. */
+    modelTurns: () => modelTurns,
     answer: (key: string, payload: unknown) => answers.set(key, payload),
     /** Run until it parks (→ the key it waits on) or finishes (→ its output). */
     run: async () => {
@@ -161,6 +189,42 @@ function conversation(script: unknown[], config: PluginConfig = CONFIGURED) {
     },
   }
 }
+
+describe('one repository, several organisations', () => {
+  it('searches only the issues its own organisation filed', async () => {
+    const c = conversation([
+      { action: 'search', query: 'calendar' },
+      { action: 'draft', draft: DRAFT },
+    ])
+    await c.run()
+    const search = c.github.calls.find(call => call.url.includes('/search/issues'))
+    expect(new URL(search?.url ?? '').searchParams.get('q')).toContain(
+      await issueMarkerFor(TENANT_A)
+    )
+    // The other organisation's hit in the same answer is not read back to the model.
+    const results = JSON.stringify(c.modelTurns())
+    expect(results).toContain('Calendar shows a moved order')
+    expect(results).not.toContain('Another organisation')
+  })
+
+  it('treats an issue filed by another organisation as missing, and never comments on it', async () => {
+    const c = conversation(
+      [
+        { action: 'draft', draft: { ...DRAFT, mode: 'comment', existingIssueNumber: 13 } },
+        { action: 'draft', draft: DRAFT },
+      ],
+      CONFIGURED,
+      TENANT_B
+    )
+    expect(await c.run()).toEqual({ parkedOn: 'review:1' })
+    expect(JSON.stringify(c.modelTurns())).toContain('#13 does not exist')
+    c.answer('review:1', { value: ISSUE_REPORT_FILE_CHOICE })
+    await c.run()
+    expect(c.github.writes().map(w => w.url)).toEqual([
+      'https://api.github.com/repos/acme/app/issues',
+    ])
+  })
+})
 
 describe('issue-reports agent', () => {
   it('asks, searches, drafts, and files only once the person says so — one model call per round', async () => {
@@ -202,9 +266,9 @@ describe('issue-reports agent', () => {
 
     const [created] = c.github.writes()
     expect(created?.url).toBe('https://api.github.com/repos/acme/app/issues')
-    const body = created?.body as { title: string; body: string; labels?: unknown }
+    const body = created?.body as { title: string; body: string }
     expect(body.title).toBe(DRAFT.title)
-    expect(body.labels).toBeUndefined()
+    expect(body.body).toContain(`<!-- ${await issueMarkerFor(TENANT_A)} -->`)
     expect(body.body).toContain('**Steps to reproduce**')
     expect(body.body).toContain('**Page:** `/orders/calendar`')
     expect(body.body).toContain('<summary>Full conversation</summary>')

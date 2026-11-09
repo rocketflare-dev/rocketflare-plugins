@@ -3,7 +3,7 @@
   "label": "Inbox",
   "version": "3.8.2",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.22.0",
+  "minKit": "0.29.0",
   "anchor": "apps/web/src/plugins/inbox/plugin.json",
   "paths": [
     "apps/web/src/plugins/inbox/**",
@@ -82,6 +82,7 @@
       "CliPlugin",
       "CommandContext",
       "formatDate",
+      "neutralise",
       "renderTable",
       "requireClient"
     ],
@@ -97,7 +98,7 @@
       "setupTestDatabase",
       "stubs"
     ],
-    "@testkit/unit": ["makeEmailCtx", "makeJobCtx"],
+    "@testkit/unit": ["makeEmailCtx", "makeJobCtx", "makeToolCtx"],
     "@rocketflare/shared/jobs": ["JobOf"],
     "@rocketflare/shared/pagination": ["paginatedResponse", "paginationQuerySchema"],
     "@rocketflare/shared/plugins/types": ["SharedPlugin"]
@@ -117,13 +118,19 @@
   "workerExports": [],
   "skills": ["inbox"],
   "schema": {
-    "tables": ["inbox_settings", "inbox_messages", "inbox_attachments"],
-    "rlsExcluded": []
+    "tables": [
+      "inbox_settings",
+      "inbox_messages",
+      "inbox_attachments",
+      "inbox_local_part_holds"
+    ],
+    "rlsExcluded": ["inbox_local_part_holds"]
   },
   "migrations": [
-    "inbox_settings — one row per tenant (unique tenant_id) plus a GLOBALLY unique local_part, the sender allow-list and require_authentication; RLS policy",
-    "inbox_messages — one row per accepted message, raw bytes in R2; partial unique (tenant_id, message_id_header); a message split out of a forward links its parent (parent_message_id, self-FK set null) with forwarded_by, forward_depth, source_sha256 and partial unique (tenant_id, parent_message_id, source_sha256); forwarded_count; RLS policy",
-    "inbox_attachments — one row per kept part, cascading with its message, bytes in R2; unique (tenant_id, message_id, sha256); expanded_message_id (FK set null) for an embedded message split into its own row; RLS policy"
+    "inbox_settings — one row per tenant (unique tenant_id) plus a GLOBALLY unique local_part, the sender allow-list, require_authentication and confirmation_window_until; RLS policy",
+    "inbox_messages — one row per accepted message, raw bytes in R2; partial unique (tenant_id, message_id_header); a message split out of a forward links its parent (parent_message_id) and the top message of its tree (root_message_id), both self-FKs set null, with forwarded_by, forward_depth, source_sha256; the top message counts its tree in forward_tree_count; partial unique (tenant_id, parent_message_id, source_sha256); forwarded_count; RLS policy",
+    "inbox_attachments — one row per kept part, cascading with its message, bytes in R2; unique (tenant_id, message_id, sha256); expanded_message_id (FK set null) for an embedded message split into its own row; RLS policy",
+    "inbox_local_part_holds — the registry of local parts organisations have held, local_part primary key, holder_tenant_id (no foreign key: it outlives the organisation), released_at; no RLS, it answers across tenants"
   ],
   "subdir": "plugins/inbox"
 }

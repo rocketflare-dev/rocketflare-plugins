@@ -6,6 +6,7 @@
  * the app cannot know — the page shows this site's host as the likely one and says so.
  */
 import {
+  INBOX_CONFIRMATION_WINDOW_HOURS,
   INBOX_LOCAL_PART_RE,
   INBOX_SENDER_RE,
   type InboxSettings as Settings,
@@ -13,6 +14,7 @@ import {
 import { useState } from 'react'
 import {
   ApiError,
+  formatDateTime,
   SectionPanel,
   SectionPanelSkeleton,
   SettingInput,
@@ -59,6 +61,9 @@ function SettingsForm({ settings }: { settings: Settings }) {
     localPart && !INBOX_LOCAL_PART_RE.test(localPart)
       ? 'Lower-case letters, digits, dots, dashes or underscores'
       : undefined
+  const windowOpen =
+    settings.confirmationWindowUntil !== null &&
+    new Date(settings.confirmationWindowUntil) > new Date()
   const host = typeof window === 'undefined' ? 'your-domain' : window.location.hostname
 
   const save = () =>
@@ -98,7 +103,7 @@ function SettingsForm({ settings }: { settings: Settings }) {
       />
       <SettingRow
         label="Allowed senders"
-        description="One per line: an address (me@gmail.com) or a whole domain (@example.com). A forwarded message is accepted when the forwarding mailbox or the original sender is listed. Forwarding confirmations from Gmail and Proton are always let through so you can see the code."
+        description="One per line: an address (me@gmail.com) or a whole domain (@example.com). A forwarded message is accepted when the forwarding mailbox or the original sender is listed. A forwarding confirmation from Gmail or Proton is let through ahead of this list only while the setup window below is open."
         htmlFor="inbox-senders"
       >
         <div className="w-full sm:w-72">
@@ -134,11 +139,35 @@ function SettingsForm({ settings }: { settings: Settings }) {
       <SettingToggle
         id="inbox-enabled"
         label="Accept mail"
-        description="Off: everything except forwarding confirmations is bounced."
+        description="Off: everything is bounced, except a forwarding confirmation while the setup window is open."
         checked={enabled}
         onChange={setEnabled}
         disabled={!canManage || !localPart}
       />
+      <SettingRow
+        label="Forwarding setup window"
+        description={
+          windowOpen
+            ? `Forwarding confirmations are accepted until ${formatDateTime(settings.confirmationWindowUntil)}.`
+            : `Opens for ${INBOX_CONFIRMATION_WINDOW_HOURS} hours when the address is set, or here when you are setting up forwarding again. While open, mail from a provider's own domain (not only its confirmation) can reach the inbox.`
+        }
+        htmlFor="inbox-expect-confirmation"
+      >
+        <button
+          id="inbox-expect-confirmation"
+          type="button"
+          className="btn btn-sm"
+          disabled={!canManage || !settings.localPart || update.isPending}
+          onClick={() =>
+            update.mutate(
+              { expectForwardingConfirmation: true },
+              { onSuccess: () => showToast('Setup window opened', 'success') }
+            )
+          }
+        >
+          Open the setup window
+        </button>
+      </SettingRow>
       {canManage && (
         <div className="flex justify-end pt-4">
           <button

@@ -7,7 +7,8 @@
  * it can VERIFY: `state`, signed by `POST /api/freeagent/connect` for one tenant and one admin, for
  * this purpose only, expiring in fifteen minutes (FreeAgent's own code lifetime). A missing,
  * tampered or expired state is a 401 and nothing else — no hint which part failed. Only after that
- * does the handler know which organisation it is acting for.
+ * does the handler know which organisation it is acting for, and it then re-reads that the admin
+ * who started the round trip still holds `manage FreeAgent`.
  *
  * Then: exchange the code (Basic auth with the operator's app), read `GET /v2/company` with the
  * new token, store both tokens SEALED, enqueue the first sync and send the admin back to
@@ -20,7 +21,7 @@ import {
 } from '@rocketflare/shared/plugins/freeagent/index'
 import { z } from 'zod'
 import type { PublicCtx } from '@/plugins/api'
-import { createRouter, publicCtx, recordActivity, verifyState } from '@/plugins/api'
+import { createRouter, memberCan, publicCtx, recordActivity, verifyState } from '@/plugins/api'
 import { FreeAgentClient } from '../services/client'
 import { saveConnection } from '../services/connection'
 import {
@@ -57,6 +58,11 @@ freeagentHooksRouter.get('/callback', async c => {
   const { tenantId, userId } = state.data
   const back = (outcome: { connected: true } | { error: string }) =>
     c.redirect(settingsReturnUrl(ctx.appUrl, outcome), 302)
+
+  // The state proves who started this, and when. Whether they may still finish it is read now.
+  if (!(await memberCan(ctx, { tenantId, userId }, 'manage', FREEAGENT_SUBJECT))) {
+    return back({ error: 'approval_failed' })
+  }
 
   // The admin clicked "Deny" (or FreeAgent refused): FreeAgent sends `error`, no code.
   const denied = query.get('error')

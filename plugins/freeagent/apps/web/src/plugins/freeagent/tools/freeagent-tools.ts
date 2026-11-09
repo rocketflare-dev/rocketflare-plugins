@@ -7,12 +7,15 @@
  * before the handler runs (`Tool.requiresApproval`, enforced by the kit's tool loop, never here).
  *
  * The builder offers nothing to a tenant that is not connected (`[]`), so a model is never shown a
- * tool that could only answer "not connected". The write tools are offered only to an admin-level
- * requester (`scope.bypass`): a member's run may read the books but not propose changes to them.
+ * tool that could only answer "not connected". The write tools are offered only to a requester
+ * holding `manage FreeAgent` (`ctx.can`), the same grant the HTTP routes check: a member's run may
+ * read the books but not propose changes to them. Chat has no approval gate, so the kit drops
+ * these two there: they reach an admin's agent runs and never chat.
  *
  * Tools are bound to the RUN's tenant (`ctx.tenantId`); no input names a tenant.
  */
 import {
+  FREEAGENT_SUBJECT,
   freeagentCreateBillInputSchema,
   freeagentExplainInputSchema,
 } from '@rocketflare/shared/plugins/freeagent/index'
@@ -348,7 +351,7 @@ export function createBillTool(
 
 /**
  * What `agentTools` offers this run: nothing unless the organisation is connected (and the
- * deployment configured); the two write tools only for an admin-level requester.
+ * deployment configured); the two write tools only to a requester who holds `manage FreeAgent`.
  */
 export async function freeagentAgentTools(
   ctx: ToolCtx,
@@ -362,7 +365,7 @@ export async function freeagentAgentTools(
     listInvoicesTool(ctx) as Tool,
     listBillsTool(ctx) as Tool,
   ]
-  if (ctx.scope.bypass) {
+  if (ctx.can('manage', FREEAGENT_SUBJECT)) {
     tools.push(explainTransactionTool(ctx, deps) as Tool, createBillTool(ctx, deps) as Tool)
   }
   return tools

@@ -15,8 +15,10 @@
  * only ever sent to `graph.microsoft.com`**: a cursor naming any other host is refused, so a row
  * edited by hand (or a poisoned response) cannot exfiltrate the tenant-wide token.
  */
+import { createLocalJWKSet, type JSONWebKeySet, jwtVerify } from 'jose'
 import {
   ConnectorAuthError,
+  ConsentError,
   CursorExpiredError,
   type FetchLike,
   RetryLaterError,
@@ -169,6 +171,86 @@ export async function clientCredentialsToken(
     throw new ConnectorAuthError(`Microsoft Entra refused the app: ${summary}`, 'm365_app_refused')
   }
   throw new Error(`Microsoft Entra token request failed: ${summary}`)
+}
+
+/** The Entra roles able to grant a tenant-wide application permission. */
+const ADMIN_ROLE_TEMPLATES = new Set([
+  '62e90394-69f5-4237-9190-012177145e10', // Global Administrator
+  'e8611ab8-c189-46e8-94e1-60213ab1f814', // Privileged Role Administrator
+])
+
+/**
+ * Swap an authorization code for an `id_token`, sent back over the confidential channel. The code
+ * came from Entra's sign-in at the tenant we named; the token is what proves it.
+ */
+export async function exchangeCodeForIdToken(
+  fetch: FetchLike,
+  input: {
+    tenant: string
+    clientId: string
+    clientSecret: string
+    code: string
+    redirectUri: string
+  }
+): Promise<string> {
+  const res = await fetch(`${LOGIN_ORIGIN}/${encodeURIComponent(input.tenant)}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+    body: new URLSearchParams({
+      client_id: input.clientId,
+      client_secret: input.clientSecret,
+      grant_type: 'authorization_code',
+      code: input.code,
+      redirect_uri: input.redirectUri,
+      scope: 'openid',
+    }).toString(),
+  })
+  const body = res.ok ? ((await res.json()) as { id_token?: string }) : {}
+  if (!body.id_token) {
+    throw new ConsentError('Microsoft did not confirm the sign-in', 'consent_not_granted')
+  }
+  return body.id_token
+}
+
+/**
+ * The organisation proved by an `id_token`: signature against that tenant's keys, then issuer,
+ * audience, expiry, the nonce this round trip began with, `tid` equal to the tenant claimed, and
+ * a directory role able to grant the permissions. Anything less is a `ConsentError`.
+ */
+export async function verifyConsentIdToken(
+  fetch: FetchLike,
+  idToken: string,
+  expected: { tenant: string; clientId: string; nonce: string }
+): Promise<void> {
+  const keysRes = await fetch(
+    `${LOGIN_ORIGIN}/${encodeURIComponent(expected.tenant)}/discovery/v2.0/keys`,
+    { headers: { Accept: 'application/json' } }
+  )
+  if (!keysRes.ok) throw new Error(`Microsoft Entra keys request failed (${keysRes.status})`)
+  const keys = createLocalJWKSet((await keysRes.json()) as JSONWebKeySet)
+  const verified = await jwtVerify(idToken, keys, {
+    algorithms: ['RS256'],
+    issuer: `${LOGIN_ORIGIN}/${expected.tenant}/v2.0`,
+    audience: expected.clientId,
+    clockTolerance: 60,
+  }).catch(() => null)
+  if (!verified) {
+    throw new ConsentError('Microsoft did not confirm the sign-in', 'consent_not_granted')
+  }
+  const claims = verified.payload as { tid?: unknown; nonce?: unknown; wids?: unknown }
+  if (claims.nonce !== expected.nonce || claims.tid !== expected.tenant) {
+    throw new ConsentError(
+      'The sign-in was not for the organisation that consented',
+      'consent_not_granted'
+    )
+  }
+  const roles = Array.isArray(claims.wids) ? claims.wids : []
+  if (!roles.some(role => ADMIN_ROLE_TEMPLATES.has(String(role)))) {
+    throw new ConsentError(
+      'The person who signed in is not a Global or Privileged Role Administrator',
+      'admin_consent_required'
+    )
+  }
 }
 
 /**

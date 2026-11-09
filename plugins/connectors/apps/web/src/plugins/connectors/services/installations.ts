@@ -11,9 +11,9 @@ import type {
   ConnectorResource,
   SyncCursorStatus,
 } from '@rocketflare/shared/plugins/connectors/index'
-import { and, count, eq, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, count, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm'
 import type { Database, PluginConfig } from '@/plugins/api'
-import { openSecret, sealSecret, transaction } from '@/plugins/api'
+import { isUniqueViolation, openSecret, sealSecret, transaction } from '@/plugins/api'
 import {
   CONNECTORS_ORGANISATION_SUBJECT,
   type ConnectorsConnectionRow,
@@ -124,16 +124,32 @@ export async function upsertPendingInstallation(
  *
  * A DIFFERENT external tenant on an already-active installation is refused rather than silently
  * re-pointed: every synced row belongs to the first one, and mixing two directories under one
- * installation is not a state this model can represent.
+ * installation is not a state this model can represent. An external organisation already bound to
+ * ANOTHER workspace is refused too (`connectors_installations_external_idx`): it belongs to the
+ * workspace that connected it until that one disconnects.
  */
 export async function activateInstallation(
   db: Database,
   tenantId: string,
   installationId: string,
+  provider: string,
   consent: { externalTenantId: string; displayName?: string | null },
   authKind: 'app_only' | 'dwd'
 ): Promise<{ installation: ConnectorsInstallationRow; cursorIds: string[] }> {
   return transaction(db, async tx => {
+    // The index is the guarantee; this is what lets the common case answer without an error.
+    const [bound] = await tx
+      .select({ tenantId: connectorsInstallations.tenantId })
+      .from(connectorsInstallations)
+      .where(
+        and(
+          eq(connectorsInstallations.provider, provider),
+          eq(connectorsInstallations.externalTenantId, consent.externalTenantId),
+          ne(connectorsInstallations.id, installationId)
+        )
+      )
+      .limit(1)
+    if (bound) throw new ExternalTenantInUseError()
     const [current] = await tx
       .select()
       .from(connectorsInstallations)
@@ -187,7 +203,17 @@ export async function activateInstallation(
     if (!org) throw new Error('connectors_connections: upsert returned no row')
     const cursors = await ensureCursors(tx, tenantId, org.id, ['users', 'groups'])
     return { installation, cursorIds: cursors }
+  }).catch(err => {
+    if (isUniqueViolation(err)) throw new ExternalTenantInUseError()
+    throw err
   })
+}
+
+export class ExternalTenantInUseError extends Error {
+  constructor() {
+    super('This external organisation is already connected to another workspace')
+    this.name = 'ExternalTenantInUseError'
+  }
 }
 
 export class ExternalTenantMismatchError extends Error {

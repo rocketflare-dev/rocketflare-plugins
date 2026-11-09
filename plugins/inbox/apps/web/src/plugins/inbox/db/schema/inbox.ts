@@ -14,6 +14,8 @@
  *   embedded email's own headers, the parent's authentication verdict and `forwarded_by`.
  *   `(tenant_id, parent_message_id, source_sha256)` is unique, so a redelivered parse cannot
  *   mint a second child for the same part.
+ * - `inbox_local_part_holds` — the registry of local parts organisations have held (it outlives
+ *   them), so a released address cannot be claimed by another organisation at once.
  * - `inbox_attachments` — one row per extracted part, cascading with its message, bytes in R2. An
  *   embedded message's row keeps the original `.eml` and points at the message it became through
  *   `expanded_message_id` — such a row is never handed to consumers or the knowledge base.
@@ -42,6 +44,8 @@ export const inboxSettings = pgTable(
     localPart: text('local_part'),
     allowedSenders: text('allowed_senders').array().notNull().default(sql`'{}'::text[]`),
     requireAuthentication: boolean('require_authentication').notNull().default(true),
+    /** Forwarding confirmations are accepted from their provider until this moment; null = never. */
+    confirmationWindowUntil: timestamp('confirmation_window_until', { withTimezone: true }),
     /** Index each parsed message and its documents into the knowledge base (chat can search it). */
     ingestToKnowledge: boolean('ingest_to_knowledge').notNull().default(true),
     updatedByUserId: uuid('updated_by_user_id').references(() => users.id, {
@@ -95,6 +99,15 @@ export const inboxMessages = pgTable(
      * any depth). The child's own SPF/DKIM/DMARC cannot be checked; it inherits the parent's.
      */
     forwardedBy: text('forwarded_by'),
+    /**
+     * The delivery this message arrived in: the top message of its forward tree, null on that top
+     * message itself. Carried so the whole tree counts against one budget.
+     */
+    rootMessageId: uuid('root_message_id').references((): AnyPgColumn => inboxMessages.id, {
+      onDelete: 'set null',
+    }),
+    /** On a top message: how much of its split budget the tree has used (claimed atomically). */
+    forwardTreeCount: integer('forward_tree_count').notNull().default(0),
     /** 0 for mail that arrived on its own; a child is its parent's depth + 1 (capped). */
     forwardDepth: integer('forward_depth').notNull().default(0),
     /** SHA-256 of the embedded part a child was made from — its idempotency key with the parent. */
@@ -115,6 +128,20 @@ export const inboxMessages = pgTable(
     tenantIsolation('inbox_messages'),
   ]
 )
+
+/**
+ * One row per local part that has been held by an organisation — current or given up. It outlives
+ * the organisation, so `holder_tenant_id` is a plain value with no foreign key and this table has
+ * no `tenant_id` (and no RLS): it is the registry that answers "may this organisation take this
+ * address?" across tenants, which is why `inbox_settings`' row alone cannot.
+ */
+export const inboxLocalPartHolds = pgTable('inbox_local_part_holds', {
+  localPart: text('local_part').primaryKey(),
+  holderTenantId: uuid('holder_tenant_id').notNull(),
+  /** Null while held. Once set, other organisations wait out the holding period from here. */
+  releasedAt: timestamp('released_at', { withTimezone: true }),
+  ...timestamps(),
+})
 
 export const inboxAttachments = pgTable(
   'inbox_attachments',
@@ -150,6 +177,7 @@ export const inboxAttachments = pgTable(
   ]
 )
 
+export type InboxLocalPartHoldRow = typeof inboxLocalPartHolds.$inferSelect
 export type InboxSettingsRow = typeof inboxSettings.$inferSelect
 export type InboxMessageRow = typeof inboxMessages.$inferSelect
 export type NewInboxMessageRow = typeof inboxMessages.$inferInsert

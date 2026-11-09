@@ -17,12 +17,12 @@ that issue instead of opening a new one.
 | Agent | `issue-reports`, non-exclusive: each person's conversation is its own run, parked on their answers, so many can be in progress at once |
 | Prompt | `issue-reports` — override it per organisation in Settings → Prompts, pick its model in Settings → agent models |
 | API | `GET /api/issue-reports/status` → `{ configured, repo }`. Everything else is the kit's own `/api/agents/runs…` |
-| GitHub | Four REST calls over `fetch`, with no Octokit: search issues, read one, open one, comment on one |
+| GitHub | Four REST calls over `fetch`, with no Octokit: search issues, read one, open one, comment on one. Before anyone logs a report, the review step says what goes to GitHub: the draft, their name, the page and the whole conversation |
 | Data | None. The agent run is the record: its input is what they first said, its interrupts are the conversation, its output is the issue it filed |
 
 ## Requirements
 
-- Rocketflare kit **0.21.0** or later (a plugin agent's `interrupt`, `chatModel` and non-exclusive
+- Rocketflare kit **0.29.0** or later (a plugin agent's `interrupt`, `chatModel` and non-exclusive
   runs).
 - The kit's agents surface (`feature-agents`) and a chat model, through any of the kit's AI setups.
 - A GitHub repository and a fine-grained token with **Issues: read and write** on that one
@@ -90,7 +90,9 @@ The repository name is not sensitive. If you would rather keep it in the tomls, 
 - In-app only: no Slack or Teams.
 - No labels and no assignee. The issue names the reporter, and the team triages on GitHub.
 - The page is recorded only when a link carries `?from=`; otherwise it is whatever the person says.
-- One repository per deployment, not per organisation.
+- One repository per deployment, not per organisation. Each filed issue carries a hidden marker
+  derived from the organisation, and search, lookup and comment only touch issues with that
+  organisation's marker. Issues filed before the marker existed are out of the agent's reach.
 
 ## More
 

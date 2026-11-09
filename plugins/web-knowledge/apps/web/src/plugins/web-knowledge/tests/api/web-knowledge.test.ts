@@ -23,6 +23,7 @@ import { loadRow, nextSettings } from '../../api/settings'
 import { webSearchSettings } from '../../db/schema'
 import { webKnowledgeServer } from '../../index'
 import { FETCH_PAGE_TOOL, fetchPageTool } from '../../tools/fetch-page'
+import { reachableUrls } from '../../tools/reachable-urls'
 import { WEB_SEARCH_TOOL, webSearchTool } from '../../tools/web-search'
 
 const db = setupTestDatabase()
@@ -216,7 +217,7 @@ describe('agent tools', () => {
     })
     const search = { provider: 'brave' as const, maxResults: 3, apiKeyEnc: '' }
     search.apiKeyEnc = (await loadRow(db, tenantId))?.apiKeyEnc ?? ''
-    const tool = webSearchTool(ctx, search, { fetch })
+    const tool = webSearchTool(ctx, search, { fetch, reachable: reachableUrls() })
     expect(fetch).not.toHaveBeenCalled()
     const out = JSON.parse(await (tool.handler as (i: unknown) => Promise<string>)({ query: 'x' }))
     expect(out.results).toEqual([
@@ -231,7 +232,7 @@ describe('agent tools', () => {
     const tool = webSearchTool(
       ctx,
       { provider: 'brave', maxResults: 3, apiKeyEnc },
-      { fetch: async () => new Response('no', { status: 401 }) }
+      { fetch: async () => new Response('no', { status: 401 }), reachable: reachableUrls() }
     )
     const out = JSON.parse(await (tool.handler as (i: unknown) => Promise<string>)({ query: 'x' }))
     expect(out).toMatchObject({ error: 'web_key_rejected', hint: expect.stringContaining('admin') })
@@ -240,12 +241,48 @@ describe('agent tools', () => {
   it('fetch_page refuses a private URL without making a request', async () => {
     const ctx = makeToolCtx({ db, tenantId })
     const fetch = vi.fn()
-    const tool = fetchPageTool(ctx, { provider: 'brave', maxResults: 3, apiKeyEnc: 'x' }, { fetch })
+    const tool = fetchPageTool(
+      ctx,
+      { provider: 'brave', maxResults: 3, apiKeyEnc: 'x' },
+      { fetch, reachable: reachableUrls() }
+    )
     const out = JSON.parse(
       await (tool.handler as (i: unknown) => Promise<string>)({ url: 'http://localhost:5432/' })
     )
     expect(out.error).toBe('web_url_refused')
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('fetch_page reads a URL web_search returned, and no other', async () => {
+    const ctx = makeToolCtx({ db, tenantId })
+    const reachable = reachableUrls()
+    const apiKeyEnc = (await loadRow(db, tenantId))?.apiKeyEnc ?? ''
+    const search = { provider: 'brave' as const, maxResults: 3, apiKeyEnc }
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes('api.search.brave.com')) {
+        return Response.json({
+          web: {
+            results: [{ title: 'W', url: 'https://w.example.com/page#top', description: 'E' }],
+          },
+        })
+      }
+      return new Response('page text', { headers: { 'content-type': 'text/plain' } })
+    })
+    const handler = (tool: { handler?: unknown }) => tool.handler as (i: unknown) => Promise<string>
+    const searchTool = webSearchTool(ctx, search, { fetch, reachable })
+    const pageTool = fetchPageTool(ctx, search, { fetch, reachable })
+    await handler(searchTool)({ query: 'x' })
+    fetch.mockClear()
+
+    const composed = JSON.parse(
+      await handler(pageTool)({ url: 'https://elsewhere.example/c?d=something' })
+    )
+    expect(composed.error).toBe('web_url_refused')
+    expect(fetch).not.toHaveBeenCalled()
+
+    const read = JSON.parse(await handler(pageTool)({ url: 'https://w.example.com/page' }))
+    expect(read.content).toBe('page text')
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 
   it('fetch_page windows a long page by the caller’s budget', async () => {
@@ -256,6 +293,7 @@ describe('agent tools', () => {
       {
         fetch: async () =>
           new Response('abcdefghijklmnopqrstuvwxyz', { headers: { 'content-type': 'text/plain' } }),
+        reachable: reachableUrls(['https://example.com/a']),
       }
     )
     const handler = tool.handler as (i: unknown) => Promise<string>

@@ -55,16 +55,22 @@ export const INBOX_LOCAL_PART_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/
 export const INBOX_SENDER_RE = /^([^\s@]+@|@)[^\s@]+\.[^\s@]+$/
 
 export const INBOX_MAX_ALLOWED_SENDERS = 50
+/** How long forwarding confirmations are accepted after an address is set, or set up again. */
+export const INBOX_CONFIRMATION_WINDOW_HOURS = 24
+/** How long a released local part stays with its organisation before another may claim it. */
+export const INBOX_LOCAL_PART_HOLD_DAYS = 90
 /** The text body is kept in Postgres up to this many characters; the HTML body lives in R2. */
 export const INBOX_TEXT_BODY_MAX = 100_000
 
 /**
  * Forwarded-as-attachment mail: every `message/rfc822` part becomes a child message of its own.
  * A child is its parent's depth + 1, and a message at the cap keeps its embedded parts as plain
- * `.eml` attachments; past the per-message cap, the rest stay attachments too.
+ * `.eml` attachments; past the per-message cap, the rest stay attachments too. One delivery splits
+ * into at most `INBOX_FORWARD_MAX_TOTAL` messages however deep it nests.
  */
 export const INBOX_FORWARD_MAX_DEPTH = 3
 export const INBOX_FORWARD_MAX_CHILDREN = 50
+export const INBOX_FORWARD_MAX_TOTAL = 50
 
 // ---- Vocabulary ---------------------------------------------------------------------------------
 
@@ -99,10 +105,12 @@ export const inboxSettingsSchema = z.object({
   /** Null until the organisation picks one; nothing is accepted before then. */
   localPart: z.string().nullable(),
   allowedSenders: z.array(z.string()),
-  /** Refuse mail whose SPF, DKIM and DMARC all failed or are missing (off only for local tests). */
+  /** Refuse mail unless the allow-listed identity authenticated (off only for local tests). */
   requireAuthentication: z.boolean(),
   /** Index parsed messages and their PDF/document attachments into the knowledge base. */
   ingestToKnowledge: z.boolean(),
+  /** Until when a forwarding confirmation is let through ahead of the allow-list and the off switch. */
+  confirmationWindowUntil: z.coerce.date().nullable(),
   updatedAt: z.coerce.date().nullable(),
 })
 export type InboxSettings = z.infer<typeof inboxSettingsSchema>
@@ -126,6 +134,8 @@ export const updateInboxSettingsSchema = z
       .max(INBOX_MAX_ALLOWED_SENDERS),
     requireAuthentication: z.boolean(),
     ingestToKnowledge: z.boolean(),
+    /** "I am setting up forwarding": opens the confirmation window. */
+    expectForwardingConfirmation: z.literal(true),
   })
   .partial()
   .refine(body => Object.keys(body).length > 0, { message: 'Nothing to update' })

@@ -116,7 +116,8 @@ Goal: one multi-tenant Entra app registration whose id and secret this Worker ho
 4. **Create the app — sign-off first.** Show the `az ad app create …` and `az ad app permission
    add …` commands from `providers/m365.md` with the real values, get a yes, run them, and keep the
    `appId` in a variable. Re-running? Look it up by name first (the file shows how) — never create a
-   second app with the same name by accident.
+   second app with the same name by accident. Set the Directory roles claim too (step 4b there):
+   without it every consent ends in `admin_consent_required`.
 5. **Create a secret and store it without printing it — sign-off first.** Local: the
    `.dev.vars` writer in `providers/m365.md`. Deployed: pipe it to `wrangler secret put` for that
    environment (redeploys the Worker immediately — say so before running). Set `M365_CLIENT_ID`

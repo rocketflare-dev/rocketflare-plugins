@@ -155,10 +155,24 @@ export interface CalendarSource {
   maxChainDays: number
 }
 
-export interface ConsentResult {
+/** The organisation the provider has proved is on the other end of this consent. */
+export interface ConsentComplete {
   externalTenantId: string
   displayName?: string | null
 }
+
+/**
+ * The provider needs one more step before it can prove the organisation: send the browser to
+ * `continueAt(state)`, where `state` is a fresh signed state carrying `continuation`. The same
+ * callback is called again with `continuation` set. Signed, not encrypted: never put a secret in
+ * it.
+ */
+export interface ConsentContinue {
+  continueAt: (state: string) => string
+  continuation: Record<string, string>
+}
+
+export type ConsentResult = ConsentComplete | ConsentContinue
 
 export interface MintedToken {
   accessToken: string
@@ -188,10 +202,18 @@ export interface ConnectorProvider {
     state: string
   }): string
   /**
-   * The callback's query string, with `state` already verified. Throw `ConsentError` for a
-   * refusal (the admin pressed Cancel, consent was not granted).
+   * The callback's query string, with `state` already verified. Answer `ConsentComplete` only on
+   * evidence the VENDOR authenticated (a verified token naming the organisation): the query on its
+   * own is whatever the browser sent. Throw `ConsentError` for a refusal (the admin pressed Cancel,
+   * consent was not granted, the evidence does not hold).
    */
-  completeConsent(input: { query: URLSearchParams }): ConsentResult
+  completeConsent(input: {
+    query: URLSearchParams
+    credentials: ConnectorCredentials
+    redirectUri: string
+    fetch: FetchLike
+    continuation?: Readonly<Record<string, string>>
+  }): ConsentResult | Promise<ConsentResult>
   mintToken(input: {
     credentials: ConnectorCredentials
     installation: InstallationView

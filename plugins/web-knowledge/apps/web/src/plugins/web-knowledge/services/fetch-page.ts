@@ -95,14 +95,77 @@ const ENTITIES: Record<string, string> = {
   nbsp: ' ',
 }
 
+/** Elements whose content is not page text. */
+const NON_CONTENT = new Set(['script', 'style', 'noscript', 'svg', 'template', 'head'])
+/** Closing tags that end a line of text. */
+const BLOCK_END = new Set([
+  'p',
+  'div',
+  'section',
+  'article',
+  'li',
+  'tr',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'blockquote',
+  'pre',
+])
+/** A page's title is in its head; nothing past this is searched for one. */
+const TITLE_SCAN_CHARS = 64_000
+
+/** ASCII only: `toLowerCase` can change a string's length, and offsets are shared with the original. */
+const asciiLower = (text: string) => text.replace(/[A-Z]+/g, run => run.toLowerCase())
+
+/**
+ * Tags out, text kept, in one forward pass. Every search starts where the last one ended, and a
+ * closing tag once found missing is never looked for again, so the cost is linear in the page
+ * however the markup is arranged: pages are written by strangers.
+ */
+function stripMarkup(html: string): string {
+  const lower = asciiLower(html)
+  const unclosed = new Set<string>()
+  const out: string[] = []
+  let pos = 0
+  while (pos < html.length) {
+    const open = html.indexOf('<', pos)
+    if (open === -1) break
+    out.push(html.slice(pos, open))
+    if (html.startsWith('<!--', open)) {
+      const end = html.indexOf('-->', open + 4)
+      if (end === -1) return out.join('')
+      pos = end + 3
+      continue
+    }
+    const close = html.indexOf('>', open + 1)
+    if (close === -1) {
+      pos = open
+      break
+    }
+    const closing = lower[open + 1] === '/'
+    const name = /^[a-z0-9]*/.exec(lower.slice(open + (closing ? 2 : 1), close))?.[0] ?? ''
+    pos = close + 1
+    if (closing) {
+      if (BLOCK_END.has(name)) out.push('\n')
+    } else if (name === 'br' || name === 'hr') {
+      out.push('\n')
+    } else if (NON_CONTENT.has(name) && !unclosed.has(name)) {
+      const terminator = `</${name}>`
+      const end = lower.indexOf(terminator, pos)
+      if (end === -1) unclosed.add(name)
+      else pos = end + terminator.length
+    }
+  }
+  out.push(html.slice(pos))
+  return out.join('')
+}
+
 /** A last-resort HTML → text for a Worker without `[ai]`: drop non-content, keep block breaks. */
 export function htmlToText(html: string): string {
-  return html
-    .replace(/<(script|style|noscript|svg|template|head)\b[\s\S]*?<\/\1>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<(br|hr)\b[^>]*>/gi, '\n')
-    .replace(/<\/(p|div|section|article|li|tr|h[1-6]|blockquote|pre)>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
+  return stripMarkup(html.slice(0, MAX_BYTES))
     .replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, name: string) => {
       if (name[0] === '#') {
         const code =
@@ -122,9 +185,15 @@ export function htmlToText(html: string): string {
 }
 
 export function titleOf(html: string): string | undefined {
-  const match = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)
-  const title = match?.[1] ? htmlToText(match[1]) : ''
-  return title || undefined
+  const head = html.slice(0, TITLE_SCAN_CHARS)
+  const lower = asciiLower(head)
+  const open = lower.indexOf('<title')
+  if (open === -1) return undefined
+  const start = head.indexOf('>', open)
+  if (start === -1) return undefined
+  const end = lower.indexOf('</title>', start)
+  if (end === -1) return undefined
+  return htmlToText(head.slice(start + 1, end)) || undefined
 }
 
 export interface FetchPageDeps {

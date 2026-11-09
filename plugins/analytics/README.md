@@ -11,8 +11,8 @@ commands below) adds it. Everything it answers is scoped to the reader's organis
 | Area | What you get |
 |---|---|
 | UI | **Analytics** in the side nav and a Home quick link: `/analytics` (dashboards), `/analytics/explore` (a query builder over the cubes) and `/analytics/:pageId` (one dashboard). New organisations get a set of default dashboards |
-| Semantic layer | drizzle-cube cubes over the kit's own data — `ActivityEvents`, `Users`, `Members`, `TenantUsers` and `TenantActivityDaily` — each filtering on the reader's tenant inside its own SQL |
-| API | `/api/analytics` (dashboards: list, read, create, update, delete, restrict to groups), `/cubejs-api/v1` (the Cube.js-compatible query API: `meta`, `load`, `sql`, `dry-run`, `explain`, `batch`) and `/mcp` (an MCP server with `discover`, `validate` and `load` tools) |
+| Semantic layer | drizzle-cube cubes over the kit's own data — `ActivityEvents`, `Users`, `Members`, `TenantUsers` and `TenantActivityDaily` — each filtering on the reader's tenant inside its own SQL. `ActivityEvents` answers admin-level readers only; other readers get no rows |
+| API | `/api/analytics` (dashboards: list, read, create, update, delete, restrict to groups), `/cubejs-api/v1` (the Cube.js-compatible query API: `meta`, `load`, `sql`, `dry-run`, `explain`, `batch`, at most 50 queries per request) and `/mcp` (an MCP server with `discover`, `validate` and `load` tools). Every statement runs under a 20-second limit |
 | Background work | One fact table, `analytics_tenant_activity_daily_facts`, rebuilt every hour by the `15 * * * *` cron; the `analytics.refresh-facts` job refreshes one organisation on demand |
 | Data | `analytics_pages`, `analytics_page_groups`, `analytics_tenant_activity_daily_facts` — all tenant-scoped with row-level security |
 | CLI | `rocketflare analytics pages list`, `rocketflare analytics check-facts`, `rocketflare analytics refresh-facts` |
@@ -24,7 +24,7 @@ one is malformed.
 
 ## Requirements
 
-- Rocketflare kit **0.17.1** or later (`minKit`; earlier plugin releases support older kits).
+- Rocketflare kit **0.29.0** or later (`minKit`; earlier plugin releases support older kits).
 - No other plugin, no bindings and no secrets.
 - npm dependencies the install adds to `apps/web`: `drizzle-cube` (pinned 0.12.2), `recharts`, `d3`,
   `react-grid-layout`, `react-is`.

@@ -36,7 +36,7 @@ import {
 import { type InboxMessageRow, inboxAttachments, inboxMessages } from '../db/schema'
 import { forgetMessage } from '../services/knowledge'
 import { messagePrefix } from '../services/receive'
-import { loadSettings, saveSettings, toSettings } from './settings'
+import { LocalPartHeldError, loadSettings, saveSettings, toSettings } from './settings'
 
 export const inboxRouter = createRouter()
 
@@ -120,7 +120,7 @@ inboxRouter.put('/settings', validate('json', updateInboxSettingsSchema), async 
   try {
     row = await saveSettings(ctx.db, ctx.tenantId, ctx.userId, body)
   } catch (err) {
-    if (isUniqueViolation(err)) {
+    if (isUniqueViolation(err) || err instanceof LocalPartHeldError) {
       ctx.conflict('That address is already taken', 'inbox_local_part_taken')
     }
     throw err
