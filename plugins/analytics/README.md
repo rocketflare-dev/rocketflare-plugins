@@ -34,9 +34,9 @@ one is malformed.
 The first command prints the plan and stops, the second applies it:
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.8.2 --subdir plugins/analytics
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.8.2 --subdir plugins/analytics --apply
-pnpm db:generate --name plugin-analytics-3.8.2 && pnpm db:migrate
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.9.0 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.9.0 --subdir plugins/analytics --apply
+pnpm db:generate --name plugin-analytics-3.9.0 && pnpm db:migrate
 ```
 
 The plan lists the steps a plugin cannot make in your files, and `pnpm provision cloudflare <env>`

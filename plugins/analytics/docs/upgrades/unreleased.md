@@ -1,10 +1,10 @@
 ---
 version: unreleased
-previous: 3.8.2
+previous: 3.9.0
 date: null
-breaking: true
+breaking: false
 migrations: []
-areas: [api, cli]
+areas: []
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,25 +12,11 @@ manual: false
 
 ## What changed
 
-Analytics limits the activity cube to admins, caps batch size, sets a statement timeout and stops recording a creator on template pages.
-
-- The `ActivityEvents` cube answers admin-level readers only, on `/load`, `/batch`, `/mcp` and through joins.
-- `POST /cubejs-api/v1/batch` holds at most 50 queries (400 `cube_batch_too_large`).
-- Every cube request runs in a transaction with a 20-second `statement_timeout`, so a timeout fails the rest of that batch.
-- Template pages record no creator; existing rows are cleared idempotently the first time a tenant's Analytics list opens.
-- `ensureDefaultDashboards` and `recreateTemplates` lose their `createdByUserId` parameter.
-- CLI lines neutralise server text.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Install on kit 0.29.0 or later, which carries the plugin entries this version imports.
-2. Remove the `createdByUserId` argument from any local call to `ensureDefaultDashboards` or `recreateTemplates`.
-
 ## Conflicts to expect
 
-None.
-
 ## Verify
-
-1. `pnpm plugin check` passes.
-2. A member's query on `ActivityEvents` returns no rows.

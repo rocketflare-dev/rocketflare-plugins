@@ -1,10 +1,10 @@
 ---
 version: unreleased
-previous: 3.8.2
+previous: 3.9.0
 date: null
-breaking: true
+breaking: false
 migrations: []
-areas: [api]
+areas: []
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,22 +12,11 @@ manual: false
 
 ## What changed
 
-Microsoft 365 consent now completes only on a verified sign-in by an administrator of the claimed tenant.
-
-- After the admin-consent redirect, the callback runs OpenID Connect sign-in at the claimed tenant and activates only on an `id_token` verified for issuer, audience, nonce and `tid`, with `wids` holding Global Administrator or Privileged Role Administrator.
-- New dependency: `jose` in `apps/web`.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Install on kit 0.29.0 or later, which carries the plugin entries this version imports.
-2. On every app registration add the groups claim for directory roles to the ID token: `az ad app update --id <appId> --set groupMembershipClaims=DirectoryRole`, or Token configuration in the portal. Without the claim, consent fails closed with `admin_consent_required`.
-3. Leave active installations as they are; a re-consent takes the new path.
-
 ## Conflicts to expect
 
-None.
-
 ## Verify
-
-1. `pnpm plugin check` passes.
-2. One real consent on a test Entra tenant reaches the active state.

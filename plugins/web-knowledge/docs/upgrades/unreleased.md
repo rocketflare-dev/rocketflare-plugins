@@ -1,10 +1,10 @@
 ---
 version: unreleased
-previous: 3.8.2
+previous: 3.9.0
 date: null
-breaking: true
+breaking: false
 migrations: []
-areas: [api]
+areas: []
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,20 +12,11 @@ manual: false
 
 ## What changed
 
-`fetch_page` now reads only URLs `web_search` returned in the same turn or run, and page text extraction is a bounded linear scan.
-
-- Any other URL answers `web_url_refused` with no request made; a pasted URL is refused, because the tool context does not carry the person's words.
-- A resumed agent run starts with an empty set and has to search again.
-- `htmlToText` and `titleOf` are one forward scan, with the title looked for in the first 64,000 characters.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Tell agents with prompts that hand `fetch_page` a known URL to call `web_search` first.
-
 ## Conflicts to expect
 
-None.
-
 ## Verify
-
-1. `pnpm plugin check` passes.

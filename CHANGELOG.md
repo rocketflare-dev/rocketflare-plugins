@@ -9,6 +9,29 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.9.0 — 2026-11-09
+
+**analytics** — Analytics limits the activity cube to admins, caps batch size, sets a statement timeout and stops recording a creator on template pages.
+[Porting note](plugins/analytics/docs/upgrades/3.9.0.md).
+
+**connectors** — A connection now requires provider-authenticated proof of the external organisation, and one external organisation backs one workspace.
+[Porting note](plugins/connectors/docs/upgrades/3.9.0.md).
+
+**freeagent** — FreeAgent write tools now follow the requester's `manage` permission, and the OAuth callback re-reads the admin who started it.
+[Porting note](plugins/freeagent/docs/upgrades/3.9.0.md).
+
+**inbox** — Inbox tightens which senders it accepts, bounds how far one delivery can split, and holds released addresses for 90 days.
+[Porting note](plugins/inbox/docs/upgrades/3.9.0.md).
+
+**issue-reports** — Filed issues now carry a per-organisation marker that search, lookup and comment enforce, and the review page shows what goes to GitHub.
+[Porting note](plugins/issue-reports/docs/upgrades/3.9.0.md).
+
+**m365** — Microsoft 365 consent now completes only on a verified sign-in by an administrator of the claimed tenant.
+[Porting note](plugins/m365/docs/upgrades/3.9.0.md).
+
+**web-knowledge** — `fetch_page` now reads only URLs `web_search` returned in the same turn or run, and page text extraction is a bounded linear scan.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.9.0.md).
+
 ## 3.8.2 — 2026-11-08
 
 **analytics** — The analytics UI guide now says fact-table freshness is requested by admins only; no code changed.
