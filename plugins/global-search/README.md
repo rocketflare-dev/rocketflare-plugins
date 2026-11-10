@@ -40,9 +40,9 @@ model.
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.10.0 --subdir plugins/global-search
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.10.0 --subdir plugins/global-search --apply
-pnpm db:generate --name plugin-global-search-3.10.0 && pnpm db:migrate
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.10.1 --subdir plugins/global-search
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.10.1 --subdir plugins/global-search --apply
+pnpm db:generate --name plugin-global-search-3.10.1 && pnpm db:migrate
 ```
 
 The first command prints the plan and stops; `--apply` installs.

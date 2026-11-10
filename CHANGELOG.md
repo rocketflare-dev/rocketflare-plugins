@@ -9,6 +9,11 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.10.1 — 2026-11-10
+
+Ask the Guide no longer shows raw footnote marks such as `[^2]` or an empty bullet at the end of an answer, and finds the citations block however the model formats its header.
+[Porting note](plugins/guide/docs/upgrades/3.10.1.md).
+
 ## 3.10.0 — 2026-11-10
 
 **guide** — First release of `guide`: an in-app user guide about the app itself, written by the developer's coding agent and kept in sync with the code by a Claude Code Stop hook.
