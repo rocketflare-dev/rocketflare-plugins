@@ -9,6 +9,11 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.11.0 — 2026-11-10
+
+`fetch_page` now reads a URL the person typed in chat or in an agent run's input, as well as the URLs `web_search` returned; it still refuses any URL the model composed.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.11.0.md).
+
 ## 3.10.1 — 2026-11-10
 
 Ask the Guide no longer shows raw footnote marks such as `[^2]` or an empty bullet at the end of an answer, and finds the citations block however the model formats its header.

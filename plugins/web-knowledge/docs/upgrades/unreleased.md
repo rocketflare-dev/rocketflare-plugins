@@ -1,10 +1,10 @@
 ---
 version: unreleased
-previous: 3.9.0
+previous: 3.11.0
 date: null
 breaking: false
 migrations: []
-areas: [api]
+areas: []
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,22 +12,11 @@ manual: false
 
 ## What changed
 
-`fetch_page` now reads a URL the person typed in chat or in an agent run's input, as well as the URLs `web_search` returned; it still refuses any URL the model composed.
-
-- `webTools(ctx, search, fetch?)` in `index.ts` builds both tools over one `ReachableUrls` seeded with `ToolCtx.requesterUrls`.
-- The tool description and the `web_url_refused` message and hint now name both sources.
-- `minKit` is 0.33.0, the first kit whose `ToolCtx` carries `requesterUrls`.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Upgrade the kit to 0.33.0 or later first (`pnpm kit:upgrade --to 0.33.0 --apply`); `ToolCtx.requesterUrls` does not exist before it.
-2. Run `pnpm plugin upgrade web-knowledge --apply`.
-
 ## Conflicts to expect
 
-None. The plugin's own files change; the host's barrels do not.
-
 ## Verify
-
-1. `pnpm plugin check` reports `web-knowledge` checks out.
-2. The plugin's `tests/api/web-knowledge.test.ts` passes, including "fetch_page reads a URL the person typed, and still no URL the model composed".
