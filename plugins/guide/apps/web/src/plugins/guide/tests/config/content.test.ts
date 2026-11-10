@@ -5,6 +5,7 @@
  */
 import {
   buildGuideBundle,
+  cleanGuideAnswer,
   type GuideSourceFile,
   guideConfigSchema,
   guideExternalId,
@@ -256,5 +257,28 @@ describe('the audience view, screens and citations', () => {
     // An admin page cited to a member is not a page they can open.
     expect(resolveGuideCitation(citations[0] as never, member).valid).toBe(false)
     expect(dedupeGuideCitations([...forAdmin, ...forAdmin]).length).toBe(forAdmin.length)
+  })
+
+  it('finds the block however the model decorated it, and leaves no empty bullet behind', () => {
+    const line = 'page=admin/people.md | heading=do-it | note=sending one'
+    for (const header of ['- CITATIONS:', '**CITATIONS:**', '**CITATIONS**:', '### Citations:', '> CITATIONS:', '`CITATIONS:`']) {
+      const { answer, citations } = splitGuideCitations(`Open People.\n\n${header}\n- ${line}`)
+      expect(answer, header).toBe('Open People.')
+      expect(citations, header).toEqual([
+        { page: 'admin/people.md', heading: 'do-it', note: 'sending one' },
+      ])
+    }
+  })
+
+  it('drops footnote marks and definitions from the answer', () => {
+    const { answer } = splitGuideCitations(
+      '> If you need a colleague added, ask an admin.[^2][^5]\n\n[^2]: Inviting people\n\nCITATIONS:\npage=start/x.md | heading=- | note=-'
+    )
+    expect(answer).toBe('> If you need a colleague added, ask an admin.')
+  })
+
+  it('cleans an answer with no block at all', () => {
+    expect(cleanGuideAnswer('Steps.[^1]\n\n-\n')).toBe('Steps.')
+    expect(cleanGuideAnswer('Plain answer.')).toBe('Plain answer.')
   })
 })
