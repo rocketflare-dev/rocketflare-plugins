@@ -21,7 +21,7 @@ import { eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { loadRow, nextSettings } from '../../api/settings'
 import { webSearchSettings } from '../../db/schema'
-import { webKnowledgeServer } from '../../index'
+import { webKnowledgeServer, webTools } from '../../index'
 import { FETCH_PAGE_TOOL, fetchPageTool } from '../../tools/fetch-page'
 import { reachableUrls } from '../../tools/reachable-urls'
 import { WEB_SEARCH_TOOL, webSearchTool } from '../../tools/web-search'
@@ -282,6 +282,29 @@ describe('agent tools', () => {
 
     const read = JSON.parse(await handler(pageTool)({ url: 'https://w.example.com/page' }))
     expect(read.content).toBe('page text')
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('fetch_page reads a URL the person typed, and still no URL the model composed', async () => {
+    const ctx = makeToolCtx({
+      db,
+      tenantId,
+      requesterUrls: ['https://pasted.example.com/article#section'],
+    })
+    const apiKeyEnc = (await loadRow(db, tenantId))?.apiKeyEnc ?? ''
+    const search = { provider: 'brave' as const, maxResults: 3, apiKeyEnc }
+    const fetch = vi.fn(
+      async () => new Response('pasted page', { headers: { 'content-type': 'text/plain' } })
+    )
+    const pageTool = webTools(ctx, search, fetch).find(t => t.name === FETCH_PAGE_TOOL)
+    const handler = pageTool?.handler as (i: unknown) => Promise<string>
+
+    const composed = JSON.parse(await handler({ url: 'https://pasted.example.com/other' }))
+    expect(composed.error).toBe('web_url_refused')
+    expect(fetch).not.toHaveBeenCalled()
+
+    const read = JSON.parse(await handler({ url: 'https://pasted.example.com/article' }))
+    expect(read.content).toBe('pasted page')
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 

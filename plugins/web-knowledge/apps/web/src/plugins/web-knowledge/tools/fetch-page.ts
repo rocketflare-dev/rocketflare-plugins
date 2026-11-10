@@ -9,7 +9,8 @@
  * **Page text is untrusted.** It is somebody else's words arriving in the model's context, so every
  * answer says so in `note` — the cheapest defence against a page that says "ignore your
  * instructions". What actually bounds such a page is `ReachableUrls`: this tool reads only what
- * `web_search` returned, so no text the model has read can be spelled into a URL and sent out.
+ * `web_search` returned or what the person typed (`ToolCtx.requesterUrls`), so no text the model
+ * has read can be spelled into a URL and sent out.
  */
 import { WEB_SEARCH_PROVIDER_INFO } from '@rocketflare/shared/plugins/web-knowledge/index'
 import { z } from 'zod'
@@ -35,7 +36,7 @@ export const fetchPageInputSchema = z.object({
     .trim()
     .min(1)
     .max(2048)
-    .describe('The http(s) URL to read, exactly as web_search returned it'),
+    .describe('The http(s) URL to read: one web_search returned, or one the user wrote'),
   offset: z.coerce
     .number()
     .int()
@@ -55,7 +56,8 @@ export function fetchPageTool(
   return defineTool({
     name: FETCH_PAGE_TOOL,
     description:
-      'Read one public web page as text: a URL web_search returned. Long pages come back ' +
+      'Read one public web page as text: a URL web_search returned or one the user gave you. ' +
+      'Long pages come back ' +
       'in windows: pass nextOffset to read on. Only public http(s) pages can be read.',
     schema: fetchPageInputSchema,
     async handler(input) {
@@ -70,8 +72,8 @@ export function fetchPageTool(
       if (!deps.reachable.has(verdict.url.toString())) {
         return JSON.stringify({
           error: 'web_url_refused',
-          message: `Cannot read ${input.url}: it did not come from web_search in this conversation turn.`,
-          hint: 'Call web_search and read one of the URLs it returns, exactly as returned.',
+          message: `Cannot read ${input.url}: neither web_search nor the user gave this URL.`,
+          hint: 'Call web_search and read one of the URLs it returns, or ask the user for the link.',
         })
       }
       let page: ExtractedPage

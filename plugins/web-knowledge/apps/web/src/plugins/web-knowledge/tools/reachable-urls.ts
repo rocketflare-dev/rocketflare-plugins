@@ -1,6 +1,6 @@
 /**
  * Which URLs `fetch_page` may read in this chat turn or agent-run attempt: the ones `web_search`
- * returned to it. A URL is a request the Worker makes on the model's say-so, and its path and query
+ * returned to it, plus the URLs the person typed (`ToolCtx.requesterUrls`). A URL is a request the Worker makes on the model's say-so, and its path and query
  * can carry anything the model has read, so a URL the model composed is refused however public it
  * looks. One set per `agentTools` call, shared by the two tools.
  */

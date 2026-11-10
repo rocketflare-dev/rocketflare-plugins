@@ -3,7 +3,7 @@
   "label": "Web knowledge",
   "version": "3.10.1",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.9.0",
+  "minKit": "0.33.0",
   "anchor": "apps/web/src/plugins/web-knowledge/plugin.json",
   "paths": [
     "apps/web/src/plugins/web-knowledge/**",
