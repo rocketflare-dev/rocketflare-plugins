@@ -1,0 +1,28 @@
+{
+  "label": "User guide",
+  "appName": "this app",
+  "parts": [
+    {
+      "id": "start",
+      "label": "Getting started",
+      "sections": [
+        { "id": "basics", "label": "The basics" },
+        { "id": "access", "label": "Signing in and access" }
+      ]
+    },
+    {
+      "id": "admin",
+      "label": "Administration",
+      "sections": [{ "id": "people", "label": "People and roles" }]
+    }
+  ],
+  "calloutLabels": ["NOTE", "RULE OF THUMB"],
+  "facts": {
+    "magic_link.expiry_minutes": "15",
+    "invitation.expiry_days": "7",
+    "invite.bulk_max": "100"
+  },
+  "screens": {
+    "/": "start/getting-started.md"
+  }
+}

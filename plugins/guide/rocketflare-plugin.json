@@ -1,0 +1,143 @@
+{
+  "id": "guide",
+  "label": "User guide",
+  "version": "3.9.0",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "subdir": "plugins/guide",
+  "anchor": "apps/web/src/plugins/guide/plugin.json",
+  "minKit": "0.30.0",
+  "uses": {
+    "@/plugins/api": [
+      "AccessScope",
+      "createRouter",
+      "cronCtx",
+      "CronCtx",
+      "defineTool",
+      "ingestPlatformDocument",
+      "jobCtx",
+      "JobCtx",
+      "JobHandler",
+      "PlatformEmbeddingsError",
+      "PluginBindings",
+      "PluginConfig",
+      "PluginContext",
+      "prunePlatformDocuments",
+      "requestCtx",
+      "RequestCtx",
+      "ScheduledTask",
+      "searchKnowledge",
+      "ServerPlugin",
+      "streamChat",
+      "Tool",
+      "toolCtx",
+      "validate"
+    ],
+    "@/plugins/api/peers": [
+      "allTables"
+    ],
+    "@/plugins/api/ui-wiring": [
+      "UiPlugin"
+    ],
+    "@/plugins/api/ui": [
+      "api",
+      "ApiError",
+      "EmptyState",
+      "LoadingIndicator",
+      "notifyUnauthorized"
+    ],
+    "@testkit/integration": [
+      "aguiFrames",
+      "aguiTypes",
+      "createExecutionContext",
+      "createTestEnv",
+      "createTestSession",
+      "createTestTenantWithUser",
+      "customEvents",
+      "dispatchScheduled",
+      "json",
+      "request",
+      "scriptPlatformChat",
+      "sessionCookieHeader",
+      "setupTestDatabase",
+      "stubs",
+      "TestEnv"
+    ],
+    "@testkit/unit": [
+      "makeJobCtx"
+    ],
+    "@rocketflare/shared/ai/config": [
+      "DEFAULT_MODELS"
+    ],
+    "@rocketflare/shared/ai/embeddings": [
+      "SEARCH_MAX_LIMIT"
+    ],
+    "@rocketflare/shared/ai/prompts": [
+      "PromptDefinition"
+    ],
+    "@rocketflare/shared/jobs": [
+      "JobOf"
+    ],
+    "@rocketflare/shared/plugins/types": [
+      "SharedPlugin"
+    ]
+  },
+  "paths": [
+    "apps/web/src/plugins/guide/**",
+    "packages/shared/src/plugins/guide/**",
+    "docs/plugins/guide/**"
+  ],
+  "registries": [
+    "apps/web/src/plugins/server.ts",
+    "apps/web/src/plugins/ui.ts",
+    "packages/shared/src/plugins/index.ts"
+  ],
+  "requires": {
+    "surfaces": [
+      "feature-knowledge"
+    ],
+    "plugins": []
+  },
+  "dependencies": {
+    "apps/web": {
+      "react-markdown": "^10.1.0",
+      "rehype-raw": "^7.0.0",
+      "rehype-sanitize": "^6.0.0",
+      "remark-gfm": "^4.0.1"
+    },
+    "packages/shared": {},
+    "apps/cli": {}
+  },
+  "bindings": [],
+  "crons": [
+    "20 4 * * *"
+  ],
+  "apiPrefixes": [],
+  "vars": [],
+  "workerExports": [],
+  "skills": [
+    "guide"
+  ],
+  "claudeHooks": {
+    "Stop": [
+      {
+        "command": "node \"$CLAUDE_PROJECT_DIR/.claude/skills/guide/scripts/docs-stale.mjs\" --changed --quiet --hook",
+        "timeout": 30
+      }
+    ]
+  },
+  "hostFiles": [
+    {
+      "path": "docs/guide",
+      "from": "seed/docs/guide"
+    },
+    {
+      "path": "apps/web/src/host/guide/content.generated.ts",
+      "from": "seed/host/content.generated.ts"
+    }
+  ],
+  "schema": {
+    "tables": [],
+    "rlsExcluded": []
+  },
+  "migrations": []
+}

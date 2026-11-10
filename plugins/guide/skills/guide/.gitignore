@@ -1,0 +1,2 @@
+# The Stop hook's memory of the last nudge (docs-stale.mjs --hook) — per checkout, never committed.
+.state.json
