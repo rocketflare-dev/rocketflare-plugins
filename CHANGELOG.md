@@ -9,6 +9,14 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.10.0 — 2026-11-10
+
+**guide** — First release of `guide`: an in-app user guide about the app itself, written by the developer's coding agent and kept in sync with the code by a Claude Code Stop hook.
+[Porting note](plugins/guide/docs/upgrades/3.10.0.md).
+
+**global-search** — First release of `global-search`: a ⌘K palette in the header and a `/search/all` page over every registered search provider, fused with RRF and optionally re-ranked per organisation.
+[Porting note](plugins/global-search/docs/upgrades/3.10.0.md).
+
 ## 3.9.0 — 2026-11-09
 
 **analytics** — Analytics limits the activity cube to admins, caps batch size, sets a statement timeout and stops recording a creator on template pages.

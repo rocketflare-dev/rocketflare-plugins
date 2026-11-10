@@ -1,7 +1,7 @@
 {
   "id": "guide",
   "label": "User guide",
-  "version": "3.9.0",
+  "version": "3.10.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "subdir": "plugins/guide",
   "anchor": "apps/web/src/plugins/guide/plugin.json",

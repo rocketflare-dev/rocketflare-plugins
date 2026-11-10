@@ -1,7 +1,7 @@
 {
   "id": "inbox",
   "label": "Inbox",
-  "version": "3.9.0",
+  "version": "3.10.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "minKit": "0.29.0",
   "anchor": "apps/web/src/plugins/inbox/plugin.json",
