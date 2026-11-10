@@ -14,16 +14,31 @@ import {
   WEB_SEARCH_CONFIG_SUBJECT,
   webKnowledgeShared,
 } from '@rocketflare/shared/plugins/web-knowledge/index'
-import type { ServerPlugin, Tool } from '@/plugins/api'
+import type { ServerPlugin, Tool, ToolCtx } from '@/plugins/api'
 import { toolCtx } from '@/plugins/api'
 import { webKnowledgeRouter } from './api/routes'
-import { loadEnabledSearch } from './api/settings'
+import { type EnabledSearch, loadEnabledSearch } from './api/settings'
 import { fetchPageTool } from './tools/fetch-page'
 import { reachableUrls } from './tools/reachable-urls'
 import { type WebToolDeps, webSearchTool } from './tools/web-search'
 
 /** Unbound `fetch` throws "Illegal invocation" on Workers once it is called as a method. */
 const boundFetch: WebToolDeps['fetch'] = (input, init) => fetch(input, init)
+
+/**
+ * The two tools for one `agentTools` call, sharing one `ReachableUrls`: what `web_search` returns
+ * to them, plus the URLs the person typed themselves (`ctx.requesterUrls` — their own chat turns or
+ * the run input they submitted), so a pasted link can be read without a search first. Nothing the
+ * model, a page or a document supplies is in either.
+ */
+export function webTools(
+  ctx: ToolCtx,
+  search: EnabledSearch,
+  fetch: WebToolDeps['fetch'] = boundFetch
+): Tool[] {
+  const deps: WebToolDeps = { fetch, reachable: reachableUrls([...ctx.requesterUrls]) }
+  return [webSearchTool(ctx, search, deps) as Tool, fetchPageTool(ctx, search, deps) as Tool]
+}
 
 export const webKnowledgeServer = {
   shared: webKnowledgeShared,
@@ -32,8 +47,7 @@ export const webKnowledgeServer = {
     const ctx = toolCtx(raw)
     const search = await loadEnabledSearch(ctx.db, ctx.tenantId)
     if (!search) return []
-    const deps: WebToolDeps = { fetch: boundFetch, reachable: reachableUrls() }
-    return [webSearchTool(ctx, search, deps) as Tool, fetchPageTool(ctx, search, deps) as Tool]
+    return webTools(ctx, search)
   },
   /** Additive, over this plugin's own subject: admins configure, everyone may see what is set. */
   grants: {
