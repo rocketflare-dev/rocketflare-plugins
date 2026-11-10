@@ -4,7 +4,7 @@ previous: 3.10.0
 date: null
 breaking: false
 migrations: []
-areas: []
+areas: [api, ui]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,24 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+Ask the Guide no longer shows raw footnote marks such as `[^2]` or an empty bullet at the end of an answer, and finds the citations block however the model formats its header.
+
+- `cleanGuideAnswer` and `splitGuideAnswer` in `@rocketflare/shared/plugins/guide` decide what of a model's answer a reader sees. The server's `splitGuideCitations` and the UI's `stripCitationsBlock` both use them, so a streaming answer and the finished one end in the same place.
+- The `CITATIONS:` header is found when a model writes it as a list item, a heading, a quote, bold or code (`- CITATIONS:`, `**CITATIONS:**`, `### Citations:`). Before, those left an orphaned `-` or `**` behind as an empty bullet, and a bold header was not parsed at all, so the block showed as text and the answer had no citations. A citation line written as a list item now parses too.
+- Footnote references (`[^1]`) and footnote definition lines are removed from the answer.
+- The default `guide-chat` prompt now asks for the block as plain lines and for no footnote markers. An organisation that overrode the prompt keeps its own text.
+- The 3.10.0 porting notes for `guide` and `global-search` were missing from the 3.10.0 release commit. They are added here unchanged.
 
 ## How to apply
 
+1. Run `pnpm plugin upgrade guide`. It adds `packages/shared/src/plugins/guide/answer.ts` and updates `index.ts`, `services/citations.ts`, `ui/lib/conversation.ts` and `prompts.ts` under the plugin.
+2. If you overrode the `guide-chat` prompt in Settings → Prompts, consider adding the new paragraph about plain lines and footnote markers from the default.
+
 ## Conflicts to expect
 
+- None, unless you edited `services/citations.ts` or `stripCitationsBlock` yourself. Keep your change and call `cleanGuideAnswer` / `splitGuideAnswer` for the split.
+
 ## Verify
+
+1. `pnpm gate` passes, including the plugin's `tests/config/content.test.ts` and `tests/ui/conversation.test.tsx`.
+2. Ask the Guide a question: the answer ends with its citation links and no stray bullet or `[^n]` marks.

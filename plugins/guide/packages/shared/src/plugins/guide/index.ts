@@ -23,6 +23,8 @@ import {
 
 /** The whole loader — one implementation for the scripts, the server and the tests. */
 export * from './content'
+/** What of a model's answer a reader sees — the server's parse and the UI's stream agree. */
+export * from './answer'
 
 export const GUIDE_ID = 'guide'
 export const GUIDE_API_ROOT = '/api/guide'

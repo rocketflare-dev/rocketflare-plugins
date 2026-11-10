@@ -8,7 +8,11 @@
  * Split off, parsed, resolved against the asker's OWN view of the guide (so a page they may not
  * read comes back `valid: false`) and de-duplicated. Pure.
  */
-import type { GuideCitation } from '@rocketflare/shared/plugins/guide/index'
+import {
+  cleanGuideAnswer,
+  type GuideCitation,
+  splitGuideAnswer,
+} from '@rocketflare/shared/plugins/guide/index'
 import type { GuideView } from '../content'
 
 export interface RawGuideCitation {
@@ -17,18 +21,20 @@ export interface RawGuideCitation {
   note: string | null
 }
 
-const CITATIONS_HEADER = /\n?CITATIONS:\s*\n/i
-const FIELD = /^\s*(page|heading|note)\s*=\s*(.*?)\s*$/
+/** One `field=value` pair; a list marker, quote or code span around a line or value is ignored. */
+const FIELD = /^[\s>*+`-]*(page|heading|note)\s*=\s*`?(.*?)`?\s*$/
 
-/** Split the trailing `CITATIONS:` block off an answer. Lines without a `page` are dropped. */
+/**
+ * Split the trailing `CITATIONS:` block off an answer, however the model decorated its header,
+ * and clean the prose the reader sees (`cleanGuideAnswer`). Lines without a `page` are dropped.
+ */
 export function splitGuideCitations(text: string): {
   answer: string
   citations: RawGuideCitation[]
 } {
-  const idx = text.search(CITATIONS_HEADER)
-  if (idx === -1) return { answer: text.trim(), citations: [] }
-  const answer = text.slice(0, idx).trim()
-  const block = text.slice(idx).replace(CITATIONS_HEADER, '')
+  const answer = cleanGuideAnswer(text).trim()
+  const { block } = splitGuideAnswer(text)
+  if (block === null) return { answer, citations: [] }
   const dash = (v: string | undefined) => (!v || v === '-' ? null : v)
   const citations: RawGuideCitation[] = []
   for (const line of block.split('\n')) {

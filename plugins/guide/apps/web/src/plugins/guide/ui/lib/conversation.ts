@@ -9,6 +9,7 @@
  * leaves a model generating for nobody.
  */
 import {
+  cleanGuideAnswer,
   GUIDE_MAX_HISTORY,
   GUIDE_MAX_QUESTION,
   GUIDE_MAX_TURN,
@@ -63,9 +64,12 @@ export function guideHistory(messages: readonly GuideChatMessage[]): GuideChatTu
   return turns.slice(-GUIDE_MAX_HISTORY)
 }
 
-/** The streamed text without the trailing `CITATIONS:` block (shown as links once resolved). */
+/**
+ * The streamed text as the reader sees it: no trailing `CITATIONS:` block (shown as links once
+ * resolved) and no footnote marks — the same cleaning the server applies (`cleanGuideAnswer`).
+ */
 export function stripCitationsBlock(text: string): string {
-  return (text.split(/\n?CITATIONS:/i)[0] ?? '').trimEnd()
+  return cleanGuideAnswer(text)
 }
 
 /** A conversation store — one per tab in the app ({@link guideConversation}); tests make their own. */

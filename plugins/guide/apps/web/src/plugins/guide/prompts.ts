@@ -25,6 +25,9 @@ exactly in this form (use \`-\` for a missing field; \`heading\` is the passage'
 CITATIONS:
 page=<page path> | heading=<heading> | note=<two to six words on what it supports>
 
+Write that block as plain lines, not as a list, a heading, bold or code, and cite only through it:
+never footnote markers such as \`[^1]\`.
+
 Questions come from people using {{appName}}; their own organisation's data is not in the guide,
 and you cannot see it.`
 

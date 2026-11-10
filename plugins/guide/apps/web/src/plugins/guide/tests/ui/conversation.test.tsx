@@ -111,6 +111,9 @@ describe('the conversation store', () => {
       ])
     ).toEqual([{ role: 'user', content: 'a' }])
     expect(stripCitationsBlock('Answer.\nCITATIONS:\npage=x')).toBe('Answer.')
+    expect(stripCitationsBlock('Answer.[^2]\n\n- CITATIONS:\n- page=x')).toBe('Answer.')
+    // Mid-stream: the header has arrived but nothing after it yet.
+    expect(stripCitationsBlock('Answer.\n\n**CITATIONS:')).toBe('Answer.')
   })
 })
 
