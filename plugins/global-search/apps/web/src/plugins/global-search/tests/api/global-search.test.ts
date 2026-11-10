@@ -4,8 +4,10 @@
 /**
  * `GET /api/global-search` on real Postgres, through the real mount:
  *
- * - tenant isolation: two organisations' documents, and neither ever sees the other's hit — nor
- *   the other's re-ranker settings;
+ * - tenant isolation: two organisations' documents, members and chats, and neither ever sees the
+ *   other's hit — nor the other's re-ranker settings;
+ * - entities by name: people (admins only), agents, and the reader's OWN chats — never a
+ *   colleague's, whatever the role;
  * - visibility: a document restricted to its owner is not a member's hit;
  * - a guarded provider is skipped (not called, not listed) for a reader without the permission;
  * - a slow provider is reported in `degraded` as `timeout` and the request still answers;
@@ -31,7 +33,8 @@ import {
 } from '@testkit/integration'
 import { makeJobCtx } from '@testkit/unit'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ingestDocument } from '@/plugins/api'
+import { ingestDocument, listAgents } from '@/plugins/api'
+import { allTables } from '@/plugins/api/peers'
 import { InvalidSearchProviderError } from '../../services/registry'
 import { loadSettingsRow } from '../../services/settings'
 import type { SearchProvider } from '../../types'
@@ -65,6 +68,12 @@ let ownerId: string
 let ownerCookie: Record<string, string>
 let memberCookie: Record<string, string>
 let otherCookie: Record<string, string>
+let memberId: string
+let outsiderId: string
+/** Unique per run: the users table is global and the test database is shared. */
+const TAG = `q${Date.now().toString(36)}`
+const MEMBER_NAME = `Zebedee Quill ${TAG}`
+const OUTSIDER_NAME = `Zebedee Outsider ${TAG}`
 
 async function search(headers: Record<string, string>, params: Record<string, string>) {
   const res = await request(`/api/global-search?${new URLSearchParams(params)}`, { headers })
@@ -91,11 +100,16 @@ beforeAll(async () => {
   await linkUserToTenant(db, owner.id, tenantId, 'owner')
   ownerCookie = sessionCookieHeader(await createTestSession(db, owner.id, tenantId))
 
-  const member = await createTestUser(db)
+  const member = await createTestUser(db, {
+    name: MEMBER_NAME,
+    email: `zebedee.${TAG}@example.test`,
+  })
+  memberId = member.id
   await linkUserToTenant(db, member.id, tenantId, 'member')
   memberCookie = sessionCookieHeader(await createTestSession(db, member.id, tenantId))
 
-  const outsider = await createTestUser(db)
+  const outsider = await createTestUser(db, { name: OUTSIDER_NAME })
+  outsiderId = outsider.id
   await linkUserToTenant(db, outsider.id, otherTenantId, 'owner')
   otherCookie = sessionCookieHeader(await createTestSession(db, outsider.id, otherTenantId))
 
@@ -128,6 +142,24 @@ beforeAll(async () => {
   })
 })
 
+beforeAll(async () => {
+  const { conversations } = allTables()
+  const chat = (tenant: string, userId: string, title: string) => ({
+    tenantId: tenant,
+    userId,
+    title,
+    provider: 'anthropic' as const,
+    model: 'test-model',
+  })
+  await db
+    .insert(conversations)
+    .values([
+      chat(tenantId, ownerId, `Heron plans ${TAG}`),
+      chat(tenantId, memberId, `Heron notes of the member ${TAG}`),
+      chat(otherTenantId, outsiderId, `Heron secrets elsewhere ${TAG}`),
+    ])
+})
+
 beforeEach(() => {
   extra.contributions = []
   extra.sources = []
@@ -145,27 +177,75 @@ describe('the search route', () => {
     expect(await json(res)).toMatchObject({ statusCode: 400, error: expect.any(String) })
   })
 
-  it('finds a document, deep-linked to its passage, and a page by name', async () => {
+  it('finds a document, deep-linked to its passage', async () => {
     const docs = await search(memberCookie, { q: 'pelican' })
     const handbook = docs.items.find(h => h.title === 'Pelican migration handbook')
     expect(handbook).toMatchObject({ kind: 'document', provider: 'global-search:documents' })
     expect(handbook?.href).toMatch(/^\/documents\/[0-9a-f-]+\?offset=\d+&q=pelican$/)
     expect(docs.semantic).toBe('used')
     expect(docs.degraded).toEqual([])
-
-    const pages = await search(memberCookie, { q: 'agents' })
-    expect(pages.items[0]).toMatchObject({ kind: 'page', title: 'Agents', href: '/agents' })
-    // Admin pages are not a member's.
-    const settings = await search(memberCookie, { q: 'settings', kinds: 'page' })
-    expect(settings.items.map(h => h.href)).not.toContain('/settings')
-    const asOwner = await search(ownerCookie, { q: 'settings', kinds: 'page' })
-    expect(asOwner.items.map(h => h.href)).toContain('/settings')
   })
 
   it('narrows to the kinds asked for', async () => {
-    const out = await search(memberCookie, { q: 'pelican', kinds: 'page' })
-    expect(out.items.every(h => h.kind === 'page')).toBe(true)
+    const out = await search(ownerCookie, { q: 'zebedee', kinds: 'person' })
+    expect(out.items.length).toBeGreaterThan(0)
+    expect(out.items.every(h => h.kind === 'person')).toBe(true)
     expect(out.semantic).toBe('skipped')
+  })
+})
+
+describe('entities by name', () => {
+  it('finds a member by name and by email, linked to Settings → People', async () => {
+    const byName = await search(ownerCookie, { q: `quill ${TAG}`, kinds: 'person' })
+    expect(byName.items).toEqual([
+      expect.objectContaining({
+        kind: 'person',
+        title: MEMBER_NAME,
+        ref: memberId,
+        href: `/settings?tab=people&member=${memberId}`,
+        provider: 'global-search:people',
+      }),
+    ])
+    const byEmail = await search(ownerCookie, { q: `zebedee.${TAG}@`, kinds: 'person' })
+    expect(byEmail.items.map(h => h.ref)).toEqual([memberId])
+  })
+
+  it('treats % and _ in the query as text, not wildcards', async () => {
+    const out = await search(ownerCookie, { q: '%', kinds: 'person' })
+    expect(out.items).toEqual([])
+    // `_` matches only a literal underscore (the generated test emails have one; Zebedee's has not).
+    const underscore = await search(ownerCookie, { q: '_', kinds: 'person' })
+    for (const hit of underscore.items) expect(`${hit.title} ${hit.snippet}`).toContain('_')
+    expect(underscore.items.map(h => h.ref)).not.toContain(memberId)
+  })
+
+  it('offers people only to someone who may manage members', async () => {
+    const member = await search(memberCookie, { q: 'zebedee' })
+    expect(member.items.some(h => h.kind === 'person')).toBe(false)
+    const meta = await json<SearchProvidersResponse>(
+      await request('/api/global-search/providers', { headers: memberCookie })
+    )
+    expect(meta.providers.map(p => p.id)).not.toContain('global-search:people')
+  })
+
+  it('finds a registered agent by its title, linked to its runs', async () => {
+    const [agent] = await listAgents()
+    if (!agent) throw new Error('no agent registered')
+    const out = await search(memberCookie, { q: agent.title, kinds: 'agent' })
+    expect(out.items[0]).toMatchObject({
+      kind: 'agent',
+      title: agent.title,
+      href: `/agents?agentKey=${encodeURIComponent(agent.key)}`,
+      provider: 'global-search:agents',
+    })
+  })
+
+  it("finds the reader's own chats and never a colleague's, owner or not", async () => {
+    const owner = await search(ownerCookie, { q: `heron`, kinds: 'chat' })
+    expect(owner.items.map(h => h.title)).toEqual([`Heron plans ${TAG}`])
+    expect(owner.items[0]?.href).toMatch(/^\/chat\/[0-9a-f-]+$/)
+    const member = await search(memberCookie, { q: `heron`, kinds: 'chat' })
+    expect(member.items.map(h => h.title)).toEqual([`Heron notes of the member ${TAG}`])
   })
 })
 
@@ -177,6 +257,18 @@ describe('tenant isolation', () => {
     expect(theirs.items.map(h => h.title)).toEqual(['Pelican secrets of the other organisation'])
     const myRefs = new Set(mine.items.map(h => h.ref))
     for (const hit of theirs.items) expect(myRefs.has(hit.ref)).toBe(false)
+  })
+
+  it("never shows one organisation's members or chats to another", async () => {
+    const mine = await search(ownerCookie, { q: 'zebedee' })
+    expect(mine.items.map(h => h.title)).toContain(MEMBER_NAME)
+    expect(mine.items.map(h => h.title)).not.toContain(OUTSIDER_NAME)
+    const theirs = await search(otherCookie, { q: 'zebedee' })
+    expect(theirs.items.filter(h => h.kind === 'person').map(h => h.title)).toEqual([OUTSIDER_NAME])
+    const theirChats = await search(otherCookie, { q: 'heron', kinds: 'chat' })
+    expect(theirChats.items.map(h => h.title)).toEqual([`Heron secrets elsewhere ${TAG}`])
+    const myChats = await search(ownerCookie, { q: 'heron secrets', kinds: 'chat' })
+    expect(myChats.items).toEqual([])
   })
 
   it('keeps a document restricted to its owner out of a member’s results', async () => {
@@ -244,11 +336,13 @@ describe('providers registered through extensions', () => {
       await request('/api/global-search/providers', { headers: ownerCookie })
     )
     expect(meta.providers.map(p => p.id)).toEqual([
-      'global-search:nav',
+      'global-search:people',
+      'global-search:agents',
+      'global-search:chats',
       'global-search:documents',
       'acme:tickets',
     ])
-    expect(meta.providers[2]?.kinds[0]).toMatchObject({ kind: 'ticket', tone: 'warning' })
+    expect(meta.providers.at(-1)?.kinds[0]).toMatchObject({ kind: 'ticket', tone: 'warning' })
   })
 
   it('skips a guarded provider for a reader without the permission — not called, not listed', async () => {

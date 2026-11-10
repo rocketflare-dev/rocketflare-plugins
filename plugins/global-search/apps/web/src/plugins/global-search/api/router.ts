@@ -45,23 +45,6 @@ const TEST_DOCUMENTS = [
   'To reset your password, open your profile and choose Reset password.',
 ]
 
-let router: AppRouter | undefined
-
-/**
- * The router, built on first use rather than at module scope.
- *
- * Kit 0.30.0's `@/plugins/api` reaches the server barrel while it is still evaluating
- * (`plugins/api/ai.ts` → `services/ai/retrieval.ts` → `services/access.ts` → `plugins/server.ts`),
- * before `createRouter` and `validate` exist. A graph entered through another plugin's module (its
- * own tests do this) then evaluates this plugin mid-cycle, and a module-scope `createRouter()`
- * throws `createRouter is not a function`. Built at first use, it runs after every module has
- * finished evaluating.
- */
-export function globalSearchRouter(): AppRouter {
-  router ??= buildRouter()
-  return router
-}
-
 function providerCtx(ctx: RequestCtx): SearchProviderCtx {
   return {
     db: ctx.db,
@@ -189,3 +172,5 @@ function buildRouter(): AppRouter {
 
   return r
 }
+
+export const globalSearchRouter = buildRouter()

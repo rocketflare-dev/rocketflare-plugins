@@ -2,15 +2,19 @@
  * The search core without a database: RRF fusion (k = 60, per-hit weights, the dense-only
  * discount, the kind that names a shared href), the fan-out (parallel, per-provider budget,
  * `degraded` for a timeout, a throw and an invalid answer, kinds narrowing), guard filtering,
- * the re-ranker's failure modes, the registry's validation, and the nav provider.
+ * the re-ranker's failure modes, the registry's validation, and the name matching the entity
+ * providers use.
  */
 // Enter through the plugin barrel first: this file's subjects import `@/plugins/api` at runtime,
 // and entering THERE first evaluates the barrel mid-way (`plugins/CLAUDE.md`, module order).
 import '@/plugins/api/peers'
 import type { SearchProviderHit } from '@rocketflare/shared/plugins/global-search/index'
 import { describe, expect, it } from 'vitest'
+import { agentsProvider } from '../../providers/agents'
+import { chatsProvider } from '../../providers/chats'
 import { documentsProvider } from '../../providers/documents'
-import { CORE_PAGES, navProviderFor, navScore } from '../../providers/nav'
+import { escapeLike, textRank } from '../../providers/match'
+import { peopleProvider } from '../../providers/people'
 import { buildRegistry, InvalidSearchProviderError } from '../../services/registry'
 import type { RerankClient } from '../../services/rerank'
 import {
@@ -318,38 +322,30 @@ describe('buildRegistry', () => {
 
   it('registers the built-ins cleanly', () => {
     expect(
-      buildRegistry([navProviderFor(CORE_PAGES), documentsProvider], ['global-search']).map(
-        p => p.id
-      )
-    ).toEqual(['global-search:nav', 'global-search:documents'])
+      buildRegistry(
+        [peopleProvider, agentsProvider, chatsProvider, documentsProvider],
+        ['global-search']
+      ).map(p => p.id)
+    ).toEqual([
+      'global-search:people',
+      'global-search:agents',
+      'global-search:chats',
+      'global-search:documents',
+    ])
     expect(documentsProvider.guard).toEqual({ action: 'read', subject: 'Document' })
   })
 })
 
-describe('the nav provider', () => {
-  it('ranks an exact title over a prefix over a keyword', () => {
-    const page = { title: 'Settings', href: '/settings', keywords: ['members'] }
-    expect(navScore(page, 'settings')).toBe(3)
-    expect(navScore(page, 'sett')).toBe(2)
-    expect(navScore(page, 'mem')).toBe(1)
-    expect(navScore(page, 'zzz')).toBe(0)
+describe('name matching', () => {
+  it('escapes the LIKE wildcards and the escape itself', () => {
+    expect(escapeLike('50%_off\\x')).toBe('50\\%\\_off\\\\x')
   })
 
-  it('offers a page only to a reader its guard admits', async () => {
-    const nav = navProviderFor([
-      { title: 'Agents', href: '/agents', guard: { action: 'read', subject: 'AgentRun' } },
-      { title: 'Activity', href: '/activity', guard: 'admin' },
-      { title: 'Account', href: '/profile' },
-    ])
-    const input = {
-      q: 'a',
-      pool: 10,
-      kinds: new Set(['page']),
-      signal: new AbortController().signal,
-    }
-    const member = await nav.search(ctx({ can: () => false }), input)
-    expect(member.map(h => h.href)).toEqual(['/profile'])
-    const admin = await nav.search(ctx({ isAdmin: true }), input)
-    expect(admin.map(h => h.href).sort()).toEqual(['/activity', '/agents', '/profile'])
+  it('ranks exact over prefix over word start over anywhere', () => {
+    expect(textRank('Research topic', 'research topic')).toBe(0)
+    expect(textRank('Research topic', 'resea')).toBe(1)
+    expect(textRank('Research topic', 'top')).toBe(2)
+    expect(textRank('Research topic', 'opi')).toBe(3)
+    expect(textRank('Research topic', 'zzz')).toBe(4)
   })
 })

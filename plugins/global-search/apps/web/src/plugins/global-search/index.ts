@@ -2,7 +2,7 @@
  * `global-search` — SERVER entry.
  *
  * One mount (`/api/global-search`), one CASL subject for the re-ranker settings, and the plugin's
- * own two providers registered exactly as any other plugin registers one: under
+ * own four providers (people, agents, the reader's chats, documents) registered exactly as any other plugin registers one: under
  * `extensions['global-search.providers']`. The route reads that key across every installed plugin
  * (`services/registry.ts`), so the built-ins prove the path a third party takes.
  *
@@ -18,19 +18,23 @@ import {
 } from '@rocketflare/shared/plugins/global-search/index'
 import type { ServerPlugin } from '@/plugins/api'
 import { globalSearchRouter } from './api/router'
+import { agentsProvider } from './providers/agents'
+import { chatsProvider } from './providers/chats'
 import { documentsProvider } from './providers/documents'
-import { navProvider } from './providers/nav'
+import { peopleProvider } from './providers/people'
 
 export type { SearchProvider, SearchProviderCtx } from './types'
 
 export const globalSearchServer = {
   shared: globalSearchShared,
-  /** A getter, so the router is built after module evaluation (`api/router.ts` says why). */
-  get mounts() {
-    return [['/api/global-search', globalSearchRouter()]] as const
-  },
+  mounts: [['/api/global-search', globalSearchRouter]],
   extensions: {
-    [SEARCH_PROVIDERS_EXTENSION]: [navProvider, documentsProvider],
+    [SEARCH_PROVIDERS_EXTENSION]: [
+      peopleProvider,
+      agentsProvider,
+      chatsProvider,
+      documentsProvider,
+    ],
   },
   /** Additive, over this plugin's own subject: owners and admins configure the re-ranker. */
   grants: {

@@ -14,6 +14,7 @@
       "createRouter",
       "Database",
       "ingestDocument",
+      "listAgents",
       "openSecret",
       "PluginBindings",
       "PluginConfig",
@@ -29,11 +30,13 @@
       "validate"
     ],
     "@/plugins/api/peers": [
+      "allTables",
       "extensions",
       "extensionSources"
     ],
     "@/plugins/api/ui-wiring": [
-      "UiPlugin"
+      "UiPlugin",
+      "useNavGuard"
     ],
     "@/plugins/api/ui": [
       "api",
@@ -45,12 +48,16 @@
       "SettingRow",
       "SettingToggle",
       "showToast",
-      "SkeletonRows"
+      "SkeletonRows",
+      "uiExtensions",
+      "uiExtensionSources",
+      "useNavigationEntries"
     ],
     "@/db/schema/kit": [
       "tenantIsolation",
       "tenantRef",
       "tenants",
+      "tenantUsers",
       "timestamps",
       "users"
     ],

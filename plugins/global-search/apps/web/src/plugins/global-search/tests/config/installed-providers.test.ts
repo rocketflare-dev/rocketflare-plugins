@@ -7,9 +7,15 @@ import { describe, expect, it } from 'vitest'
 import { installedProviders } from '../../services/registry'
 
 describe('the installed providers', () => {
-  it('all parse, and include this plugin’s own two', () => {
+  it('all parse, and include this plugin’s own four', () => {
     const ids = installedProviders().map(p => p.id)
-    expect(ids).toContain('global-search:nav')
-    expect(ids).toContain('global-search:documents')
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        'global-search:people',
+        'global-search:agents',
+        'global-search:chats',
+        'global-search:documents',
+      ])
+    )
   })
 })

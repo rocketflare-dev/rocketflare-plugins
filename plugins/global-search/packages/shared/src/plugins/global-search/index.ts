@@ -31,6 +31,13 @@ export const GLOBAL_SEARCH_ID = 'global-search'
 export const SEARCH_PROVIDERS_EXTENSION = 'global-search.providers'
 
 /** The CASL subject the re-ranker settings are governed by. Owners and admins manage them. */
+/**
+ * The UI extension key another plugin registers palette COMMANDS under
+ * (`UiPlugin.extensions['global-search.commands']`), read with `uiExtensions` from
+ * `@/plugins/api/ui`. A command is a named destination (`searchCommandSchema`).
+ */
+export const SEARCH_COMMANDS_EXTENSION = 'global-search.commands'
+
 export const GLOBAL_SEARCH_CONFIG_SUBJECT = 'GlobalSearchConfig'
 
 /** Query-key family roots. The settings root is also the `entity.changed` entity a save nudges. */
@@ -220,6 +227,60 @@ export const searchProviderHitSchema = z.object({
     .optional(),
 })
 export const searchProviderHitsSchema = z.array(searchProviderHitSchema).max(200)
+
+// ---- The command contract (UI) ------------------------------------------------------------------
+
+/**
+ * A guard in the kit's `NavGuard` vocabulary — `'admin'`, `'globalAdmin'`, a CASL pair, a feature
+ * flag, or a list meaning AND. The palette hands it to `useNavGuard`, so a command is hidden
+ * exactly when a nav item with the same guard would be.
+ */
+export type SearchCommandGuard =
+  | 'admin'
+  | 'globalAdmin'
+  | { action: string; subject: string }
+  | { feature: string }
+  | readonly SearchCommandGuard[]
+
+export const searchCommandGuardSchema: z.ZodType<SearchCommandGuard> = z.lazy(() =>
+  z.union([
+    z.literal('admin'),
+    z.literal('globalAdmin'),
+    z.object({ action: z.string().min(1), subject: z.string().min(1) }).strict(),
+    z.object({ feature: z.string().min(1) }).strict(),
+    z.array(searchCommandGuardSchema).readonly(),
+  ])
+)
+
+/**
+ * One palette command: an action a person would type to find ("Invite people", "New chat"),
+ * opened like a page. Declared by any plugin under `extensions['global-search.commands']` on its
+ * UI entry — plain data, because that object ships in the main bundle.
+ *
+ * - `id` is `<plugin id>:<name>`, the plugin half the registering plugin's own id.
+ * - `to` is an in-app path; the palette navigates there.
+ * - `keywords` are extra words to match; `group` the heading (default `Commands`).
+ * - `guard` hides it from a reader the kit would not show it to.
+ */
+export interface SearchCommand {
+  id: string
+  label: string
+  to: string
+  keywords?: readonly string[]
+  group?: string
+  guard?: SearchCommandGuard
+}
+
+export const searchCommandSchema = z
+  .object({
+    id: z.string().regex(SEARCH_PROVIDER_ID_RE, 'must be "<plugin id>:<name>" in lower-case slugs'),
+    label: z.string().min(1).max(80),
+    to: z.string().refine(href => isInAppHref(href), 'must be an in-app path starting with "/"'),
+    keywords: z.array(z.string().min(1).max(40)).max(20).readonly().optional(),
+    group: z.string().min(1).max(40).optional(),
+    guard: searchCommandGuardSchema.optional(),
+  })
+  .strict()
 
 // ---- GET /api/global-search -------------------------------------------------------------------
 
