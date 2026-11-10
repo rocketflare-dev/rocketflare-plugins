@@ -1,0 +1,40 @@
+/**
+ * `global-search` — SERVER entry.
+ *
+ * One mount (`/api/global-search`), one CASL subject for the re-ranker settings, and the plugin's
+ * own two providers registered exactly as any other plugin registers one: under
+ * `extensions['global-search.providers']`. The route reads that key across every installed plugin
+ * (`services/registry.ts`), so the built-ins prove the path a third party takes.
+ *
+ * The provider types are exported for this plugin's own code and tests; another plugin never
+ * imports them (it would not compile without this plugin installed) — it declares an object of
+ * the same shape. `docs/plugin-api` has nothing to add: the contract is this plugin's, published
+ * in `@rocketflare/shared/plugins/global-search`.
+ */
+import {
+  GLOBAL_SEARCH_CONFIG_SUBJECT,
+  globalSearchShared,
+  SEARCH_PROVIDERS_EXTENSION,
+} from '@rocketflare/shared/plugins/global-search/index'
+import type { ServerPlugin } from '@/plugins/api'
+import { globalSearchRouter } from './api/router'
+import { documentsProvider } from './providers/documents'
+import { navProvider } from './providers/nav'
+
+export type { SearchProvider, SearchProviderCtx } from './types'
+
+export const globalSearchServer = {
+  shared: globalSearchShared,
+  /** A getter, so the router is built after module evaluation (`api/router.ts` says why). */
+  get mounts() {
+    return [['/api/global-search', globalSearchRouter()]] as const
+  },
+  extensions: {
+    [SEARCH_PROVIDERS_EXTENSION]: [navProvider, documentsProvider],
+  },
+  /** Additive, over this plugin's own subject: owners and admins configure the re-ranker. */
+  grants: {
+    owner: can => can('manage', GLOBAL_SEARCH_CONFIG_SUBJECT),
+    admin: can => can('manage', GLOBAL_SEARCH_CONFIG_SUBJECT),
+  },
+} satisfies ServerPlugin<typeof globalSearchShared>
