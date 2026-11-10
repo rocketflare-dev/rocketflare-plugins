@@ -18,14 +18,15 @@ First release of `global-search`: a ⌘K palette in the header and a `/search/al
 - `GET /api/global-search?q&kinds&limit` calls every provider the reader may use in parallel, each within 1.5 seconds and its own `AbortSignal`, and answers `{ items, semantic, degraded, ranking }`. A provider that times out, throws or answers something that does not parse is listed in `degraded` and never fails the request.
 - Results are fused by Reciprocal Rank Fusion (k = 60) on `href`, with a weight per hit (0.5 for a dense-only hit). The top 50 are re-ranked when the organisation has a re-ranker switched on; a timeout or failure keeps the fused order and `ranking.rerank.reason` says why.
 - Any plugin registers providers under `ServerPlugin.extensions['global-search.providers']` without importing this plugin. Registrations are validated with zod; an invalid one, an id outside the registering plugin's namespace, a duplicate id or a kind declared twice is refused with an error naming the contributing plugins.
-- Built-in providers: `global-search:documents` (tenant documents through `searchKnowledge`, best passage per document, deep-linked as the kit's `/search` links a passage; guarded by `read Document`) and `global-search:nav` (the kit's core pages by name, each behind its own guard).
+- Built-in providers: `global-search:people` (members by name or email, `manage TenantMember`, linked to Settings → People), `global-search:agents` (registered agents through `listAgents()`, `read AgentRun`, linked to `/agents?agentKey=`), `global-search:chats` (only the reader's own conversations, `read Conversation`) and `global-search:documents` (tenant documents through `searchKnowledge`, best passage per document, deep-linked as the kit's `/search` links a passage; `read Document`). Names are matched with an escaped `ILIKE`, exact first.
+- The palette's first rows need no request: **Go to** ranks every destination from the kit's `useNavigationEntries()` (nav, settings tabs, Home links, already guard-filtered) and **Commands** ranks the entries any plugin declares under `UiPlugin.extensions['global-search.commands']` (`{ id, label, to, keywords?, group?, guard? }`, validated with zod, each filtered by `useNavGuard`). Built-in commands: New chat, Invite people, Upload a document, Create an API key.
 - `GET /api/global-search/providers` lists the providers the reader may use, with their kinds, labels, badges, tones and snippet labels, for the UI.
 - Settings → Search (owners and admins) stores a Cohere, Voyage AI, Fireworks AI or compatible `/rerank` endpoint, model and key in `global_search_settings`, the key sealed with `sealSecret`. `GET/PUT /api/global-search/settings` and `POST /api/global-search/settings/test`.
 
 ## How to apply
 
 1. Install with `pnpm plugin add`, then run `pnpm db:generate --name plugin-global-search`, read the SQL (one `CREATE TABLE global_search_settings` with its index and RLS policy) and run `pnpm db:migrate`.
-2. To feed results from another plugin, declare a provider under `extensions['global-search.providers']` in that plugin's server entry, as the README shows.
+2. To feed results from another plugin, declare a provider under `extensions['global-search.providers']` in that plugin's server entry; to add a command, declare it under `extensions['global-search.commands']` on its UI entry. The README shows both.
 
 ## Conflicts to expect
 
@@ -35,4 +36,4 @@ None. The kit's own `/search` page (knowledge passages) is unchanged; this plugi
 
 1. `pnpm plugin check` passes.
 2. `pnpm web test:api` passes `src/plugins/global-search/tests/api/global-search.test.ts`, including its tenant isolation cases.
-3. Signed in, ⌘K opens the palette; typing "agents" offers the Agents page.
+3. Signed in as an owner, ⌘K opens the palette; typing "sett" lists Settings and its tabs at once, and "inv" offers Invite people.

@@ -14,9 +14,19 @@ One ⌘K palette and `/search/all` over every registered search provider. The us
 | `services/search.ts` | `fanOut` (parallel, per-provider budget, `degraded`), `fuse` (RRF on `href`), `globalSearch`, `usableProviders` (guards) |
 | `services/rerank.ts` | The `/rerank` client (Cohere / Voyage / Fireworks dialects) and `applyRerank` (never throws) |
 | `services/settings.ts` | The settings row, the update rules, `resolveReranker` (opens the key at the moment of use) |
-| `providers/documents.ts`, `providers/nav.ts` | The two built-in providers, registered through `extensions` like anyone else's |
+| `providers/{people,agents,chats,documents}.ts` | The four built-in providers, registered through `extensions` like anyone else's; `providers/match.ts` is the escaped name matching the first three share |
+| `ui/goto.ts`, `ui/commands.ts` | The client-side half: "Go to" over `useNavigationEntries()`, the `global-search.commands` contract check and fuzzy ranking, and the commands this plugin registers for the kit's pages |
 | `api/router.ts` | `/api/global-search` |
 | `ui/` | Header trigger (lazy), palette (lazy), `/search/all`, Settings → Search, `searchModel.ts` (pure) |
+
+## Two halves
+
+- **Server providers** find THINGS (a document, a person, a chat): `GET /api/global-search`, fused
+  and optionally re-ranked. A provider owns its tenant scoping.
+- **The palette's client half** finds PLACES and ACTIONS with no request: destinations from the
+  kit's `useNavigationEntries()` (already filtered by `useNavGuard`) and commands from
+  `uiExtensions('global-search.commands')`, each command filtered by its own `guard`. They render
+  above the server groups and appear on the first keystroke. There is no server nav provider.
 
 ## Rules
 
@@ -36,15 +46,18 @@ One ⌘K palette and `/search/all` over every registered search provider. The us
   off-site link.
 - **The re-ranker key** is sealed with `sealSecret`, opened only in `resolveReranker`, and never
   returned (`hasCredential`). A URL change without a new key clears it.
-- **Module order:** `services/rerank.ts` and `providers/documents.ts` import `@/plugins/api` at
-  runtime, so a test that imports them first must `import '@/plugins/api/peers'` before anything
-  else (see the two config tests).
+- **Commands are plain data** (they ship in the main bundle with the UI entry). An invalid one is
+  logged and dropped so the palette still opens; `tests/config/goto.test.ts` and the installed-set
+  check in `tests/ui/command-palette.test.tsx` catch it in the gate.
+- **Chats are private to whoever started them**, whatever the role: the chats provider filters on
+  the user id as well as the tenant, exactly as the kit's `/chat` routes do.
 
 ## Tests
 
 - `tests/api/global-search.test.ts`: real Postgres, real mount, `@/plugins/api/peers` mocked to add
-  third-party providers (`// @vitest-isolate`). Tenant isolation, visibility, guards, timeouts,
+  third-party providers (`// @vitest-isolate`). Tenant isolation (documents, members, chats), a
+  colleague's chats never shown, people for admins only, visibility, guards, timeouts,
   invalid registrations, an unreachable re-ranker, the settings routes.
-- `tests/config/`: fusion, fan-out, registry, nav, the re-ranker client, the UI model, the
-  installed set.
+- `tests/config/`: fusion, fan-out, registry, name matching, the re-ranker client, the UI model,
+  the client-side matcher and command contract (`goto.test.ts`), the installed set.
 - `tests/ui/`: the palette, `/search/all`, Settings → Search.
