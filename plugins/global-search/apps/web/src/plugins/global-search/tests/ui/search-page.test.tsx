@@ -22,10 +22,10 @@ const HITS = [
     snippet: null,
     ref: '/settings',
     href: '/settings',
-    provider: 'global-search:nav',
+    provider: 'acme:pages',
     score: 1 / 61,
     scoring: {
-      sources: [{ list: 'global-search:nav', rank: 1, weight: 1, contribution: 1 / 61 }],
+      sources: [{ list: 'acme:pages', rank: 1, weight: 1, contribution: 1 / 61 }],
       fused: 1 / 61,
       rerank: { score: 0.93, before: 2, after: 1 },
     },
@@ -60,7 +60,7 @@ const HITS = [
 const PROVIDERS = {
   providers: [
     {
-      id: 'global-search:nav',
+      id: 'acme:pages',
       label: 'Pages',
       kinds: [{ kind: 'page', label: 'Pages', badge: 'page', tone: 'accent', order: 0 }],
     },

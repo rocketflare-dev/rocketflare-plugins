@@ -5,10 +5,14 @@
  * navigates and remembers the hit under `global-search:recent`; an empty box offers the recent
  * ones; Tab never leaves the box; Escape closes and gives focus back; a partial answer says so.
  */
+
+import { SEARCH_COMMANDS_EXTENSION } from '@rocketflare/shared/plugins/global-search/index'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { makeSession, renderWithProviders, stubFetch } from '@testkit/integration'
+import { makeSession, makeTenant, renderWithProviders, stubFetch } from '@testkit/integration'
 import { useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { uiExtensionSources, uiExtensions } from '@/plugins/api/ui'
+import { parseCommands } from '../../ui/goto'
 import GlobalSearchTrigger from '../../ui/header/GlobalSearchTrigger'
 import { RECENT_KEY } from '../../ui/searchModel'
 
@@ -24,7 +28,7 @@ const hit = (kind: string, title: string, href: string, provider: string) => ({
 
 const HITS = [
   hit('document', 'Order handbook', '/documents/d1?offset=0&q=order', 'global-search:documents'),
-  hit('page', 'Orders', '/orders', 'global-search:nav'),
+  hit('page', 'Orders', '/orders', 'acme:pages'),
   hit('ticket', 'Order stuck in review', '/acme/T-1', 'acme:tickets'),
   hit('document', 'Order glossary', '/documents/d2', 'global-search:documents'),
 ]
@@ -32,7 +36,7 @@ const HITS = [
 const PROVIDERS = {
   providers: [
     {
-      id: 'global-search:nav',
+      id: 'acme:pages',
       label: 'Pages',
       kinds: [{ kind: 'page', label: 'Pages', badge: 'page', tone: 'accent', order: 0 }],
     },
@@ -61,7 +65,10 @@ function LocationProbe() {
   return <div data-testid="location">{location.pathname + location.search}</div>
 }
 
-function setup(degraded: { provider: string; reason: string }[] = []) {
+function setup(
+  degraded: { provider: string; reason: string }[] = [],
+  session: ReturnType<typeof makeSession> = makeSession()
+) {
   const queries: string[] = []
   stubFetch({
     '/api/global-search': (_init: RequestInit | undefined, url: URL) => {
@@ -75,12 +82,14 @@ function setup(degraded: { provider: string; reason: string }[] = []) {
       <GlobalSearchTrigger />
       <LocationProbe />
     </>,
-    { session: makeSession() }
+    { session }
   )
   return { queries }
 }
 
 const input = () => screen.findByRole('combobox', { name: 'Search everything' })
+const groupLabel = (g: HTMLElement) =>
+  document.getElementById(g.getAttribute('aria-labelledby') ?? '')?.textContent ?? ''
 
 beforeEach(() => localStorage.removeItem(RECENT_KEY))
 afterEach(() => localStorage.removeItem(RECENT_KEY))
@@ -103,12 +112,11 @@ describe('the command palette', () => {
     fireEvent.change(await input(), { target: { value: 'order' } })
     const groups = await screen.findAllByRole('group')
     expect(queries).toEqual(['order']) // debounced: one request for the settled text
-    expect(
-      groups.map(g => document.getElementById(g.getAttribute('aria-labelledby') ?? '')?.textContent)
-    ).toEqual(['Pages', 'Tickets', 'Documents'])
-    expect(within(groups[2] as HTMLElement).getAllByRole('option')).toHaveLength(2)
+    const serverGroups = groups.filter(g => !['Go to', 'Commands'].includes(groupLabel(g)))
+    expect(serverGroups.map(groupLabel)).toEqual(['Pages', 'Tickets', 'Documents'])
+    expect(within(serverGroups[2] as HTMLElement).getAllByRole('option')).toHaveLength(2)
     // Badges and tones come from the registered kinds.
-    const ticket = within(groups[1] as HTMLElement).getByRole('option')
+    const ticket = within(serverGroups[1] as HTMLElement).getByRole('option')
     expect(ticket.querySelector('[data-kind="ticket"]')).toHaveAttribute('data-tone', 'warning')
     expect(ticket).toHaveTextContent('ticket')
     // The last option hands off to the full results page.
@@ -136,10 +144,11 @@ describe('the command palette', () => {
       href: '/acme/T-1',
     })
 
-    // Reopened empty, it offers what was opened before.
+    // Reopened empty, it offers what was opened before, then places to go.
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
-    const recent = await screen.findByRole('group')
+    const [recent, goTo] = await screen.findAllByRole('group')
     expect(recent).toHaveTextContent('Recent')
+    expect(goTo).toHaveTextContent('Go to')
     expect(within(recent).getByRole('option')).toHaveTextContent('Order stuck in review')
   })
 
@@ -179,5 +188,56 @@ describe('the command palette', () => {
     fireEvent.change(await input(), { target: { value: 'order' } })
     const badge = await screen.findByText('Partial results')
     expect(badge).toHaveAttribute('title', 'Tickets timed out')
+  })
+
+  it('offers places to go and commands at once, before the server answers', async () => {
+    const { queries } = setup()
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    fireEvent.change(await input(), { target: { value: 'sett' } })
+    // No debounce, no request: the first group is already there.
+    const goTo = screen.getAllByRole('group')[0] as HTMLElement
+    expect(groupLabel(goTo)).toBe('Go to')
+    expect(queries).toEqual([])
+    const labels = within(goTo)
+      .getAllByRole('option')
+      .map(o => o.textContent)
+    expect(labels[0]).toContain('Settings')
+    expect(labels.some(l => l?.includes('People'))).toBe(true)
+
+    fireEvent.change(await input(), { target: { value: 'inv' } })
+    const commands = screen.getAllByRole('group').find(g => groupLabel(g) === 'Commands')
+    expect(commands).toHaveTextContent('Invite people')
+  })
+
+  it('opens a destination with the keyboard', async () => {
+    setup()
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    const box = await input()
+    fireEvent.change(box, { target: { value: 'api keys' } })
+    expect(screen.getAllByRole('option')[0]).toHaveTextContent('API keys')
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent('/settings?tab=api-keys')
+    )
+  })
+
+  it('offers a member neither the settings tabs nor the admin commands', async () => {
+    setup([], makeSession({ tenant: makeTenant({ role: 'member' }) }))
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    fireEvent.change(await input(), { target: { value: 'inv' } })
+    expect(screen.queryByText('Invite people')).toBeNull()
+    fireEvent.change(await input(), { target: { value: 'sett' } })
+    expect(screen.queryByText('People')).toBeNull()
+    fireEvent.change(await input(), { target: { value: 'new chat' } })
+    expect(screen.getAllByRole('option')[0]).toHaveTextContent('New chat')
+  })
+
+  it('every installed command parses — the gate catches what the palette would drop', () => {
+    const { commands, errors } = parseCommands(
+      uiExtensions(SEARCH_COMMANDS_EXTENSION),
+      uiExtensionSources(SEARCH_COMMANDS_EXTENSION)
+    )
+    expect(errors).toEqual([])
+    expect(commands.map(c => c.id)).toContain('global-search:new-chat')
   })
 })

@@ -73,7 +73,7 @@ export default function SearchPage() {
     <div className="max-w-6xl">
       <PageHeader
         title="Search everything"
-        description="Pages, documents and whatever your installed plugins add — everything you can see."
+        description="People, agents, your chats, documents and whatever your installed plugins add — everything you can see."
       />
       <form onSubmit={submit} className="flex gap-2 mb-5" role="search">
         <label className="input input-bordered flex items-center gap-2 flex-1">

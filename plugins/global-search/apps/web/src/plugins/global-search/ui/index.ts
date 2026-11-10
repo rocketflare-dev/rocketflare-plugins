@@ -7,15 +7,18 @@
  *   providers decide what each reader may find, server-side). It loads the palette on first use.
  * - `routes`: `/search/all`, the full results page the palette's "Search everything" row opens.
  * - `settingsTabs`: Settings → Search, the re-ranker, for whoever may manage it (owners, admins).
+ * - `extensions['global-search.commands']`: palette commands for the kit's pages (`./commands.ts`).
  */
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import {
   GLOBAL_SEARCH_CONFIG_SUBJECT,
   GLOBAL_SEARCH_PAGE_PATH,
   globalSearchShared,
+  SEARCH_COMMANDS_EXTENSION,
 } from '@rocketflare/shared/plugins/global-search/index'
 import { createElement, lazy, Suspense } from 'react'
 import type { UiPlugin } from '@/plugins/api/ui-wiring'
+import { KIT_COMMANDS } from './commands'
 import { globalSearchQueryKeys } from './query-keys'
 
 const GlobalSearchTrigger = lazy(() => import('./header/GlobalSearchTrigger'))
@@ -38,4 +41,6 @@ export const globalSearchUi = {
         ]
       : [],
   queryKeys: globalSearchQueryKeys,
+  /** Commands for the kit's own pages, through the key any plugin uses (`./commands.ts`). */
+  extensions: { [SEARCH_COMMANDS_EXTENSION]: KIT_COMMANDS },
 } satisfies UiPlugin<typeof globalSearchShared>

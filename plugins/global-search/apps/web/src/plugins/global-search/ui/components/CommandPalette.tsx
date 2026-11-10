@@ -15,9 +15,13 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import {
   GLOBAL_SEARCH_PAGE_PATH,
   type GlobalSearchHit,
+  SEARCH_COMMANDS_EXTENSION,
 } from '@rocketflare/shared/plugins/global-search/index'
 import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { uiExtensionSources, uiExtensions, useNavigationEntries } from '@/plugins/api/ui'
+import { useNavGuard } from '@/plugins/api/ui-wiring'
+import { commandDestination, type Destination, parseCommands, rankDestinations } from '../goto'
 import { useDebounce } from '../hooks/useDebounce'
 import { useGlobalSearch, useSearchProviders } from '../hooks/useGlobalSearch'
 import {
@@ -40,6 +44,40 @@ export const PALETTE_DEBOUNCE_MS = 200
 const PALETTE_LIMIT = 20
 const PALETTE_FETCH = 50
 const PALETTE_PER_KIND = 5
+/** Client-side rows: instant, above the server's groups. */
+const GOTO_LIMIT = 6
+const COMMANDS_LIMIT = 4
+
+/** The two client-side kinds, badged like any provider's. */
+const CLIENT_KINDS: Record<Destination['kind'], KindInfo> = {
+  page: { kind: 'page', label: 'Go to', badge: 'page', tone: 'accent', order: -2, provider: '' },
+  command: {
+    kind: 'command',
+    label: 'Commands',
+    badge: 'command',
+    tone: 'success',
+    order: -1,
+    provider: '',
+  },
+}
+
+/** A recent item's kind: one of the two client kinds, else a provider's. */
+const kindOf = (index: ReturnType<typeof kindIndex>, kind: string): KindInfo =>
+  kind === 'page' || kind === 'command' ? CLIENT_KINDS[kind] : index.get(kind)
+
+/** The installed commands, validated once; a bad one is logged and dropped, the palette opens. */
+let installedCommands: Destination[] | undefined
+function readCommands(): Destination[] {
+  if (!installedCommands) {
+    const { commands, errors } = parseCommands(
+      uiExtensions(SEARCH_COMMANDS_EXTENSION),
+      uiExtensionSources(SEARCH_COMMANDS_EXTENSION)
+    )
+    for (const e of errors) console.error(e)
+    installedCommands = commands.map(commandDestination)
+  }
+  return installedCommands
+}
 
 interface Option {
   id: string
@@ -72,6 +110,21 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
   const index = useMemo(() => kindIndex(providers.data?.providers), [providers.data])
   const search = useGlobalSearch({ q: debounced, limit: PALETTE_FETCH })
   const typing = q.trim().length > 0
+  const canAccess = useNavGuard()
+  const entries = useNavigationEntries()
+  const pages = useMemo<Destination[]>(
+    () =>
+      entries.map(e => ({
+        id: e.id,
+        label: e.label,
+        to: e.to,
+        group: e.group,
+        ...(e.keywords ? { keywords: e.keywords } : {}),
+        kind: 'page',
+      })),
+    [entries]
+  )
+  const commands = useMemo(() => readCommands().filter(c => canAccess(c.guard)), [canAccess])
   // Balanced, so a broad query one provider answers twenty times over still shows the others;
   // `/search/all` keeps the full ranked list.
   const hits = useMemo(
@@ -84,50 +137,90 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
   const ranking = typing ? search.data?.ranking : undefined
 
   const sections = useMemo<Section[]>(() => {
-    if (!typing) {
-      return recent.length === 0
+    const destinationSection = (
+      key: string,
+      label: string,
+      list: readonly Destination[]
+    ): Section[] =>
+      list.length === 0
         ? []
         : [
             {
-              key: 'recent',
-              label: 'Recent',
-              options: recent.map((r, i) => ({
-                id: `${baseId}-recent-${i}`,
-                title: r.title,
-                detail: null,
-                kind: index.get(r.kind),
-                href: r.href,
-                hit: r,
+              key,
+              label,
+              options: list.map((d, i) => ({
+                id: `${baseId}-${key}-${i}`,
+                title: d.label,
+                detail: d.kind === 'page' ? d.group : null,
+                kind: CLIENT_KINDS[d.kind],
+                href: d.to,
+                hit: { kind: d.kind, title: d.label, href: d.to, ref: d.id },
               })),
             },
           ]
+    if (!typing) {
+      const recentSection: Section[] =
+        recent.length === 0
+          ? []
+          : [
+              {
+                key: 'recent',
+                label: 'Recent',
+                options: recent.map((r, i) => ({
+                  id: `${baseId}-recent-${i}`,
+                  title: r.title,
+                  detail: null,
+                  kind: kindOf(index, r.kind),
+                  href: r.href,
+                  hit: r,
+                })),
+              },
+            ]
+      const recentHrefs = new Set(recent.map(r => r.href))
+      return [
+        ...recentSection,
+        ...destinationSection(
+          'goto',
+          'Go to',
+          pages.filter(p => !recentHrefs.has(p.to)).slice(0, GOTO_LIMIT)
+        ),
+      ]
     }
-    const groups: Section[] = groupHits(hits, index).map(g => ({
-      key: g.kind,
-      label: g.label,
-      options: g.hits.map((h, i) => ({
-        id: `${baseId}-${g.kind}-${i}`,
-        title: h.title,
-        detail: hitSnippet(h, index),
-        kind: index.get(h.kind),
-        href: h.href,
-        hit: h,
+    const query = q.trim()
+    const groups: Section[] = [
+      ...destinationSection('goto', 'Go to', rankDestinations(query, pages, GOTO_LIMIT)),
+      ...destinationSection(
+        'commands',
+        'Commands',
+        rankDestinations(query, commands, COMMANDS_LIMIT)
+      ),
+      ...groupHits(hits, index).map(g => ({
+        key: g.kind,
+        label: g.label,
+        options: g.hits.map((h, i) => ({
+          id: `${baseId}-${g.kind}-${i}`,
+          title: h.title,
+          detail: hitSnippet(h, index),
+          kind: index.get(h.kind),
+          href: h.href,
+          hit: h,
+        })),
       })),
-    }))
+    ]
     groups.push({
       key: 'all',
       label: null,
       options: [
         {
           id: `${baseId}-all`,
-          title: `Search everything for “${q.trim()}”`,
+          title: `Search everything for “${query}”`,
           detail: 'Every result, with filters',
-          href: searchAllHref(q.trim()),
+          href: searchAllHref(query),
         },
       ],
     })
     return groups
-  }, [typing, recent, hits, baseId, q, index])
+  }, [typing, recent, hits, baseId, q, index, pages, commands])
 
   const options = useMemo(() => sections.flatMap(s => s.options), [sections])
   const current = options[Math.min(active, options.length - 1)]
@@ -189,13 +282,16 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
   const degraded = typing ? degradedSummary(search.data?.degraded ?? [], index) : null
   const status = !typing
     ? recent.length === 0
-      ? 'Type to search everything you can see.'
+      ? 'Type to search pages, commands and everything you can see.'
       : `${recent.length} recent`
     : search.isFetching && !search.data
       ? 'Searching…'
       : search.error
         ? `Search failed: ${search.error.message}`
-        : `${hits.length} result${hits.length === 1 ? '' : 's'}`
+        : (() => {
+            const n = options.length - 1
+            return `${n} result${n === 1 ? '' : 's'}`
+          })()
 
   return (
     <dialog
@@ -232,7 +328,7 @@ export default function CommandPalette({ onClose }: { onClose: () => void }) {
               // A new query starts at the first option.
               setActive(0)
             }}
-            placeholder="Search pages, documents and more…"
+            placeholder="Go to a page, run a command, search everything…"
             className="flex-1 bg-transparent py-3.5 text-sm outline-none"
           />
           <kbd className="kbd kbd-sm">Esc</kbd>

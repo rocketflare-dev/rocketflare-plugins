@@ -26,7 +26,7 @@ import {
 
 const PROVIDERS: SearchProviderInfo[] = [
   {
-    id: 'global-search:nav',
+    id: 'acme:pages',
     label: 'Pages',
     kinds: [{ kind: 'page', label: 'Pages', badge: 'page', tone: 'accent', order: 0 }],
   },
@@ -247,7 +247,7 @@ describe('ranking, in words', () => {
     const ind = scoringIndicators(
       {
         sources: [
-          { list: 'global-search:nav', rank: 1, weight: 1, contribution: 1 / 61 },
+          { list: 'acme:pages', rank: 1, weight: 1, contribution: 1 / 61 },
           {
             list: 'global-search:documents',
             rank: 3,
