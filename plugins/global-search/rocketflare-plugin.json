@@ -1,0 +1,129 @@
+{
+  "id": "global-search",
+  "label": "Global search",
+  "version": "3.9.0",
+  "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
+  "subdir": "plugins/global-search",
+  "anchor": "apps/web/src/plugins/global-search/plugin.json",
+  "minKit": "0.31.0",
+  "uses": {
+    "@/plugins/api": [
+      "AccessScope",
+      "Actions",
+      "AppRouter",
+      "createRouter",
+      "Database",
+      "ingestDocument",
+      "listAgents",
+      "openSecret",
+      "PluginBindings",
+      "PluginConfig",
+      "PluginLogger",
+      "recordActivity",
+      "requestCtx",
+      "RequestCtx",
+      "sealSecret",
+      "searchKnowledge",
+      "ServerPlugin",
+      "Subjects",
+      "traceStep",
+      "validate"
+    ],
+    "@/plugins/api/peers": [
+      "allTables",
+      "extensions",
+      "extensionSources"
+    ],
+    "@/plugins/api/ui-wiring": [
+      "UiPlugin",
+      "useNavGuard"
+    ],
+    "@/plugins/api/ui": [
+      "api",
+      "ApiError",
+      "EmptyState",
+      "PageHeader",
+      "SectionPanel",
+      "SectionPanelSkeleton",
+      "SettingRow",
+      "SettingToggle",
+      "showToast",
+      "SkeletonRows",
+      "uiExtensions",
+      "uiExtensionSources",
+      "useNavigationEntries"
+    ],
+    "@/db/schema/kit": [
+      "tenantIsolation",
+      "tenantRef",
+      "tenants",
+      "tenantUsers",
+      "timestamps",
+      "users"
+    ],
+    "@testkit/integration": [
+      "createTestSession",
+      "createTestTenant",
+      "createTestUser",
+      "json",
+      "jsonResponse",
+      "linkUserToTenant",
+      "makeSession",
+      "makeTenant",
+      "renderWithProviders",
+      "request",
+      "requestBody",
+      "rulesFor",
+      "sessionCookieHeader",
+      "setupTestDatabase",
+      "stubFetch"
+    ],
+    "@testkit/unit": [
+      "makeJobCtx"
+    ],
+    "@rocketflare/shared/ai/embeddings": [
+      "documentPath",
+      "SEARCH_MAX_LIMIT"
+    ],
+    "@rocketflare/shared/plugins/types": [
+      "SharedPlugin"
+    ]
+  },
+  "paths": [
+    "apps/web/src/plugins/global-search/**",
+    "packages/shared/src/plugins/global-search/**"
+  ],
+  "registries": [
+    "apps/web/src/plugins/server.ts",
+    "apps/web/src/plugins/ui.ts",
+    "apps/web/src/plugins/schema.ts",
+    "packages/shared/src/plugins/index.ts"
+  ],
+  "requires": {
+    "surfaces": [
+      "feature-knowledge"
+    ],
+    "plugins": []
+  },
+  "dependencies": {
+    "apps/web": {},
+    "packages/shared": {},
+    "apps/cli": {}
+  },
+  "bindings": [],
+  "crons": [],
+  "apiPrefixes": [],
+  "coreEdits": [],
+  "vars": [],
+  "workerExports": [],
+  "skills": [],
+  "schema": {
+    "tables": [
+      "global_search_settings"
+    ],
+    "rlsExcluded": []
+  },
+  "migrations": [
+    "global_search_settings — one row per tenant (unique tenant_id): rerank_enabled, rerank_base_url, rerank_model, sealed rerank_api_key_enc; RLS policy"
+  ]
+}
