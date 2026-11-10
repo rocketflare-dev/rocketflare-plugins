@@ -5,7 +5,7 @@
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "subdir": "plugins/global-search",
   "anchor": "apps/web/src/plugins/global-search/plugin.json",
-  "minKit": "0.30.0",
+  "minKit": "0.31.0",
   "uses": {
     "@/plugins/api": [
       "AccessScope",

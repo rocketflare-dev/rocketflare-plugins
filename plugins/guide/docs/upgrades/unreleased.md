@@ -33,7 +33,7 @@ coding agent and kept in sync with the code by a Claude Code Stop hook.
 ## How to apply
 
 1. Install with `pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@<version> --subdir plugins/guide --apply`
-   on a kit at 0.30.0 or later (the release that added platform `searchKnowledge` sources and
+   on a kit at 0.31.0 or later (the release that added platform `searchKnowledge` sources and
    `hostFiles`). No `db:generate`: the plugin has no table.
 2. Run `/guide init` so the coding agent writes the guide from this app's code, then
    `node .claude/skills/guide/scripts/guide-build.mjs` and commit `docs/guide/`,

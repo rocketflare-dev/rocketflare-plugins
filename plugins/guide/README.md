@@ -27,7 +27,7 @@ results, through this plugin's `global-search.providers` contribution.
 
 ## Requirements
 
-- Rocketflare kit **0.30.0** or later (platform knowledge sources, `hostFiles`, `claudeHooks`, the
+- Rocketflare kit **0.31.0** or later (platform knowledge sources, `hostFiles`, `claudeHooks`, the
   header slot and `streamChat`).
 - **Embeddings**: an `EMBEDDINGS_API_KEY`, or the `[ai]` binding (Workers AI). Without one the index
   isn't built: search falls back to keywords, which finds nothing until the index exists, and admins

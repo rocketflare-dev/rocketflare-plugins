@@ -30,7 +30,7 @@ model.
 
 ## Requirements
 
-- Rocketflare kit **0.30.0** or later (`searchKnowledge`, `listAgents`, `UiPlugin.header`,
+- Rocketflare kit **0.31.0** or later (`searchKnowledge`, `listAgents`, `UiPlugin.header`,
   `useNavigationEntries` and `UiPlugin.extensions`).
 - The kit's knowledge base (`feature-knowledge`). Without an embeddings provider, documents are
   matched by keyword only, and the palette says so.
@@ -171,7 +171,7 @@ your agent at the plugin's
   owner as for a member, exactly as the kit's `/chat` does.
 - Go to and Commands come from the browser and show only what the kit's own guards let the reader
   open. They are cosmetic, like the nav: the pages they open still check on the server.
-- Only tenant documents are searched. Platform documents (kit 0.30.0, readable by every tenant) are
+- Only tenant documents are searched. Platform documents (kit 0.31.0, readable by every tenant) are
   never included by the built-in provider.
 - Owners and admins manage the re-ranker settings. The key is sealed at rest, decrypted only at the
   moment of a search, and never returned: routes answer `hasCredential`. The activity log records
