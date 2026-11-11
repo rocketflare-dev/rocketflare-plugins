@@ -62,7 +62,8 @@ export function nextSettings(
     body.rerankBaseUrl === undefined ? (existing?.rerankBaseUrl ?? null) : body.rerankBaseUrl
   const rerankModel =
     body.rerankModel === undefined ? (existing?.rerankModel ?? null) : body.rerankModel
-  const urlChanged = existing?.rerankBaseUrl != null && rerankBaseUrl !== existing.rerankBaseUrl
+  // Any change of endpoint counts, including a first URL after a key was saved without one.
+  const urlChanged = existing !== undefined && rerankBaseUrl !== (existing.rerankBaseUrl ?? null)
   let key: KeyChange
   if (typeof body.rerankApiKey === 'string') key = { kind: 'set', apiKey: body.rerankApiKey }
   else if (body.rerankApiKey === null || urlChanged) key = { kind: 'clear' }

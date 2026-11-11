@@ -518,6 +518,33 @@ describe('settings routes', () => {
     expect(await read.text()).not.toContain('sealed-secret-456')
   })
 
+  it('a key saved before any URL belongs to no endpoint: choosing one without the key clears it', async () => {
+    const put = (headers: Record<string, string>, body: Record<string, unknown>) =>
+      request('/api/global-search/settings', { method: 'PUT', headers }, { json: body })
+    const admin = await createTestUser(db)
+    await linkUserToTenant(db, admin.id, tenantId, 'admin')
+    const adminCookie = sessionCookieHeader(await createTestSession(db, admin.id, tenantId))
+    const saved = await put(ownerCookie, {
+      rerankBaseUrl: null,
+      rerankModel: 'rerank-v3.5',
+      rerankApiKey: 'key-without-endpoint',
+      rerankEnabled: false,
+    })
+    expect(await json(saved)).toMatchObject({ rerankBaseUrl: null, hasCredential: true })
+    const enable = await put(adminCookie, {
+      rerankBaseUrl: 'https://rerank.example/v1',
+      rerankEnabled: true,
+    })
+    expect(enable.status).toBe(400)
+    expect(await json(enable)).toMatchObject({ code: 'global_search_rerank_incomplete' })
+    const moved = await put(adminCookie, { rerankBaseUrl: 'https://rerank.example/v1' })
+    expect(await json(moved)).toMatchObject({
+      rerankBaseUrl: 'https://rerank.example/v1',
+      hasCredential: false,
+    })
+    expect((await loadSettingsRow(db, tenantId))?.rerankApiKeyEnc ?? null).toBeNull()
+  })
+
   it('the test route answers a verdict, not an error, when nothing is configured', async () => {
     const res = await request(
       '/api/global-search/settings/test',
