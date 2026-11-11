@@ -1,0 +1,56 @@
+name: Plugin request
+description: Ask for a plugin that does not exist yet, or for something an existing plugin should do.
+title: "Plugin request: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us what your app needs. A good request names the job to be done and the system it touches, rather than a design.
+        Please check the [catalogue](https://rocketflare.dev/plugins/) first: it may already exist.
+  - type: textarea
+    id: need
+    attributes:
+      label: What do you need it to do?
+      description: The job, in a sentence or two. Who uses it, and what changes for them?
+      placeholder: "Our support team wants Zendesk tickets for a customer next to that customer's documents, and the assistant should be able to search them."
+    validations:
+      required: true
+  - type: input
+    id: systems
+    attributes:
+      label: Which systems or services does it touch?
+      placeholder: "Zendesk, Slack, Xero, HubSpot…"
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of plugin is it?
+      options:
+        - A connector to another system
+        - Something for the assistant or agents
+        - Pages, reports or dashboards
+        - Sign-in, admin or compliance
+        - Something else
+    validations:
+      required: true
+  - type: dropdown
+    id: existing
+    attributes:
+      label: Is it new, or a change to an existing plugin?
+      options:
+        - A new plugin
+        - A change to an existing plugin (name it below)
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you do this today?
+      description: A workaround, another product, or not at all. It tells us how much it matters.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Would you help?
+      options:
+        - label: I could test an early version
+        - label: I might build it and contribute it
