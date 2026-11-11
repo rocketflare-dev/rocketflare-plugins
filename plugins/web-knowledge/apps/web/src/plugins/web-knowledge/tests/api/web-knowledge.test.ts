@@ -308,6 +308,23 @@ describe('agent tools', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
+  it('fetch_page sends the URL it checked: a fragment is dropped before the request', async () => {
+    const ctx = makeToolCtx({ db, tenantId, requesterUrls: ['https://pasted.example.com/article'] })
+    const apiKeyEnc = (await loadRow(db, tenantId))?.apiKeyEnc ?? ''
+    const search = { provider: 'brave' as const, maxResults: 3, apiKeyEnc }
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL) =>
+        new Response('pasted page', { headers: { 'content-type': 'text/plain' } })
+    )
+    const pageTool = webTools(ctx, search, fetch).find(t => t.name === FETCH_PAGE_TOOL)
+    const handler = pageTool?.handler as (i: unknown) => Promise<string>
+
+    const read = JSON.parse(await handler({ url: 'https://pasted.example.com/article#added-text' }))
+    expect(read.content).toBe('pasted page')
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(String(fetch.mock.calls[0]?.[0])).toBe('https://pasted.example.com/article')
+  })
+
   it('fetch_page windows a long page by the caller’s budget', async () => {
     const ctx = makeToolCtx({ db, tenantId, maxDocumentChars: 10 })
     const tool = fetchPageTool(

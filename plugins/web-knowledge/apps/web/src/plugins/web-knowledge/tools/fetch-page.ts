@@ -76,9 +76,12 @@ export function fetchPageTool(
           hint: 'Call web_search and read one of the URLs it returns, or ask the user for the link.',
         })
       }
+      // The URL sent is the URL checked: a fragment is never part of either.
+      const target = new URL(verdict.url)
+      target.hash = ''
       let page: ExtractedPage
       try {
-        page = await readPage(ctx, search, deps, verdict.url.toString())
+        page = await readPage(ctx, search, deps, target.toString())
       } catch (err) {
         return toolFailure(err, 'The page could not be read')
       }

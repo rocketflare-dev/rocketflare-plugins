@@ -4,7 +4,7 @@ previous: 3.11.0
 date: null
 breaking: false
 migrations: []
-areas: []
+areas: [api]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,19 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+`fetch_page` now sends the URL it checked: a `#fragment` is dropped before the page is requested, so the request never carries text the reachable-URL check did not compare.
+
+- `tools/fetch-page.ts` clears the URL's fragment before `readPage` and the provider's extract call.
 
 ## How to apply
 
+1. Run `pnpm plugin upgrade web-knowledge --apply`.
+
 ## Conflicts to expect
 
+None. The plugin's own files change; the host's barrels do not.
+
 ## Verify
+
+1. `pnpm plugin check` reports `web-knowledge` checks out.
+2. The plugin's `tests/api/web-knowledge.test.ts` passes, including "fetch_page sends the URL it checked: a fragment is dropped before the request".
