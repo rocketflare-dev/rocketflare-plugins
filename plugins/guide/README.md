@@ -38,8 +38,8 @@ results, through this plugin's `global-search.providers` contribution.
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.11.0 --subdir plugins/guide
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.11.0 --subdir plugins/guide --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.12.0 --subdir plugins/guide
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.12.0 --subdir plugins/guide --apply
 ```
 
 The first command prints the plan and stops. `--apply` installs. There is no `db:generate` step,

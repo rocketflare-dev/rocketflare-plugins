@@ -40,8 +40,8 @@ model.
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.11.0 --subdir plugins/global-search
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.11.0 --subdir plugins/global-search --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.12.0 --subdir plugins/global-search
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.12.0 --subdir plugins/global-search --apply
 pnpm db:generate --name plugin-global-search-3.11.0 && pnpm db:migrate
 ```
 

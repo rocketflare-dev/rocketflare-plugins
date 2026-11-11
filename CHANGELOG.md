@@ -9,6 +9,14 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.12.0 — 2026-11-11
+
+**web-knowledge** — `fetch_page` now sends the URL it checked: a `#fragment` is dropped before the page is requested, so the request never carries text the reachable-URL check did not compare.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.12.0.md).
+
+**global-search** — A re-ranker key saved before any base URL is now cleared when a base URL is first set without the key, as a key already was on any other base-URL change: a key belongs to one endpoint.
+[Porting note](plugins/global-search/docs/upgrades/3.12.0.md).
+
 ## 3.11.0 — 2026-11-10
 
 `fetch_page` now reads a URL the person typed in chat or in an agent run's input, as well as the URLs `web_search` returned; it still refuses any URL the model composed.
