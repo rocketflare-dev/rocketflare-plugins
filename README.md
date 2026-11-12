@@ -152,6 +152,36 @@ above and a line to the `plugin_subdirs` array in `ci.yml`. Namespace everything
 `<id>.x`, query-key roots `<id>:…`, the API prefix `/api/<id>` — because two plugins have to be
 able to live in one app.
 
+## Security
+
+A plugin runs in the same Worker as the app, with no sandbox, so a hole in a plugin is a hole in
+every app that installs it. The kit's threat model has a section for plugin authors
+([For plugin authors](https://rocketflare.dev/security/threat-model/#for-plugin-authors), or
+`docs/THREAT-MODEL.md` in the kit). It covers what a plugin is trusted with, what to assume about
+each caller, what the kit's seams guarantee, and what a plugin must prove itself. In short:
+
+- **Tenant isolation is yours to prove.** Every tenant table calls `tenantIsolation()` and every
+  query filters by the tenant from the context. Each plugin's api tests show that tenant B cannot
+  list, read, change or delete tenant A's rows, and a query surface the kit cannot see (a cube, an
+  index, an export) gets its own isolation case. `pnpm plugin check` proves such a test exists, not
+  that it is right.
+- **Check roles on the server**, through the request's ability or `ToolCtx.can`, never in the UI
+  alone. A row hidden from a caller answers the same 404 as a missing one.
+- **Credentials are sealed and never returned.** Use `sealSecret` with a `*_enc` column, and answer
+  `hasCredential`. Never log a credential or put it in a model prompt.
+- **Public mounts prove their caller.** A handler under `/api/hooks/<id>` has no tenant until a
+  signature or `verifyState` names one. `verifyState` has no replay ledger, so a callback that
+  must run once records that itself.
+- **Model tools act within the requester's grant.** Gate writes on the requester's `manage`
+  grant, and fetch only URLs the person wrote (`ToolCtx.requesterUrls`) or the tool's own search
+  returned.
+
+Before a release that changes any of this, audit a host app with the plugin installed: run
+`/rf-security` in a kit checkout and ask it to install the plugin from your checkout of this
+repository. The runner's form is `host --plugin <checkout>:plugins/<id>`, for example
+`--plugin ../rocketflare-plugins:plugins/inbox` (the kit's `docs/SECURITY-AUDIT.md`). To report
+a vulnerability, see [`SECURITY.md`](SECURITY.md).
+
 ## History
 
 `analytics` was released from `rocketflare-dev/rocketflare-plugin-analytics` up to and including
