@@ -45,10 +45,8 @@ describe('freeagent cubes', () => {
       ] as const) {
         const { from, where } = cube.sql({ securityContext: { tenantId: mine } })
         // biome-ignore lint/suspicious/noExplicitAny: the cube's `from` is one of this plugin's tables
-        const rows = (await db
-          .select()
-          .from(from as any)
-          .where(where)) as Array<{ tenantId: string }>
+        const table = from as any
+        const rows = (await db.select().from(table).where(where)) as Array<{ tenantId: string }>
         expect(rows.length, cube.name).toBeGreaterThan(0)
         expect(
           rows.every(r => r.tenantId === mine),
