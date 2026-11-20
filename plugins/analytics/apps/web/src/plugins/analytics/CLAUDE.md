@@ -13,7 +13,7 @@ the import rule below rather than merely warning about it.
 
 | Entry | What it declares |
 |---|---|
-| `index.ts` | `mounts` (`/api/analytics`, `/cubejs-api`, `/mcp`), `apiPrefixes`, the refresh `jobHandlers`, `scheduledTasks['15 * * * *']`, `grants` for `Dashboard` / `Analytics`, `visibilityResources`, `hooks` — plus the extension helpers another plugin imports |
+| `index.ts` | `mounts` (`/api/analytics`, `/cubejs-api`), `apiPrefixes`, `tools` (drizzle-cube's MCP tools — below), the refresh `jobHandlers`, `scheduledTasks['15 * * * *']`, `grants` for `Dashboard` / `Analytics`, `visibilityResources`, `hooks` — plus the extension helpers another plugin imports |
 | `ui/index.ts` | three lazy routes, one nav item, one Home quick link, the query-key family |
 | `@rocketflare/shared/plugins/analytics/index` | the contracts, the two CASL subjects, the `analytics.refresh-facts` job, the realtime root |
 | `apps/cli/src/plugins/analytics/index.ts` | `rocketflare analytics pages list \| check-facts \| refresh-facts` |
@@ -91,12 +91,51 @@ A plugin edits no toml, no `package.json` and no core file. `pnpm plugin add` pr
 the list:
 
 - `[triggers].crons` in BOTH wrangler tomls gains `"15 * * * *"`, and `[assets].run_worker_first`
-  gains `/cubejs-api`, `/cubejs-api/*`, `/mcp`, `/mcp/*` (the parity test reads `API_PREFIXES`, so
-  a forgotten one fails the gate rather than silently serving the app shell).
-- `apps/web/vite.config.ts`: `/cubejs-api` and `/mcp` in the dev proxy, `'@nivo/heatmap'` aliased to
+  gains `/cubejs-api`, `/cubejs-api/*` (the parity test reads `API_PREFIXES`, so a forgotten one
+  fails the gate rather than silently serving the app shell). `/mcp` is the kit's own.
+- `apps/web/vite.config.ts`: `/cubejs-api` in the dev proxy, `'@nivo/heatmap'` aliased to
   `./src/plugins/analytics/ui/lib/nivo-heatmap.tsx` (drizzle-cube's heat-map chunk names that
   optional peer and Rollup fails without it), and `'recharts'` in `dedupe`.
 - `pnpm db:generate --name plugin-analytics-<version>`, then `pnpm db:migrate`.
+
+## The cube tools over MCP (and agent runs)
+
+`tools/cube-tools.ts` offers drizzle-cube's own MCP tools — `discover`, `validate`, `load` from
+`getCubeTools` (`drizzle-cube/mcp`) — through `ServerPlugin.tools` as `analytics_discover`,
+`analytics_validate` and `analytics_load`, with `surfaces: ['mcp', 'agents']` (never the chat
+panel). The plugin has no `/mcp` of its own: the app's `/mcp` lists these tools under its own OAuth
+sign-in, exposure modes, `mcp:read` scope, rate limits and call log.
+
+- **Same doors, same answers.** Each call compiles against `services/semantic-layer.ts` (the one
+  `/cubejs-api` uses), under the security context `/cubejs-api` would build for the same reader
+  (`toolSecurityContext`, pure: tenant, role, admin level and groups by type from `ToolCtx.requester`,
+  which the kit resolves — no membership query here), inside
+  `withStatementTimeout`. `tests/api/cube-tools.test.ts` proves the answers equal `/cubejs-api`'s,
+  that another organisation's rows never appear, and that `ActivityEvents` stays admin-only.
+- **Not offered** to a run with no person behind it, nor to a reader without `read Analytics`.
+- **The library's text, our names.** Input schemas are the library's JSON Schema through
+  `z.fromJSONSchema`; descriptions are the library's, with its tool names prefixed and the sentence
+  about `chart` dropped (`describeCubeTool`). A library refusal answers `{ error, hint }`, the kit's
+  dead-end shape.
+- **`chart` is not offered** (`EXCLUDED_CUBE_TOOLS`): it is an MCP App, a UI resource the app's MCP
+  server does not serve.
+
+### Upgrading drizzle-cube (by hand, every time)
+
+The tools are the library's, so a drizzle-cube bump can change what clients and agents are handed.
+`tests/config/cube-tools-pinned.test.ts` fails on any new, removed or changed tool and on a version
+other than the one recorded. On a bump:
+
+1. Run `pnpm --filter @rocketflare/web exec vitest run --project config src/plugins/analytics/tests/config/cube-tools-pinned.test.ts`
+   and read what changed.
+2. A new tool: add it to `CUBE_TOOLS` (title, annotations — is it still read-only?) or to
+   `EXCLUDED_CUBE_TOOLS` with the reason. A removed one: delete it from whichever list held it.
+3. A changed description: check `describeCubeTool` still renames every tool reference and still
+   drops what is not offered. A changed input schema: check it still converts
+   (`z.fromJSONSchema`) and what a client now has to send.
+4. Regenerate `tests/fixtures/drizzle-cube-mcp-tools.json` with the command in that test file's
+   header (it records the installed version too), run `pnpm lint:fix` (Biome formats the JSON),
+   then run `tests/api/cube-tools.test.ts`.
 
 ## Things that moved and are not coming back
 

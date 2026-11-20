@@ -21,7 +21,7 @@ Checked against the published `drizzle-cube@0.12.2` type declarations (`dist/ser
 
 - `type`: `'string' | 'number' | 'time' | 'boolean'`
 - `sql`: a column, a drizzle `sql\`…\`` expression, or `(ctx) => column | SQL`
-- `synonyms`: alternative names that MCP `discover` matches on (for example `['signups', 'joins']`).
+- `synonyms`: alternative names that `analytics_discover` matches on (for example `['signups', 'joins']`).
   Cheap to add, and it makes natural-language questions land.
 
 ## Measure

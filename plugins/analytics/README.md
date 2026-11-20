@@ -1,6 +1,6 @@
 # analytics
 
-> Dashboards, a tenant-scoped semantic layer and an MCP endpoint for your Rocketflare app, built on
+> Dashboards, a tenant-scoped semantic layer and MCP tools for your Rocketflare app, built on
 > [drizzle-cube](https://www.drizzle-cube.dev).
 
 An opt-in plugin: a fresh copy of the kit does not have it, and `/rf-plugin add analytics` (or the
@@ -12,11 +12,12 @@ commands below) adds it. Everything it answers is scoped to the reader's organis
 |---|---|
 | UI | **Analytics** in the side nav and a Home quick link: `/analytics` (dashboards), `/analytics/explore` (a query builder over the cubes) and `/analytics/:pageId` (one dashboard). New organisations get a set of default dashboards |
 | Semantic layer | drizzle-cube cubes over the kit's own data — `ActivityEvents`, `Users`, `Members`, `TenantUsers` and `TenantActivityDaily` — each filtering on the reader's tenant inside its own SQL. `ActivityEvents` answers admin-level readers only; other readers get no rows |
-| API | `/api/analytics` (dashboards: list, read, create, update, delete, restrict to groups), `/cubejs-api/v1` (the Cube.js-compatible query API: `meta`, `load`, `sql`, `dry-run`, `explain`, `batch`, at most 50 queries per request) and `/mcp` (an MCP server with `discover`, `validate` and `load` tools). Every statement runs under a 20-second limit |
+| API | `/api/analytics` (dashboards: list, read, create, update, delete, restrict to groups), `/cubejs-api/v1` (the Cube.js-compatible query API: `meta`, `load`, `sql`, `dry-run`, `explain`, `batch`, at most 50 queries per request). Every statement runs under a 20-second limit |
+| MCP and agents | drizzle-cube's own MCP tools as `analytics_discover`, `analytics_validate` and `analytics_load`, served by the app's MCP server (`/mcp`, with its OAuth sign-in) and offered to agent runs — not to the chat panel. Read-only, so they are listed under the default "all read-only tools" exposure |
 | Background work | One fact table, `analytics_tenant_activity_daily_facts`, rebuilt every hour by the `15 * * * *` cron; the `analytics.refresh-facts` job refreshes one organisation on demand |
 | Data | `analytics_pages`, `analytics_page_groups`, `analytics_tenant_activity_daily_facts` — all tenant-scoped with row-level security |
 | CLI | `rocketflare analytics pages list`, `rocketflare analytics check-facts`, `rocketflare analytics refresh-facts` |
-| Agent skills | `analytics` (start here: health check and routing), `analytics-cubes` (define and extend cubes, the isolation test), `analytics-queries` (query the API, connect Claude Code or Claude Desktop to `/mcp`), `analytics-dashboards` (dashboards, templates, group visibility) |
+| Agent skills | `analytics` (start here: health check and routing), `analytics-cubes` (define and extend cubes, the isolation test), `analytics-queries` (query the API, ask Claude or ChatGPT through the app's MCP server), `analytics-dashboards` (dashboards, templates, group visibility) |
 
 Other plugins can contribute cubes, fact tables, dashboard templates and isolation cases through
 `extensions`; the plugin reads and validates them, failing loudly and naming the contributor when
@@ -24,7 +25,8 @@ one is malformed.
 
 ## Requirements
 
-- Rocketflare kit **0.29.0** or later (`minKit`; earlier plugin releases support older kits).
+- Rocketflare kit **0.41.0** or later (`minKit`; earlier plugin releases support older kits). Kit
+  0.41.0 owns `/mcp`, so an app upgrading to it upgrades this plugin in the same sitting.
 - No other plugin, no bindings and no secrets.
 - npm dependencies the install adds to `apps/web`: `drizzle-cube` (pinned 0.12.2), `recharts`, `d3`,
   `react-grid-layout`, `react-is`.
@@ -42,10 +44,10 @@ pnpm db:generate --name plugin-analytics-3.9.0 && pnpm db:migrate
 The plan lists the steps a plugin cannot make in your files, and `pnpm provision cloudflare <env>`
 writes the toml half of them:
 
-- both wrangler tomls: the `15 * * * *` cron, and `/cubejs-api`, `/cubejs-api/*`, `/mcp`, `/mcp/*`
-  in `[assets] run_worker_first`;
-- `apps/web/vite.config.ts`: `/cubejs-api` and `/mcp` in the dev proxy, the `@nivo/heatmap` alias
-  and `recharts` in `dedupe`.
+- both wrangler tomls: the `15 * * * *` cron, and `/cubejs-api`, `/cubejs-api/*` in
+  `[assets] run_worker_first`;
+- `apps/web/vite.config.ts`: `/cubejs-api` in the dev proxy, the `@nivo/heatmap` alias and
+  `recharts` in `dedupe`.
 
 ## First run
 
@@ -72,16 +74,20 @@ is an optional complement.
   the host's suite fails if one is missing.
 - Dashboards can be restricted to groups; a restricted dashboard answers the same 404 as a missing
   one.
-- `/cubejs-api` and `/mcp` accept a session or an API key, and answer only for that key's tenant.
+- `/cubejs-api` accepts a session or an API key, and answers only for that key's tenant.
+- The `analytics_*` tools answer as the person who connected the client (or who started the agent
+  run), in that organisation, exactly as `/cubejs-api` would answer them — `ActivityEvents` stays
+  admin-only. A run with no person behind it is offered none. MCP clients connect with OAuth
+  through the app's own sign-in; API keys do not work on `/mcp`.
 
 ## Known gaps
 
-- drizzle-cube is pinned to 0.12.2; newer drizzle-cube features (for example the MCP chart tool) are
-  not enabled.
+- drizzle-cube is pinned to 0.12.2. Its MCP tools are pinned with it: a drizzle-cube upgrade is
+  reviewed tool by tool (the plugin `CLAUDE.md`, "Upgrading drizzle-cube"), never absorbed.
+- drizzle-cube's `chart` tool is not offered: it is an MCP App (a UI resource), which the app's MCP
+  server does not serve.
 - One example fact table; anything else you model is yours to add (the `analytics-cubes` skill
   walks through it).
-- Claude Desktop reaches `/mcp` through the `mcp-remote` bridge, because Desktop's custom
-  connectors support OAuth only.
 
 ## More
 

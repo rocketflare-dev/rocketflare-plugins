@@ -38,7 +38,10 @@ export const ANALYTICS_DASHBOARDS_ENTITY = 'analytics:dashboards'
 
 /** `analytics_pages` rows: admin+ `manage`, every member `read`. */
 export const DASHBOARD_SUBJECT = 'Dashboard'
-/** The cube API itself (`/cubejs-api`, `/mcp`): `read` for every role, tenant-scoped by every cube. */
+/**
+ * The cube API itself (`/cubejs-api`, the `analytics_*` tools): `read` for every role,
+ * tenant-scoped by every cube.
+ */
 export const ANALYTICS_SUBJECT = 'Analytics'
 
 /** Rebuild this organisation's fact tables. `<id>.<verb>`, so it cannot collide with a kit type. */

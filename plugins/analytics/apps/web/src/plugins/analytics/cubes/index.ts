@@ -44,7 +44,7 @@ const FEATURE_CUBES: Record<string, readonly string[]> = {}
 
 /**
  * The cubes this request may compile against. A cube whose feature is off is absent from
- * `/cubejs-api/v1/meta` and from `/mcp`, so a dark feature is not discoverable through the analytics
+ * `/cubejs-api/v1/meta` and from the `analytics_*` MCP tools, so a dark feature is not discoverable through the analytics
  * surface either — the gate has to cover every door, not just the nav.
  */
 export function cubesFor(features: readonly string[]): Cube[] {
