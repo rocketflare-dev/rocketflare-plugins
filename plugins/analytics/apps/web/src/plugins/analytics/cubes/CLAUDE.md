@@ -2,8 +2,10 @@
 
 One file per cube, `defineCube('Name', …)` from `drizzle-cube/server`, registered in `index.ts`
 (`allCubes`). Served per request by `routes/cube-api.ts` (`createCubeApp` from
-`drizzle-cube/adapters/hono`) at `/cubejs-api/v1/{load,meta,sql,batch,dry-run}` and `/mcp`, both
-mounted behind the kit's auth middleware + `ctx.guard('read', 'Analytics')`.
+`drizzle-cube/adapters/hono`) at `/cubejs-api/v1/{load,meta,sql,batch,dry-run}`, mounted behind
+the kit's auth middleware + `ctx.guard('read', 'Analytics')`, and by `tools/cube-tools.ts` to MCP
+clients and agent runs as `analytics_discover|validate|load` — both over the ONE semantic layer in
+`services/semantic-layer.ts`, so a cube added here reaches both.
 
 **The security context is built in the ROUTE and passed down.** `createCubeApp` calls
 `extractSecurityContext` per query, from inside drizzle-cube, where no Hono context exists — so the
@@ -66,7 +68,7 @@ predicate.
 - Bundle caveat: `drizzle-cube/adapters/hono` statically imports its MCP transport even with
   `mcp.enabled: false`, and that dominates the Worker bundle. Not caused by the cubes; fix is
   upstream or a thin adapter over `drizzle-cube/server` (`.claude/rules/cloudflare.md`, which also
-  says why no byte count is written down). `mcp.allowedOrigins` is unset — browser MCP clients need it.
+  says why no byte count is written down). MCP itself is the app's `/mcp`, not the adapter's.
 
 ## Ship set
 

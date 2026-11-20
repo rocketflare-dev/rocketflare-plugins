@@ -1,6 +1,6 @@
 ---
 name: analytics
-description: Entry point for the analytics plugin (drizzle-cube semantic layer, dashboards and fact tables). Checks it is installed and healthy, explains what it gives you, and routes to the right analytics skill. Use when someone mentions analytics, dashboards, charts, metrics, KPIs, cubes, drizzle-cube, the semantic layer, fact tables, /cubejs-api, the /mcp endpoint, or asks "how do I see/measure X in Rocketflare".
+description: Entry point for the analytics plugin (drizzle-cube semantic layer, dashboards and fact tables). Checks it is installed and healthy, explains what it gives you, and routes to the right analytics skill. Use when someone mentions analytics, dashboards, charts, metrics, KPIs, cubes, drizzle-cube, the semantic layer, fact tables, /cubejs-api, the analytics MCP tools, or asks "how do I see/measure X in Rocketflare".
 argument-hint: "[explain | health | cubes | query | dashboards | mcp]"
 ---
 
@@ -11,8 +11,11 @@ The `analytics` plugin adds a **semantic layer** to this app. It is built on
 
 - **Cubes**: named, tenant-scoped definitions of measures (counts, sums, distinct counts) and
   dimensions (role, event type, dates) over the app's own Postgres tables.
-- **An API over the cubes**: `/cubejs-api/v1/{load,meta,sql,dry-run,explain,batch}` (Cube.js-compatible)
-  and an **MCP endpoint** at `/mcp`, both behind the app's normal sign-in or API key.
+- **An API over the cubes**: `/cubejs-api/v1/{load,meta,sql,dry-run,explain,batch}` (Cube.js-compatible),
+  behind the app's normal sign-in or API key.
+- **MCP tools over the cubes**: drizzle-cube's own `discover` / `validate` / `load` as
+  `analytics_discover`, `analytics_validate` and `analytics_load`, served by the app's own MCP server
+  (`/mcp`, OAuth through the app's sign-in) and offered to agent runs.
 - **Dashboards**: one row per dashboard in `analytics_pages`, rendered by drizzle-cube's React
   components at `/analytics` (list), `/analytics/:pageId` (view and edit) and `/analytics/explore`
   (query builder). They can be restricted to groups (D29).
@@ -28,7 +31,7 @@ its folders are the reference; this skill and its siblings are the how-to.
 | The person wants to… | Use |
 |---|---|
 | add or change a metric, add a cube over a new table, add a fact table, contribute a cube from another plugin | **`analytics-cubes`** |
-| ask a question of the data, call the API from a script, debug a query, connect Claude Code / Claude Desktop to `/mcp` | **`analytics-queries`** |
+| ask a question of the data, call the API from a script, debug a query, connect Claude Code, Claude or ChatGPT through the app's MCP server | **`analytics-queries`** |
 | create, edit, share, restrict, reset or template a dashboard | **`analytics-dashboards`** |
 | understand what is there, or check it works | stay here: **Explain** or **Health** below |
 
@@ -85,7 +88,7 @@ or `rocketflare …` if the CLI is installed globally.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `/cubejs-api/...` or `/mcp` returns the app's HTML | the paths aren't in `[assets] run_worker_first`, or aren't proxied by Vite in dev | `pnpm plugin add` printed these host edits: add `/cubejs-api`, `/cubejs-api/*`, `/mcp` and `/mcp/*` to `run_worker_first` in both wrangler tomls (or run `pnpm provision cloudflare <env>`), and add both prefixes to the dev proxy in `apps/web/vite.config.ts`. The config tests fail until you do |
+| `/cubejs-api/...` returns the app's HTML | the paths aren't in `[assets] run_worker_first`, or aren't proxied by Vite in dev | `pnpm plugin add` printed these host edits: add `/cubejs-api` and `/cubejs-api/*` to `run_worker_first` in both wrangler tomls (or run `pnpm provision cloudflare <env>`), and add the prefix to the dev proxy in `apps/web/vite.config.ts`. The config tests fail until you do |
 | facts never refresh when deployed | the `15 * * * *` cron isn't in `[triggers]` of both tomls | add it, or run `pnpm provision cloudflare <env>` |
 | 401 on every cube call | not signed in, or the API key is wrong or revoked | `pnpm cli whoami`; create a new key |
 | 403 `no_tenant` | the session has no organisation selected | pick one at `/select-tenant` |

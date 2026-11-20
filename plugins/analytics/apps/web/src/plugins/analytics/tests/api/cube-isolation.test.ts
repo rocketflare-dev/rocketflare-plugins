@@ -1,7 +1,8 @@
 /**
  * Two-tenant cube isolation (D19, MANDATORY). Every cube in `allCubes` is queried through the real
  * `/cubejs-api/v1/load` as tenant A and as tenant B; each sees exactly its own rows. Also: `/meta`
- * lists every cube, unauthenticated → 401 envelope, `/mcp` is reachable only behind auth, and
+ * lists every cube, unauthenticated → 401 envelope (the cube tools' own MCP isolation is
+ * `cube-tools.test.ts`), and
  * every dashboard-template portlet query actually executes against Postgres.
  */
 import { ERROR_CODES } from '@rocketflare/shared/errors'
@@ -199,9 +200,9 @@ describe('cube API surface', () => {
     )
   })
 
-  it('unauthenticated → 401 envelope on /cubejs-api and /mcp', async () => {
-    for (const path of ['/cubejs-api/v1/meta', '/cubejs-api/v1/load', '/mcp']) {
-      const res = await request(path, { method: path === '/mcp' ? 'POST' : 'GET' })
+  it('unauthenticated → 401 envelope on /cubejs-api', async () => {
+    for (const path of ['/cubejs-api/v1/meta', '/cubejs-api/v1/load']) {
+      const res = await request(path)
       expect(res.status, path).toBe(401)
       expect(await json(res)).toMatchObject({ statusCode: 401, code: ERROR_CODES.unauthorized })
     }
@@ -213,30 +214,5 @@ describe('cube API surface', () => {
     const res = await request('/cubejs-api/v1/meta', { headers: cookie })
     expect(res.status).toBe(403)
     expect(await json(res)).toMatchObject({ code: ERROR_CODES.noTenant })
-  })
-
-  it('/mcp is reachable behind auth (JSON-RPC initialize)', async () => {
-    const a = await seedTenant([])
-    const res = await request(
-      '/mcp',
-      {
-        method: 'POST',
-        headers: { ...a.cookie, Accept: 'application/json, text/event-stream' },
-      },
-      {
-        json: {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'initialize',
-          params: {
-            protocolVersion: '2025-03-26',
-            capabilities: {},
-            clientInfo: { name: 'vitest', version: '0' },
-          },
-        },
-      }
-    )
-    expect(res.status).toBe(200)
-    expect(await res.text()).toContain('"jsonrpc":"2.0"')
   })
 })

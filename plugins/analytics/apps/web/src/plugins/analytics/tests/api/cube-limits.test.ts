@@ -1,8 +1,10 @@
 /**
  * What the cube API lets one reader do: the activity cube is for admin-level readers on every
- * query surface, a batch has a length limit, and every request runs under a statement timeout.
+ * query surface (`/cubejs-api` and the `analytics_load` tool), a batch has a length limit, and
+ * every request and tool call runs under a statement timeout.
  */
 import {
+  callMcpTool,
   createTestSession,
   createTestTenantWithUser,
   createTestUser,
@@ -27,11 +29,17 @@ const EVENTS_QUERY = {
 
 let ownerCookie: Record<string, string>
 let memberCookie: Record<string, string>
+let tenantId: string
+let ownerId: string
+let memberId: string
 
 beforeAll(async () => {
   const { user, tenant } = await createTestTenantWithUser(db, 'owner')
   const member = await createTestUser(db)
   await linkUserToTenant(db, member.id, tenant.id, 'member')
+  tenantId = tenant.id
+  ownerId = user.id
+  memberId = member.id
   ownerCookie = sessionCookieHeader(await createTestSession(db, user.id, tenant.id))
   memberCookie = sessionCookieHeader(await createTestSession(db, member.id, tenant.id))
   await db.insert(activityEvents).values({
@@ -45,22 +53,10 @@ beforeAll(async () => {
 
 afterEach(() => vi.restoreAllMocks())
 
-const callMcpLoad = (cookie: Record<string, string>) =>
-  request(
-    '/mcp',
-    {
-      method: 'POST',
-      headers: { ...cookie, Accept: 'application/json, text/event-stream' },
-    },
-    {
-      json: {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: { name: 'load', arguments: { query: EVENTS_QUERY } },
-      },
-    }
-  )
+/** `analytics_load` over the app's `/mcp`, as `as` — its answer text. */
+const callMcpLoad = async (as: string) =>
+  (await callMcpTool(db, 'analytics_load', { as, tenant: tenantId, args: { query: EVENTS_QUERY } }))
+    .text ?? ''
 
 const post = (path: string, cookie: Record<string, string>, body: unknown) =>
   request(path, { method: 'POST', headers: { ...cookie, ...ORIGIN } }, { json: body })
@@ -74,7 +70,7 @@ describe('the ActivityEvents cube', () => {
     const res = await post('/cubejs-api/v1/load', ownerCookie, { query: EVENTS_QUERY })
     const body = await json<LoadBody>(res)
     expect(body.results[0]?.data.map(r => r['ActivityEvents.type'])).toContain('limits.marker')
-    expect(await (await callMcpLoad(ownerCookie)).text()).toContain('limits.marker')
+    expect(await callMcpLoad(ownerId)).toContain('limits.marker')
   })
 
   it('has no rows for a member on /load', async () => {
@@ -89,10 +85,8 @@ describe('the ActivityEvents cube', () => {
     expect(await res.text()).not.toContain('limits.marker')
   })
 
-  it('has no rows for a member on /mcp', async () => {
-    const res = await callMcpLoad(memberCookie)
-    expect(res.status).toBe(200)
-    expect(await res.text()).not.toContain('limits.marker')
+  it('has no rows for a member through the analytics_load tool', async () => {
+    expect(await callMcpLoad(memberId)).not.toContain('limits.marker')
   })
 })
 
@@ -141,6 +135,12 @@ describe('the statement timeout', () => {
       query: { measures: ['Users.count'] },
     })
     expect(res.status).toBe(200)
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(run.mock.calls[0]?.[1]).toBe(limits.CUBE_STATEMENT_TIMEOUT_MS)
+  })
+  it('wraps a cube tool call', async () => {
+    const run = vi.spyOn(limits, 'withStatementTimeout')
+    expect(await callMcpLoad(ownerId)).toContain('limits.marker')
     expect(run).toHaveBeenCalledTimes(1)
     expect(run.mock.calls[0]?.[1]).toBe(limits.CUBE_STATEMENT_TIMEOUT_MS)
   })

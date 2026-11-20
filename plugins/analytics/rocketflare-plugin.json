@@ -3,7 +3,7 @@
   "label": "Analytics",
   "version": "3.12.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.29.0",
+  "minKit": "0.41.0",
   "skills": ["analytics", "analytics-cubes", "analytics-queries", "analytics-dashboards"],
   "anchor": "apps/web/src/plugins/analytics/plugin.json",
   "paths": [
@@ -29,6 +29,7 @@
       "cronCtx",
       "CronCtx",
       "Database",
+      "defineTool",
       "DetachedCtx",
       "HookCtx",
       "jobCtx",
@@ -44,6 +45,10 @@
       "SeedCtx",
       "ServerPlugin",
       "sharedWithMyGroups",
+      "Tool",
+      "toolCtx",
+      "ToolCtx",
+      "ToolMcpOptions",
       "transaction",
       "validate",
       "VisibilityResource"
@@ -97,6 +102,7 @@
       "requireClient"
     ],
     "@testkit/integration": [
+      "callMcpTool",
       "createExecutionContext",
       "createTestEnv",
       "createTestSession",
@@ -146,12 +152,12 @@
   },
   "bindings": [],
   "crons": ["15 * * * *"],
-  "apiPrefixes": ["/cubejs-api", "/mcp"],
+  "apiPrefixes": ["/cubejs-api"],
   "coreEdits": [
     {
       "file": "apps/web/vite.config.ts",
       "after": "'/ws': proxyTo(",
-      "lines": ["'/cubejs-api': proxyTo(),", "'/mcp': proxyTo(),"]
+      "lines": ["'/cubejs-api': proxyTo(),"]
     },
     {
       "file": "apps/web/vite.config.ts",

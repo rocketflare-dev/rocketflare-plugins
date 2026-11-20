@@ -113,7 +113,7 @@ nothing; admins are not narrowed. See `cubes/CLAUDE.md`.
 6. If the cube has an event column (actor, time, event name), add `meta.eventStream` to unlock the
    funnel, flow and retention modes. Copy `cubes/activity-events.ts`.
 7. **Feature-gated?** If the cube belongs to a feature that may ship dark (D30), add it to
-   `FEATURE_CUBES` in `cubes/index.ts`. It then disappears from `/meta` and `/mcp` for tenants
+   `FEATURE_CUBES` in `cubes/index.ts`. It then disappears from `/meta` and the `analytics_*` MCP tools for tenants
    without the feature. `allCubes()` stays complete, so the isolation test still proves its scoping.
 8. Run `pnpm typecheck`, then the tests, then check it appears in `/analytics/explore`.
 
@@ -207,7 +207,7 @@ cd apps/web && NODE_ENV=test pnpm exec dotenv -e .env.test -- vitest run --proje
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Cube query without a tenant in the security context` | a cube was queried outside the route, e.g. from a script | only query through `/cubejs-api` or `/mcp`; the route builds the security context |
+| `Cube query without a tenant in the security context` | a cube was queried outside the route, e.g. from a script | only query through `/cubejs-api` or the `analytics_*` tools; the route (or the tool) builds the security context |
 | Type error on `defineCube({ name: … })` or `filters: [{ sql }]` | generic or upstream example syntax | use the 0.12.2 shape above |
 | 400 on a table-style (ungrouped) query that mixes two cubes | a declared `hasMany` between them | declare the `belongsTo` side only |
 | isolation test: "keys differ from allCubes()" | a new cube with no case | add the case |

@@ -1,0 +1,879 @@
+{
+  "drizzleCube": "0.12.2",
+  "tools": [
+    {
+      "name": "discover",
+      "description": "MANDATORY FIRST CALL. You MUST call this before constructing any query — even if you think you know the schema.\n\nReturns:\n- 'cubes': matched cubes with measures, dimensions, joins, and metadata hints (eventStream for funnels, etc.)\n- 'queryLanguageReference': the COMPLETE TypeScript DSL for query construction. This is the source of truth for field naming, filter operators, time dimensions, and analysis modes (funnel/flow/retention). READ IT before building queries — do not guess syntax.\n- 'dateFilteringGuide': decision tree for date filtering vs time grouping. READ IT whenever the user mentions a time period — this is the #1 source of incorrect queries.\n\nThe 'joins' property on each cube shows relationships. You can include dimensions from ANY related cube in your query — the system auto-joins them.\n\nExample: If Productivity has a join to Employees, you can query:\n{ \"measures\": [\"Productivity.totalPullRequests\"], \"dimensions\": [\"Employees.name\"] }",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Keyword to search (e.g., \"sales\", \"employees\")"
+          },
+          "intent": {
+            "type": "string",
+            "description": "Natural language goal (e.g., \"analyze productivity trends\")"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results (default: 10)"
+          },
+          "minScore": {
+            "type": "number",
+            "description": "Min relevance 0-1 (default: 0.1)"
+          }
+        }
+      }
+    },
+    {
+      "name": "validate",
+      "description": "Validate a query and get auto-corrections for issues.\n\nChecks:\n- Field existence (measures, dimensions exist in schema)\n- Filter syntax and operators\n- Cross-cube join validity\n\nReturns corrected query if issues found, plus the generated SQL for debugging.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "object",
+            "description": "CubeQuery to validate"
+          }
+        }
+      }
+    },
+    {
+      "name": "load",
+      "description": "Execute a semantic query and return aggregated results.\n\nPREREQUISITE: You MUST have called 'discover' first in this session. The discover response contains the 'queryLanguageReference' (full DSL) and 'dateFilteringGuide' you need to construct a correct query. If you have not yet called discover, call it NOW before calling load.\n\nSupports regular queries (measures/dimensions), funnel, flow, and retention analysis modes — see the queryLanguageReference returned by discover for the full DSL.\n\nKey rules (the queryLanguageReference is authoritative — these are reminders, not the full spec):\n- Fields are EXACTLY \"CubeName.fieldName\" (two parts, one dot). Copy verbatim from discover.\n- Cross-cube joins: include dimensions from related cubes (system auto-joins).\n- Aggregated totals over a period: use filters with inDateRange — NOT timeDimensions.\n- Time series (\"by month\", \"daily trend\"): use timeDimensions WITH granularity.\n- Top N: filters + order + limit.\n\nUse \"load\" for data retrieval. Use \"chart\" to visualise results with an interactive chart.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "object",
+            "description": "Semantic query object. Regular: { measures, dimensions, filters, timeDimensions, order, limit }. Funnel: { funnel: {...} }. Flow: { flow: {...} }. Retention: { retention: {...} }.",
+            "properties": {
+              "measures": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$"
+                },
+                "description": "Aggregation measures — EXACTLY \"CubeName.measureName\" (two parts, one dot). Copy field names verbatim from discover results. WRONG: \"Sales.Sales.count\" (double-prefixed). RIGHT: \"Sales.count\"."
+              },
+              "dimensions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$"
+                },
+                "description": "Grouping dimensions — EXACTLY \"CubeName.dimensionName\" (two parts, one dot). Copy from discover results. Can include dimensions from RELATED cubes via joins. WRONG: \"Teams.Teams.name\". RIGHT: \"Teams.name\"."
+              },
+              "filters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "member": {
+                      "type": "string",
+                      "description": "\"CubeName.fieldName\""
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "equals",
+                        "notEquals",
+                        "contains",
+                        "notContains",
+                        "startsWith",
+                        "notStartsWith",
+                        "endsWith",
+                        "notEndsWith",
+                        "gt",
+                        "gte",
+                        "lt",
+                        "lte",
+                        "between",
+                        "notBetween",
+                        "in",
+                        "notIn",
+                        "like",
+                        "notLike",
+                        "ilike",
+                        "regex",
+                        "notRegex",
+                        "set",
+                        "notSet",
+                        "isEmpty",
+                        "isNotEmpty",
+                        "inDateRange",
+                        "beforeDate",
+                        "afterDate",
+                        "arrayContains",
+                        "arrayOverlaps",
+                        "arrayContained"
+                      ]
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": ["string", "number", "boolean"]
+                      },
+                      "description": "Filter values. Omit for set/notSet/isEmpty/isNotEmpty. inDateRange accepts ONLY a flat two-date array (strings or finite numeric timestamps): [\"2024-01-01\", \"2024-03-31\"], or a one-item array holding one relative expression or one date (that whole day): [\"last 3 months\"], [\"2024-01-15\"]. Never nest the two-date array."
+                    },
+                    "dateRange": {
+                      "description": "inDateRange only: alternative to values. A supported relative string, one absolute date string, or flat two-date array. Prefer values: [] when using dateRange; if values are also given they must hold the same range."
+                    }
+                  },
+                  "required": ["member", "operator"]
+                },
+                "description": "Filter conditions. Flat array — for AND/OR logic use { \"and\": [...] } or { \"or\": [...] } wrappers."
+              },
+              "timeDimensions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "dimension": {
+                      "type": "string",
+                      "description": "\"CubeName.timeDimension\""
+                    },
+                    "granularity": {
+                      "type": "string",
+                      "enum": [
+                        "second",
+                        "minute",
+                        "hour",
+                        "day",
+                        "week",
+                        "month",
+                        "quarter",
+                        "year"
+                      ],
+                      "description": "Time bucket size. REQUIRED for time series. Without it the time dimension is a date-range filter only (no time column, no grouping)."
+                    },
+                    "dateRange": {
+                      "description": "Relative string (\"today\", \"last 7 days\", \"this month\", \"last quarter\", \"next week\", \"last N days|weeks|months|quarters|years\"), a single \"YYYY-MM-DD\", or absolute tuple [\"YYYY-MM-DD\", \"YYYY-MM-DD\"]. Unrecognised strings are rejected."
+                    },
+                    "fillMissingDates": {
+                      "type": "boolean",
+                      "description": "Fill gaps in time series with fillMissingDatesValue. Default: off (observed rows only) unless the cube time dimension enables it. Requires granularity + dateRange."
+                    },
+                    "compareDateRange": {
+                      "type": "array",
+                      "items": {},
+                      "description": "Period-over-period comparison. Array of date ranges: [\"last 30 days\", [\"2024-01-01\", \"2024-01-30\"]]"
+                    }
+                  },
+                  "required": ["dimension"]
+                },
+                "description": "Time dimensions with optional granularity for time series. Use filters with inDateRange for aggregated totals instead."
+              },
+              "order": {
+                "type": "object",
+                "description": "Sort order. Keys MUST be a measure or dimension already in this query, in \"CubeName.fieldName\" format. Values: \"asc\" or \"desc\". Example: {\"Sales.revenue\": \"desc\"}"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Maximum rows to return"
+              },
+              "offset": {
+                "type": "number",
+                "description": "Number of rows to skip (for pagination)"
+              },
+              "ungrouped": {
+                "type": "boolean",
+                "description": "When true, returns raw row-level data without GROUP BY. Requires at least one dimension. Incompatible with count/countDistinct measures, filters on measures, and analysis modes. Cannot reference two cubes joined by a hasMany relationship in EITHER direction (e.g. Departments hasMany Employees) — an ungrouped query stays at one record grain, so keep it to a single cube plus its to-one joins. A field from a hasMany-related cube has to be pre-aggregated in a grouped query instead."
+              },
+              "funnel": {
+                "type": "object",
+                "properties": {
+                  "bindingKey": {
+                    "type": "string",
+                    "description": "Entity identifier dimension (e.g., \"Events.userId\")"
+                  },
+                  "timeDimension": {
+                    "type": "string",
+                    "description": "Time ordering dimension (e.g., \"Events.timestamp\")"
+                  },
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Human-readable step name"
+                        },
+                        "filter": {
+                          "description": "Filter or array of filters for this step"
+                        },
+                        "timeToConvert": {
+                          "type": "string",
+                          "description": "ISO 8601 duration — max time from previous step (e.g., \"P7D\" for 7 days, \"PT1H\" for 1 hour)"
+                        }
+                      },
+                      "required": ["name"]
+                    },
+                    "description": "Ordered funnel steps (minimum 2). Put inDateRange time filter ONLY on step 0."
+                  },
+                  "includeTimeMetrics": {
+                    "type": "boolean",
+                    "description": "Include avg/median/p90 time-to-convert per step"
+                  },
+                  "globalTimeWindow": {
+                    "type": "string",
+                    "description": "ISO 8601 duration — all steps must complete within this window from step 0"
+                  }
+                },
+                "required": ["bindingKey", "timeDimension", "steps"],
+                "description": "Funnel analysis. When provided, measures/dimensions are ignored."
+              },
+              "flow": {
+                "type": "object",
+                "properties": {
+                  "bindingKey": {
+                    "type": "string",
+                    "description": "Entity identifier dimension (e.g., \"Events.userId\")"
+                  },
+                  "timeDimension": {
+                    "type": "string",
+                    "description": "Time ordering dimension (e.g., \"Events.timestamp\")"
+                  },
+                  "eventDimension": {
+                    "type": "string",
+                    "description": "Dimension whose values become node labels (e.g., \"Events.eventType\")"
+                  },
+                  "startingStep": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Display name for the starting step"
+                      },
+                      "filter": {
+                        "description": "Filter(s) identifying the starting event"
+                      }
+                    },
+                    "required": ["name"],
+                    "description": "The anchor point — an object with { name, filter }, NOT a plain string."
+                  },
+                  "stepsBefore": {
+                    "type": "number",
+                    "description": "Steps to explore before starting step (0-5)"
+                  },
+                  "stepsAfter": {
+                    "type": "number",
+                    "description": "Steps to explore after starting step (0-5)"
+                  },
+                  "entityLimit": {
+                    "type": "number",
+                    "description": "Max entities to process (performance tuning)"
+                  },
+                  "outputMode": {
+                    "type": "string",
+                    "enum": ["sankey", "sunburst"],
+                    "description": "Visualization mode (default: sankey)"
+                  }
+                },
+                "required": ["bindingKey", "timeDimension", "eventDimension", "startingStep"],
+                "description": "Flow (path) analysis. When provided, measures/dimensions are ignored."
+              },
+              "retention": {
+                "type": "object",
+                "properties": {
+                  "timeDimension": {
+                    "type": "string",
+                    "description": "Timestamp dimension (e.g., \"Events.timestamp\")"
+                  },
+                  "bindingKey": {
+                    "type": "string",
+                    "description": "Entity identifier (e.g., \"Events.userId\")"
+                  },
+                  "dateRange": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "string",
+                        "description": "YYYY-MM-DD"
+                      },
+                      "end": {
+                        "type": "string",
+                        "description": "YYYY-MM-DD"
+                      }
+                    },
+                    "required": ["start", "end"],
+                    "description": "Cohort date range — MUST be an object { start, end }, NOT an array or string."
+                  },
+                  "granularity": {
+                    "type": "string",
+                    "enum": ["day", "week", "month"],
+                    "description": "Period size for retention buckets"
+                  },
+                  "periods": {
+                    "type": "number",
+                    "description": "Number of retention periods to calculate"
+                  },
+                  "retentionType": {
+                    "type": "string",
+                    "enum": ["classic", "rolling"],
+                    "description": "classic = returned in period N exactly; rolling = returned in period N or later"
+                  },
+                  "cohortFilters": {
+                    "description": "Optional filters on cohort entry events"
+                  },
+                  "activityFilters": {
+                    "description": "Optional filters on return activity events"
+                  },
+                  "breakdownDimensions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Segment retention by these dimensions (e.g., [\"Events.country\"])"
+                  }
+                },
+                "required": ["timeDimension", "bindingKey", "dateRange", "granularity", "periods"],
+                "description": "Retention (cohort) analysis. When provided, measures/dimensions are ignored."
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "chart",
+      "description": "Execute a semantic query and render an interactive chart visualization.\n\nSame query format as \"load\", but renders results in the MCP App chart UI.\nInclude a \"chart\" object to control the visualization.\n\nChart types: bar, line, area, pie, scatter, treemap, kpiNumber, kpiDelta, kpiText, table, recordsTable, radar, radialBar, bubble, funnel, waterfall, gauge, boxPlot, candlestick, activityGrid, measureProfile, sankey, sunburst, heatmap\nGuidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot, record-level listing -> recordsTable\n\nrecordsTable renders one row per record, so pair it with \"ungrouped\": true in the query. Its columns are plain text unless you say otherwise: use chart.displayConfig.columnFormats to give each column a kind (number, date, badge, progress, link), which is what makes the listing readable. A link column needs a linkTemplate such as \"/employees/{Employees.id}\".",
+      "inputSchema": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": {
+            "type": "object",
+            "description": "Semantic query object. Same format as the load tool.",
+            "properties": {
+              "measures": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$"
+                },
+                "description": "Aggregation measures — EXACTLY \"CubeName.measureName\" (two parts, one dot). Copy field names verbatim from discover results. WRONG: \"Sales.Sales.count\" (double-prefixed). RIGHT: \"Sales.count\"."
+              },
+              "dimensions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$"
+                },
+                "description": "Grouping dimensions — EXACTLY \"CubeName.dimensionName\" (two parts, one dot). Copy from discover results. Can include dimensions from RELATED cubes via joins. WRONG: \"Teams.Teams.name\". RIGHT: \"Teams.name\"."
+              },
+              "filters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "member": {
+                      "type": "string",
+                      "description": "\"CubeName.fieldName\""
+                    },
+                    "operator": {
+                      "type": "string",
+                      "enum": [
+                        "equals",
+                        "notEquals",
+                        "contains",
+                        "notContains",
+                        "startsWith",
+                        "notStartsWith",
+                        "endsWith",
+                        "notEndsWith",
+                        "gt",
+                        "gte",
+                        "lt",
+                        "lte",
+                        "between",
+                        "notBetween",
+                        "in",
+                        "notIn",
+                        "like",
+                        "notLike",
+                        "ilike",
+                        "regex",
+                        "notRegex",
+                        "set",
+                        "notSet",
+                        "isEmpty",
+                        "isNotEmpty",
+                        "inDateRange",
+                        "beforeDate",
+                        "afterDate",
+                        "arrayContains",
+                        "arrayOverlaps",
+                        "arrayContained"
+                      ]
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": ["string", "number", "boolean"]
+                      },
+                      "description": "Filter values. Omit for set/notSet/isEmpty/isNotEmpty. inDateRange accepts ONLY a flat two-date array (strings or finite numeric timestamps): [\"2024-01-01\", \"2024-03-31\"], or a one-item array holding one relative expression or one date (that whole day): [\"last 3 months\"], [\"2024-01-15\"]. Never nest the two-date array."
+                    },
+                    "dateRange": {
+                      "description": "inDateRange only: alternative to values. A supported relative string, one absolute date string, or flat two-date array. Prefer values: [] when using dateRange; if values are also given they must hold the same range."
+                    }
+                  },
+                  "required": ["member", "operator"]
+                },
+                "description": "Filter conditions. Flat array — for AND/OR logic use { \"and\": [...] } or { \"or\": [...] } wrappers."
+              },
+              "timeDimensions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "dimension": {
+                      "type": "string",
+                      "description": "\"CubeName.timeDimension\""
+                    },
+                    "granularity": {
+                      "type": "string",
+                      "enum": [
+                        "second",
+                        "minute",
+                        "hour",
+                        "day",
+                        "week",
+                        "month",
+                        "quarter",
+                        "year"
+                      ],
+                      "description": "Time bucket size. REQUIRED for time series. Without it the time dimension is a date-range filter only (no time column, no grouping)."
+                    },
+                    "dateRange": {
+                      "description": "Relative string (\"today\", \"last 7 days\", \"this month\", \"last quarter\", \"next week\", \"last N days|weeks|months|quarters|years\"), a single \"YYYY-MM-DD\", or absolute tuple [\"YYYY-MM-DD\", \"YYYY-MM-DD\"]. Unrecognised strings are rejected."
+                    },
+                    "fillMissingDates": {
+                      "type": "boolean",
+                      "description": "Fill gaps in time series with fillMissingDatesValue. Default: off (observed rows only) unless the cube time dimension enables it. Requires granularity + dateRange."
+                    },
+                    "compareDateRange": {
+                      "type": "array",
+                      "items": {},
+                      "description": "Period-over-period comparison. Array of date ranges: [\"last 30 days\", [\"2024-01-01\", \"2024-01-30\"]]"
+                    }
+                  },
+                  "required": ["dimension"]
+                },
+                "description": "Time dimensions with optional granularity for time series. Use filters with inDateRange for aggregated totals instead."
+              },
+              "order": {
+                "type": "object",
+                "description": "Sort order. Keys MUST be a measure or dimension already in this query, in \"CubeName.fieldName\" format. Values: \"asc\" or \"desc\". Example: {\"Sales.revenue\": \"desc\"}"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Maximum rows to return"
+              },
+              "offset": {
+                "type": "number",
+                "description": "Number of rows to skip (for pagination)"
+              },
+              "ungrouped": {
+                "type": "boolean",
+                "description": "When true, returns raw row-level data without GROUP BY. Requires at least one dimension. Incompatible with count/countDistinct measures, filters on measures, and analysis modes. Cannot reference two cubes joined by a hasMany relationship in EITHER direction (e.g. Departments hasMany Employees) — an ungrouped query stays at one record grain, so keep it to a single cube plus its to-one joins. A field from a hasMany-related cube has to be pre-aggregated in a grouped query instead."
+              },
+              "funnel": {
+                "type": "object",
+                "properties": {
+                  "bindingKey": {
+                    "type": "string",
+                    "description": "Entity identifier dimension (e.g., \"Events.userId\")"
+                  },
+                  "timeDimension": {
+                    "type": "string",
+                    "description": "Time ordering dimension (e.g., \"Events.timestamp\")"
+                  },
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Human-readable step name"
+                        },
+                        "filter": {
+                          "description": "Filter or array of filters for this step"
+                        },
+                        "timeToConvert": {
+                          "type": "string",
+                          "description": "ISO 8601 duration — max time from previous step (e.g., \"P7D\" for 7 days, \"PT1H\" for 1 hour)"
+                        }
+                      },
+                      "required": ["name"]
+                    },
+                    "description": "Ordered funnel steps (minimum 2). Put inDateRange time filter ONLY on step 0."
+                  },
+                  "includeTimeMetrics": {
+                    "type": "boolean",
+                    "description": "Include avg/median/p90 time-to-convert per step"
+                  },
+                  "globalTimeWindow": {
+                    "type": "string",
+                    "description": "ISO 8601 duration — all steps must complete within this window from step 0"
+                  }
+                },
+                "required": ["bindingKey", "timeDimension", "steps"],
+                "description": "Funnel analysis. When provided, measures/dimensions are ignored."
+              },
+              "flow": {
+                "type": "object",
+                "properties": {
+                  "bindingKey": {
+                    "type": "string",
+                    "description": "Entity identifier dimension (e.g., \"Events.userId\")"
+                  },
+                  "timeDimension": {
+                    "type": "string",
+                    "description": "Time ordering dimension (e.g., \"Events.timestamp\")"
+                  },
+                  "eventDimension": {
+                    "type": "string",
+                    "description": "Dimension whose values become node labels (e.g., \"Events.eventType\")"
+                  },
+                  "startingStep": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Display name for the starting step"
+                      },
+                      "filter": {
+                        "description": "Filter(s) identifying the starting event"
+                      }
+                    },
+                    "required": ["name"],
+                    "description": "The anchor point — an object with { name, filter }, NOT a plain string."
+                  },
+                  "stepsBefore": {
+                    "type": "number",
+                    "description": "Steps to explore before starting step (0-5)"
+                  },
+                  "stepsAfter": {
+                    "type": "number",
+                    "description": "Steps to explore after starting step (0-5)"
+                  },
+                  "entityLimit": {
+                    "type": "number",
+                    "description": "Max entities to process (performance tuning)"
+                  },
+                  "outputMode": {
+                    "type": "string",
+                    "enum": ["sankey", "sunburst"],
+                    "description": "Visualization mode (default: sankey)"
+                  }
+                },
+                "required": ["bindingKey", "timeDimension", "eventDimension", "startingStep"],
+                "description": "Flow (path) analysis. When provided, measures/dimensions are ignored."
+              },
+              "retention": {
+                "type": "object",
+                "properties": {
+                  "timeDimension": {
+                    "type": "string",
+                    "description": "Timestamp dimension (e.g., \"Events.timestamp\")"
+                  },
+                  "bindingKey": {
+                    "type": "string",
+                    "description": "Entity identifier (e.g., \"Events.userId\")"
+                  },
+                  "dateRange": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "string",
+                        "description": "YYYY-MM-DD"
+                      },
+                      "end": {
+                        "type": "string",
+                        "description": "YYYY-MM-DD"
+                      }
+                    },
+                    "required": ["start", "end"],
+                    "description": "Cohort date range — MUST be an object { start, end }, NOT an array or string."
+                  },
+                  "granularity": {
+                    "type": "string",
+                    "enum": ["day", "week", "month"],
+                    "description": "Period size for retention buckets"
+                  },
+                  "periods": {
+                    "type": "number",
+                    "description": "Number of retention periods to calculate"
+                  },
+                  "retentionType": {
+                    "type": "string",
+                    "enum": ["classic", "rolling"],
+                    "description": "classic = returned in period N exactly; rolling = returned in period N or later"
+                  },
+                  "cohortFilters": {
+                    "description": "Optional filters on cohort entry events"
+                  },
+                  "activityFilters": {
+                    "description": "Optional filters on return activity events"
+                  },
+                  "breakdownDimensions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Segment retention by these dimensions (e.g., [\"Events.country\"])"
+                  }
+                },
+                "required": ["timeDimension", "bindingKey", "dateRange", "granularity", "periods"],
+                "description": "Retention (cohort) analysis. When provided, measures/dimensions are ignored."
+              }
+            }
+          },
+          "chart": {
+            "type": "object",
+            "description": "Chart configuration for the visualization. If omitted, chart type is auto-detected from query shape.",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "bar",
+                  "line",
+                  "area",
+                  "pie",
+                  "scatter",
+                  "treemap",
+                  "kpiNumber",
+                  "kpiDelta",
+                  "kpiText",
+                  "table",
+                  "recordsTable",
+                  "radar",
+                  "radialBar",
+                  "bubble",
+                  "funnel",
+                  "waterfall",
+                  "gauge",
+                  "boxPlot",
+                  "candlestick",
+                  "activityGrid",
+                  "measureProfile",
+                  "sankey",
+                  "sunburst",
+                  "heatmap"
+                ],
+                "description": "Chart type to render"
+              },
+              "title": {
+                "type": "string",
+                "description": "Chart title"
+              },
+              "chartConfig": {
+                "type": "object",
+                "description": "Axis configuration — same schema as agent add_portlet chartConfig.",
+                "properties": {
+                  "xAxis": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Dimension fields for X axis"
+                  },
+                  "yAxis": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Measure fields for Y axis"
+                  },
+                  "series": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Dimension for series splitting (grouped/stacked)"
+                  },
+                  "yAxisAssignment": {
+                    "type": "object",
+                    "description": "Dual Y-axis: map measure fields to \"left\" or \"right\". Only bar/line/area with 2+ measures of different scales."
+                  },
+                  "sizeField": {
+                    "type": "string",
+                    "description": "Bubble chart size field"
+                  },
+                  "colorField": {
+                    "type": "string",
+                    "description": "Bubble chart color field"
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "recordsTable only: fields to render as columns, in this order. Omit to show every field the query returns, in query order."
+                  },
+                  "hiddenColumns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "recordsTable only: fields fetched for row context or rowLink tokens but never displayed (e.g. an id used in the URL template). Leave empty unless a field is genuinely only needed behind the scenes — anything listed here disappears from the table."
+                  }
+                }
+              },
+              "displayConfig": {
+                "type": "object",
+                "description": "Display options.",
+                "properties": {
+                  "showLegend": {
+                    "type": "boolean"
+                  },
+                  "showGrid": {
+                    "type": "boolean"
+                  },
+                  "showTooltip": {
+                    "type": "boolean"
+                  },
+                  "stacked": {
+                    "type": "boolean"
+                  },
+                  "stackType": {
+                    "type": "string",
+                    "enum": ["none", "normal", "percent"]
+                  },
+                  "orientation": {
+                    "type": "string",
+                    "enum": ["horizontal", "vertical"]
+                  },
+                  "columnFormats": {
+                    "type": "object",
+                    "description": "recordsTable only: how each column renders, keyed by field name (e.g. \"Employees.salary\"). Formats are never inferred from the data — a column is plain text unless you say otherwise, so set this for any numeric, date, status or ratio column.",
+                    "additionalProperties": {
+                      "type": "object",
+                      "required": ["kind"],
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": ["text", "number", "date", "badge", "progress", "link"],
+                          "description": "Required on every entry. text: as-is. number: formatted numeric. date: formatted date. badge: coloured pill for statuses/categories. progress: bar or ring for a bounded value. link: the value as a link to linkTemplate. Use \"text\" when you only want to set a label."
+                        },
+                        "numberFormat": {
+                          "type": "object",
+                          "description": "kind \"number\": { unit: \"currency\"|\"percent\"|\"number\"|\"custom\", decimals, abbreviate (K/M/B), currencyCode, customPrefix, customSuffix }."
+                        },
+                        "dateGranularity": {
+                          "type": "string",
+                          "description": "kind \"date\": granularity to render at (e.g. \"day\", \"month\", \"year\")."
+                        },
+                        "badgeColors": {
+                          "type": "array",
+                          "description": "kind \"badge\": an ARRAY of { value, colorIndex } entries, not an object keyed by value. colorIndex is a number index into the dashboard palette (0, 1, 2, …), never a colour name like \"green\" — the palette is themed, so names would not follow it. A value with no entry renders neutral rather than being assigned a guessed colour.",
+                          "items": {
+                            "type": "object",
+                            "required": ["value", "colorIndex"],
+                            "properties": {
+                              "value": {
+                                "type": "string",
+                                "description": "Cell value to colour, matched exactly"
+                              },
+                              "colorIndex": {
+                                "type": "number",
+                                "description": "Index into the dashboard colour palette"
+                              }
+                            }
+                          }
+                        },
+                        "progressMin": {
+                          "type": "number",
+                          "description": "kind \"progress\": lower bound (default 0). Values are clamped."
+                        },
+                        "progressMax": {
+                          "type": "number",
+                          "description": "kind \"progress\": upper bound (default 100). Values are clamped."
+                        },
+                        "progressStyle": {
+                          "type": "string",
+                          "enum": ["bar", "circle"],
+                          "description": "kind \"progress\": full-width bar, or a compact ring for narrow columns."
+                        },
+                        "progressBands": {
+                          "type": "array",
+                          "description": "kind \"progress\": colour bands, as an ARRAY of { value, colorIndex } entries. A cell takes the colour of the highest band whose value is at or below the cell value, so { value: 0, colorIndex: 3 }, { value: 50, colorIndex: 2 }, { value: 80, colorIndex: 1 } reads red below 50, then yellow, then green from 80. Below every band the bar keeps its default colour. colorIndex is a number index into the dashboard palette, never a colour name.",
+                          "items": {
+                            "type": "object",
+                            "required": ["value", "colorIndex"],
+                            "properties": {
+                              "value": {
+                                "type": "number",
+                                "description": "Where the band starts, in the column's own units"
+                              },
+                              "colorIndex": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Index into the dashboard colour palette"
+                              }
+                            }
+                          }
+                        },
+                        "label": {
+                          "type": "string",
+                          "description": "Header override; defaults to the field title from the cube metadata."
+                        },
+                        "align": {
+                          "type": "string",
+                          "enum": ["left", "right"],
+                          "description": "Cell alignment. Numbers usually read better right-aligned."
+                        },
+                        "linkTemplate": {
+                          "type": "string",
+                          "description": "kind \"link\": URL with {Cube.field} tokens substituted from the row, including hidden columns (e.g. \"/employees/{Employees.id}\"). Relative paths and http(s) URLs only. The cell link wins over rowLink for that cell."
+                        }
+                      }
+                    }
+                  },
+                  "rowLink": {
+                    "type": "object",
+                    "description": "recordsTable only: makes each row a link.",
+                    "required": ["urlTemplate"],
+                    "properties": {
+                      "urlTemplate": {
+                        "type": "string",
+                        "description": "URL with {Cube.field} tokens substituted from the row, including hidden columns (e.g. \"/employees/{Employees.id}\"). Relative paths and http(s) URLs only."
+                      },
+                      "target": {
+                        "type": "string",
+                        "enum": ["self", "blank"],
+                        "description": "Open in the same tab (default) or a new one."
+                      }
+                    }
+                  },
+                  "pageSize": {
+                    "type": "number",
+                    "enum": [25, 50, 100],
+                    "description": "recordsTable only: rows per page (default 25)."
+                  }
+                }
+              },
+              "xAxis": {
+                "type": "string",
+                "description": "Deprecated: use chartConfig.xAxis"
+              },
+              "yAxis": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Deprecated: use chartConfig.yAxis"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
