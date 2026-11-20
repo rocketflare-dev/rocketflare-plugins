@@ -9,6 +9,35 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.13.0 — 2026-11-20
+
+**analytics** — Analytics offers drizzle-cube's own MCP tools through the app's MCP server as `analytics_discover`, `analytics_validate` and `analytics_load`, and drops its own `/mcp`, which kit 0.41.0 owns.
+[Porting note](plugins/analytics/docs/upgrades/3.13.0.md).
+
+**connectors** — No change to connectors: this release exists because the repository released `analytics` and every plugin here ships at the repository's version.
+[Porting note](plugins/connectors/docs/upgrades/3.13.0.md).
+
+**freeagent** — No change to freeagent's behaviour: this release exists because the repository released `analytics` and every plugin here ships at the repository's version, and it carries one test-only lint fix.
+[Porting note](plugins/freeagent/docs/upgrades/3.13.0.md).
+
+**global-search** — No change to global-search: this release exists because the repository released `analytics` and every plugin here ships at the repository's version.
+[Porting note](plugins/global-search/docs/upgrades/3.13.0.md).
+
+**guide** — No change to guide: this release exists because the repository released `analytics` and every plugin here ships at the repository's version.
+[Porting note](plugins/guide/docs/upgrades/3.13.0.md).
+
+**inbox** — No change to inbox: this release exists because the repository released `analytics` and every plugin here ships at the repository's version.
+[Porting note](plugins/inbox/docs/upgrades/3.13.0.md).
+
+**issue-reports** — No change to issue-reports: this release exists because the repository released `analytics` and every plugin here ships at the repository's version.
+[Porting note](plugins/issue-reports/docs/upgrades/3.13.0.md).
+
+**m365** — No change to m365: this release exists because the repository released `analytics` and every plugin here ships at the repository's version.
+[Porting note](plugins/m365/docs/upgrades/3.13.0.md).
+
+**web-knowledge** — No change to web-knowledge: this release exists because the repository released `analytics` and every plugin here ships at the repository's version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.13.0.md).
+
 ## 3.12.0 — 2026-11-11
 
 **web-knowledge** — `fetch_page` now sends the URL it checked: a `#fragment` is dropped before the page is requested, so the request never carries text the reachable-URL check did not compare.
