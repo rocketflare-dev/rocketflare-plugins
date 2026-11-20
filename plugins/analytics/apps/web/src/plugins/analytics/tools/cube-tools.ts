@@ -25,10 +25,8 @@
 import { ANALYTICS_SUBJECT } from '@rocketflare/shared/plugins/analytics/index'
 import type { CubeTools, MCPToolDefinition } from 'drizzle-cube/mcp'
 import { getCubeTools } from 'drizzle-cube/mcp'
-import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
-import { groups, groupTypes, tenantUsers } from '@/db/schema/kit'
-import type { Database, Tool, ToolCtx, ToolMcpOptions } from '@/plugins/api'
+import type { Tool, ToolCtx, ToolMcpOptions } from '@/plugins/api'
 import { defineTool } from '@/plugins/api'
 import { type AnalyticsSecurityContext, analyticsSecurityContext } from '../cubes/security'
 import { CUBE_STATEMENT_TIMEOUT_MS, withStatementTimeout } from '../services/cube-limits'
@@ -95,34 +93,19 @@ export function libraryCubeToolDefinitions(cubeTools: Pick<CubeTools, 'definitio
 
 /**
  * The reader behind this call, as the cubes see it — the same shape `/cubejs-api` builds from
- * `ctx.detached()`. `ToolCtx` carries the tenant, the user, the group ids and the admin-level flag
- * (`scope.bypass`, which the kit sets exactly where a request's `isAdmin` is true); the role and the
- * group TYPE names `groupFilter` narrows on are read here, in one query each, under the caller's
- * own tenant.
+ * `ctx.detached()` (`buildSecurityContext`). `ToolCtx.requester` already carries the role, the
+ * admin-level flag and the groups with their TYPE names `groupFilter` narrows on, resolved by the
+ * kit under the caller's own tenant, so this is pure. An admin-level reader is never narrowed, so
+ * their groups are not mapped — exactly as on the route.
  */
-export async function toolSecurityContext(
-  db: Database,
-  ctx: Pick<ToolCtx, 'tenantId' | 'scope'>
-): Promise<AnalyticsSecurityContext> {
-  const userId = ctx.scope.userId
-  if (!userId) throw new Error('A cube tool needs a person behind the call')
-  const [membership] = await db
-    .select({ role: tenantUsers.role })
-    .from(tenantUsers)
-    .where(and(eq(tenantUsers.tenantId, ctx.tenantId), eq(tenantUsers.userId, userId)))
-    .limit(1)
-  const isAdmin = ctx.scope.bypass
-  const memberships =
-    isAdmin || ctx.scope.groupIds.length === 0
-      ? []
-      : await db
-          .select({ id: groups.id, name: groups.name, typeName: groupTypes.name })
-          .from(groups)
-          .innerJoin(groupTypes, eq(groupTypes.id, groups.groupTypeId))
-          .where(and(eq(groups.tenantId, ctx.tenantId), inArray(groups.id, ctx.scope.groupIds)))
+export function toolSecurityContext(
+  ctx: Pick<ToolCtx, 'tenantId' | 'requester'>
+): AnalyticsSecurityContext {
+  const reader = ctx.requester
+  if (!reader) throw new Error('A cube tool needs a person behind the call')
   return analyticsSecurityContext(
-    { tenantId: ctx.tenantId, userId, role: membership?.role ?? null, isAdmin },
-    memberships
+    { tenantId: ctx.tenantId, userId: reader.userId, role: reader.role, isAdmin: reader.isAdmin },
+    reader.isAdmin ? [] : reader.groups
   )
 }
 
@@ -132,7 +115,7 @@ export async function toolSecurityContext(
  * reader, and there is no reader to scope by.
  */
 export async function analyticsCubeTools(ctx: ToolCtx): Promise<Tool[]> {
-  if (!ctx.scope.userId || !ctx.can('read', ANALYTICS_SUBJECT)) return []
+  if (!ctx.requester || !ctx.can('read', ANALYTICS_SUBJECT)) return []
   const features = await ctx.features()
   // Definitions only — no database work happens until a handler runs.
   const definitions = libraryCubeToolDefinitions(
@@ -167,7 +150,7 @@ function cubeTool(
     mcp: CUBE_TOOLS[name].mcp,
     async handler(input) {
       return withStatementTimeout(ctx.db, CUBE_STATEMENT_TIMEOUT_MS, async tx => {
-        const securityContext = await toolSecurityContext(tx, ctx)
+        const securityContext = toolSecurityContext(ctx)
         const result = await getCubeTools({
           semanticLayer: buildSemanticLayer(tx, features),
           getSecurityContext: () => securityContext,

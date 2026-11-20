@@ -108,7 +108,8 @@ sign-in, exposure modes, `mcp:read` scope, rate limits and call log.
 
 - **Same doors, same answers.** Each call compiles against `services/semantic-layer.ts` (the one
   `/cubejs-api` uses), under the security context `/cubejs-api` would build for the same reader
-  (`toolSecurityContext`: tenant, role, groups by type, admin level from `scope.bypass`), inside
+  (`toolSecurityContext`, pure: tenant, role, admin level and groups by type from `ToolCtx.requester`,
+  which the kit resolves — no membership query here), inside
   `withStatementTimeout`. `tests/api/cube-tools.test.ts` proves the answers equal `/cubejs-api`'s,
   that another organisation's rows never appear, and that `ActivityEvents` stays admin-only.
 - **Not offered** to a run with no person behind it, nor to a reader without `read Analytics`.

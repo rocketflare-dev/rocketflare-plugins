@@ -15,8 +15,9 @@ import {
   setupTestDatabase,
 } from '@testkit/integration'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { activityEvents, groups, groupTypes } from '@/db/schema/kit'
+import { activityEvents } from '@/db/schema/kit'
 import type { ToolCtx } from '@/plugins/api'
+import { buildSecurityContext } from '../../cubes/security'
 import { analyticsCubeTools, toolSecurityContext } from '../../tools/cube-tools'
 
 const db = setupTestDatabase()
@@ -210,43 +211,39 @@ describe('the cube tools over MCP', () => {
 })
 
 describe('the security context a cube tool compiles under', () => {
-  it('is the one /cubejs-api builds: role, groups by type for a member, none for an admin', async () => {
-    const [type] = await db
-      .insert(groupTypes)
-      .values({ tenantId: a.tenantId, name: 'Department' })
-      .returning()
-    const [finance] = await db
-      .insert(groups)
-      .values({ tenantId: a.tenantId, groupTypeId: type?.id ?? '', name: 'Finance' })
-      .returning()
-    const financeId = finance?.id ?? ''
-    // A group of ANOTHER organisation, named in the scope, must not be resolved under this one.
-    const [otherType] = await db
-      .insert(groupTypes)
-      .values({ tenantId: b.tenantId, name: 'Department' })
-      .returning()
-    const [foreign] = await db
-      .insert(groups)
-      .values({ tenantId: b.tenantId, groupTypeId: otherType?.id ?? '', name: 'Sales' })
-      .returning()
-    const scope = (userId: string, bypass: boolean) => ({
-      tenantId: a.tenantId,
-      scope: { tenantId: a.tenantId, userId, groupIds: [financeId, foreign?.id ?? ''], bypass },
-    })
-    expect(await toolSecurityContext(db, scope(a.memberId, false))).toEqual({
+  it('is the one /cubejs-api builds: role, groups by type for a member, none for an admin', () => {
+    const finance = { id: 'g-finance', name: 'Finance', typeName: 'Department' }
+    const asReader = (userId: string, role: 'member' | 'owner', isAdmin: boolean) =>
+      toolSecurityContext({
+        tenantId: a.tenantId,
+        requester: { userId, role, isAdmin, groups: [finance] },
+      })
+    const member = asReader(a.memberId, 'member', false)
+    expect(member).toEqual({
       tenantId: a.tenantId,
       userId: a.memberId,
       role: 'member',
-      groupIds: [financeId],
+      groupIds: ['g-finance'],
       groups: { Department: ['Finance'] },
-      groupIdsByType: { Department: [financeId] },
+      groupIdsByType: { Department: ['g-finance'] },
       isAdmin: false,
     })
-    expect(await toolSecurityContext(db, scope(a.ownerId, true))).toMatchObject({
+    // The same reader through the route's builder gives the same context.
+    expect(
+      buildSecurityContext({
+        tenantId: a.tenantId,
+        userId: a.memberId,
+        role: 'member',
+        isAdmin: false,
+        groups: [finance],
+      } as unknown as Parameters<typeof buildSecurityContext>[0])
+    ).toEqual(member)
+    expect(asReader(a.ownerId, 'owner', true)).toMatchObject({
       role: 'owner',
       isAdmin: true,
       groupIds: [],
     })
+    expect(() => toolSecurityContext({ tenantId: a.tenantId, requester: null })).toThrow()
   })
 })
 
@@ -256,6 +253,9 @@ function toolCtxFor(input: { userId: string | null; can: boolean }): ToolCtx {
     db,
     tenantId: a.tenantId,
     scope: { tenantId: a.tenantId, userId: input.userId, groupIds: [], bypass: false },
+    requester: input.userId
+      ? { userId: input.userId, role: 'member', isAdmin: false, groups: [] }
+      : null,
     can: () => input.can,
     features: async () => [],
   } as unknown as ToolCtx
