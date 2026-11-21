@@ -1,6 +1,7 @@
 {
   "id": "issue-reports",
   "label": "Issue reports",
+  "description": "Anyone on the team talks a bug or an idea through with an agent, which turns it into a GitHub issue a developer can pick up.",
   "version": "3.13.1",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "subdir": "plugins/issue-reports",
