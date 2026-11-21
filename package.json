@@ -1,5 +1,6 @@
 {
   "name": "rocketflare-plugins",
+  "license": "MIT",
   "version": "3.13.1",
   "private": true,
   "description": "The first-party plugins for Rocketflare — copied into an app, never installed from npm.",
