@@ -9,6 +9,35 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.13.2 — 2026-11-21
+
+**analytics** — The analytics manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/analytics/docs/upgrades/3.13.2.md).
+
+**connectors** — The connectors manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/connectors/docs/upgrades/3.13.2.md).
+
+**freeagent** — The freeagent manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/freeagent/docs/upgrades/3.13.2.md).
+
+**global-search** — The global-search manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/global-search/docs/upgrades/3.13.2.md).
+
+**guide** — The guide manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/guide/docs/upgrades/3.13.2.md).
+
+**inbox** — The inbox manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/inbox/docs/upgrades/3.13.2.md).
+
+**issue-reports** — The issue-reports manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/issue-reports/docs/upgrades/3.13.2.md).
+
+**m365** — The m365 manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/m365/docs/upgrades/3.13.2.md).
+
+**web-knowledge** — The web-knowledge manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.13.2.md).
+
 ## 3.13.1 — 2026-11-21
 
 **analytics** — Analytics' agent guide names the removed `db:refresh-facts` and `db:check-facts` web scripts without a runnable `pnpm` command, so the kit's `/rf-agent-docs` check stops failing in every host that installs it.
