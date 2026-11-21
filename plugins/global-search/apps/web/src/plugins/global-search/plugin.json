@@ -2,7 +2,7 @@
   "id": "global-search",
   "label": "Global search",
   "description": "One ⌘K palette to go anywhere, run a command or find anything a person may see in your app; any plugin can add results and commands.",
-  "version": "3.13.1",
+  "version": "3.13.2",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "subdir": "plugins/global-search",
   "anchor": "apps/web/src/plugins/global-search/plugin.json",
