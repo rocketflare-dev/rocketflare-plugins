@@ -189,4 +189,5 @@ a vulnerability, see [`SECURITY.md`](SECURITY.md).
 
 ## Licence
 
-MIT, the same as the kit. See `LICENSE`.
+MIT, the same as the kit. See `LICENSE`. Each plugin also carries a copy in
+`apps/web/src/plugins/<id>/LICENSE`, so the notice travels into every app it is installed in.
