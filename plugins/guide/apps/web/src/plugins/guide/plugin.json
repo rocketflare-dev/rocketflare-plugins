@@ -1,6 +1,7 @@
 {
   "id": "guide",
   "label": "User guide",
+  "description": "An in-app user guide about your app, written by your coding agent, kept in step with the code, and answered from by \"Ask the Guide\".",
   "version": "3.13.1",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "subdir": "plugins/guide",
