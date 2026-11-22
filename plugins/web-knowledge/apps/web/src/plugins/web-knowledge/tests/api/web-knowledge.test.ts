@@ -191,7 +191,7 @@ describe('agent tools', () => {
     const ctx = makeToolCtx({ db, tenantId: tenant })
     // biome-ignore lint/suspicious/noExplicitAny: the runtime's context, built from the test one
     const raw = { db, cfg: ctx.config, env: ctx.env as any, scope: ctx.scope }
-    return (await webKnowledgeServer.agentTools(raw)).map(t => t.name)
+    return (await webKnowledgeServer.tools(raw)).map(t => t.name)
   }
 
   it('are offered to a tenant with search on and a key, and to nobody else', async () => {

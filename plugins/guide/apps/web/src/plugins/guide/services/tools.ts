@@ -1,6 +1,6 @@
 /**
  * `search_guide` — how a model reads the user guide: in "Ask the Guide" (the only tool that chat
- * offers) and in every agent run (`agentTools`). The kit's own `search_knowledge` also covers the
+ * offers) and in every agent run (`tools`). The kit's own `search_knowledge` also covers the
  * guide through `knowledgeSources`; this tool is the guide-only search with citation keys.
  *
  * The model supplies only `query` and `topK`. The audience is fixed by the caller from the

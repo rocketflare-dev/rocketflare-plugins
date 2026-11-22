@@ -49,7 +49,7 @@ export const freeagentServer = {
   publicMounts: [['/api/hooks/freeagent', freeagentHooksRouter]],
   jobHandlers: { [FREEAGENT_SYNC_JOB]: handleFreeagentSync },
   scheduledTasks: { [FREEAGENT_CRON]: [enqueueSyncsTask] },
-  agentTools: raw => freeagentAgentTools(toolCtx(raw)),
+  tools: raw => freeagentAgentTools(toolCtx(raw)),
   /**
    * Additive, over this plugin's own subject. Owners and admins connect, disconnect and sync;
    * everyone may read the mirrored books (the read tools are offered to every member's runs, so

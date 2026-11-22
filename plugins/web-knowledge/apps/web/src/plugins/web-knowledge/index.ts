@@ -3,7 +3,7 @@
  *
  * Read top to bottom: one mount for the settings, one CASL subject, and two agent tools that only a
  * tenant with web search ON is offered. That last part is the plugin's reason to exist and the
- * reason it needs kit ≥ 0.9.0: `agentTools` is async there, so it reads this tenant's settings row
+ * reason it needs kit ≥ 0.9.0: `tools` is async there, so it reads this tenant's settings row
  * and returns `[]` when the organisation has not turned search on. A model is never shown a tool
  * that could only answer "not configured".
  *
@@ -26,7 +26,7 @@ import { type WebToolDeps, webSearchTool } from './tools/web-search'
 const boundFetch: WebToolDeps['fetch'] = (input, init) => fetch(input, init)
 
 /**
- * The two tools for one `agentTools` call, sharing one `ReachableUrls`: what `web_search` returns
+ * The two tools for one `tools` call, sharing one `ReachableUrls`: what `web_search` returns
  * to them, plus the URLs the person typed themselves (`ctx.requesterUrls` — their own chat turns or
  * the run input they submitted), so a pasted link can be read without a search first. Nothing the
  * model, a page or a document supplies is in either.
@@ -43,7 +43,7 @@ export function webTools(
 export const webKnowledgeServer = {
   shared: webKnowledgeShared,
   mounts: [['/api/web-knowledge', webKnowledgeRouter]],
-  agentTools: async raw => {
+  tools: async raw => {
     const ctx = toolCtx(raw)
     const search = await loadEnabledSearch(ctx.db, ctx.tenantId)
     if (!search) return []

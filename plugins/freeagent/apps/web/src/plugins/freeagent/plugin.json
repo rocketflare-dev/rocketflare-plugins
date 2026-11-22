@@ -4,7 +4,7 @@
   "description": "Connect each organisation's FreeAgent company (UK accounting) and get its books mirrored into your app, for pages, agents and analytics.",
   "version": "3.13.3",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.29.0",
+  "minKit": "0.41.0",
   "anchor": "apps/web/src/plugins/freeagent/plugin.json",
   "paths": [
     "apps/web/src/plugins/freeagent/**",

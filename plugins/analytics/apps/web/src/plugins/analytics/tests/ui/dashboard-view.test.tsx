@@ -17,7 +17,7 @@ import {
   requestBody,
   stubFetch,
 } from '@testkit/integration'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useToastStore } from '@/plugins/api/ui'
 import DashboardViewPage from '../../ui/pages/DashboardViewPage'

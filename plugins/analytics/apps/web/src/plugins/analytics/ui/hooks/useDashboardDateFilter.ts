@@ -12,7 +12,7 @@
  */
 import type { DashboardConfig } from 'drizzle-cube/client'
 import { useCallback, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 
 /** One dashboard-level filter as drizzle-cube types it (`DashboardConfig['filters'][n]`). */
 export type DashboardFilter = NonNullable<DashboardConfig['filters']>[number]

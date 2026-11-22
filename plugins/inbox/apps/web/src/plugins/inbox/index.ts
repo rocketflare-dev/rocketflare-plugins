@@ -40,7 +40,7 @@ export const inboxServer = {
     },
   ],
   jobHandlers: { [INBOX_PARSE_JOB]: handleInboxParse },
-  agentTools: raw => {
+  tools: raw => {
     const ctx = toolCtx(raw)
     return [listInboxMessagesTool(ctx) as Tool, getInboxMessageTool(ctx) as Tool]
   },

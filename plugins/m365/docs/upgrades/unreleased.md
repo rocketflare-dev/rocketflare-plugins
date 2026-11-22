@@ -12,11 +12,16 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+No change to m365: this release carries the analytics, freeagent, guide, inbox and web-knowledge changes, and every plugin in this repository ships at one version.
 
 ## How to apply
 
+1. Nothing to do; `pnpm plugin upgrade m365 --apply` only moves the recorded version.
+
 ## Conflicts to expect
 
+None.
+
 ## Verify
+
+1. `pnpm plugin check` passes.

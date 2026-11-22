@@ -17,7 +17,7 @@ import {
   type PortletConfig,
 } from 'drizzle-cube/client'
 import { type FormEvent, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { Modal, PageHeader, usePermissions } from '@/plugins/api/ui'
 import { CubeClientProvider } from '../components/CubeClientProvider'
 import { asDashboardConfig } from '../components/DashboardLoader'

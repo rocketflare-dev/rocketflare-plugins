@@ -36,6 +36,10 @@ describe('pure helpers', () => {
       last: `${BASE}/v2/contacts?page=5`,
     })
     expect(parseLinkHeader(null)).toEqual({})
+    // FreeAgent also sends the relation single-quoted, and unquoted is legal too.
+    expect(
+      parseLinkHeader(`<${BASE}/v2/bank_transactions?page=2>; rel='next', <${BASE}/x?page=9>; rel=last`)
+    ).toEqual({ next: `${BASE}/v2/bank_transactions?page=2`, last: `${BASE}/x?page=9` })
     expect(retryAfterMs('60')).toBe(60_000)
     expect(retryAfterMs(new Date(1_000_000 + 5_000).toUTCString(), 1_000_000)).toBeLessThanOrEqual(
       5_000

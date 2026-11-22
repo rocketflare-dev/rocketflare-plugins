@@ -3,13 +3,13 @@
 Web search for agents and chat, on each organisation's own search API key. An admin picks a
 provider in **Settings → Web search**, saves a key, tests it and turns it on. From then on, that
 tenant's agent runs and chat turns carry two more tools, `web_search` and `fetch_page`. No other
-tenant gets them. Requires kit ≥ 0.9.0 because `agentTools` has to be async and `sealSecret` has to
+tenant gets them. Requires kit ≥ 0.9.0 because `tools` has to be async and `sealSecret` has to
 exist.
 
 | Where | What |
 |---|---|
 | `packages/shared/src/plugins/web-knowledge/index.ts` | Provider list and info (`WEB_SEARCH_PROVIDER_INFO`, which the page reads directly), settings contracts, `webKnowledgeShared` (subject `WebSearchConfig`) |
-| `index.ts` | Server entry. It has one mount and grants (admin-level `manage`; member and support `read`). `agentTools` reads the tenant's row and returns `[]` unless the row is enabled **and** has a key |
+| `index.ts` | Server entry. It has one mount and grants (admin-level `manage`; member and support `read`). `tools` reads the tenant's row and returns `[]` unless the row is enabled **and** has a key |
 | `db/schema/web-search-settings.ts` | `web_search_settings`: one row per tenant (unique `tenant_id`), `api_key_enc` = `sealSecret` output, RLS |
 | `api/settings.ts` | The only reader and writer of the row. `nextSettings` holds the update rules as a pure function: an omitted key is kept, `null` clears it, a provider change with no new key clears it, and the FIRST key turns search on unless the body says `enabled: false` |
 | `api/routes.ts` | `GET/PUT /api/web-knowledge/settings` and `POST /settings/test`. The test route always answers 200 with a verdict |
@@ -23,7 +23,7 @@ exist.
 
 - **The key never leaves the server.** Routes answer `hasCredential`. The activity row records
   `key: keep|clear|set`, never the value. The key is opened only inside a tool handler or the test
-  route, at the moment of the outbound call, never in the `agentTools` builder.
+  route, at the moment of the outbound call, never in the `tools` builder.
 - **`fetch_page` reads only what `web_search` returned.** A URL can carry whatever the model has
   read, so the set in `tools/reachable-urls.ts` is the boundary and the `note` is only advice.
 - **Page text is scanned in linear time** (`stripMarkup`). Never put a lazy or backreferencing regex
@@ -41,7 +41,7 @@ exist.
 
 ## Known gaps
 
-- `fetch_page` reads only URLs `web_search` returned to the same `agentTools` call. A URL the person
+- `fetch_page` reads only URLs `web_search` returned to the same `tools` call. A URL the person
   pasted is refused, because the tool context does not carry their words; an agent run that parks
   and resumes starts with an empty set and has to search again.
 - `guardUrl` checks names, not addresses. A public hostname that resolves to a private address
