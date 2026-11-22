@@ -82,10 +82,26 @@ export function buildRegistry(
   return providers
 }
 
+/** Contributions a test adds after the installed ones; read at call time like the rest. */
+interface ExtraProviders {
+  contributions: readonly unknown[]
+  sources: readonly string[]
+}
+let extra: ExtraProviders | null = null
+
+/**
+ * **Tests only.** Adds `next`'s contributions (and the plugin ids they claim to come from) after
+ * the installed ones, read at every call, so a test registers third-party providers without
+ * `vi.mock('@/plugins/api/peers')` and shares the host's `api` registry. `null` removes them.
+ */
+export function setExtraProvidersForTests(next: ExtraProviders | null): void {
+  extra = next
+}
+
 /** Every installed provider, validated. Throws loudly on a bad registration. */
 export function installedProviders(): SearchProvider[] {
   return buildRegistry(
-    extensions(SEARCH_PROVIDERS_EXTENSION),
-    extensionSources(SEARCH_PROVIDERS_EXTENSION)
+    [...extensions(SEARCH_PROVIDERS_EXTENSION), ...(extra?.contributions ?? [])],
+    [...extensionSources(SEARCH_PROVIDERS_EXTENSION), ...(extra?.sources ?? [])]
   )
 }

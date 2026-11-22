@@ -1,6 +1,3 @@
-// @vitest-isolate
-// Mocks `@/plugins/api/peers` (to register third-party providers through `extensions`), so this
-// file needs its own module registry.
 /**
  * `GET /api/global-search` on real Postgres, through the real mount:
  *
@@ -32,33 +29,24 @@ import {
   setupTestDatabase,
 } from '@testkit/integration'
 import { makeJobCtx } from '@testkit/unit'
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { ingestDocument, listAgents } from '@/plugins/api'
 import { allTables } from '@/plugins/api/peers'
-import { InvalidSearchProviderError } from '../../services/registry'
+import {
+  InvalidSearchProviderError,
+  setExtraProvidersForTests,
+} from '../../services/registry'
 import { loadSettingsRow } from '../../services/settings'
 import type { SearchProvider } from '../../types'
 
-/** What the mocked `extensions()` adds on top of the installed plugins' contributions. */
-const extra = vi.hoisted(() => ({
+/** What the registry adds on top of the installed plugins' contributions (`setExtraProvidersForTests`). */
+const extra = {
   contributions: [] as unknown[],
   sources: [] as string[],
-}))
+}
 
-vi.mock('@/plugins/api/peers', async importOriginal => {
-  const real = await importOriginal<typeof import('@/plugins/api/peers')>()
-  return {
-    ...real,
-    extensions: (key: string) => [
-      ...real.extensions(key),
-      ...(key === 'global-search.providers' ? extra.contributions : []),
-    ],
-    extensionSources: (key: string) => [
-      ...real.extensionSources(key),
-      ...(key === 'global-search.providers' ? extra.sources : []),
-    ],
-  }
-})
+beforeAll(() => setExtraProvidersForTests(extra))
+afterAll(() => setExtraProvidersForTests(null))
 
 const db = setupTestDatabase()
 

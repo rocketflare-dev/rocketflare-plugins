@@ -12,11 +12,18 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+The connectors API test shares the host's `api` module registry: it drops a `// @vitest-isolate` marker it did not need.
+
+- `tests/api/connectors.test.ts` swaps the provider registry with `setConnectorProvidersForTests` and puts it back in `afterAll`, so nothing leaks to a file that runs after it in the same worker.
 
 ## How to apply
 
+1. Take this release's `apps/web/src/plugins/connectors/tests/api/connectors.test.ts` (`pnpm plugin upgrade connectors` does it).
+
 ## Conflicts to expect
 
+- `tests/api/connectors.test.ts` → only if you edited it → keep your edits and delete the first line, `// @vitest-isolate`.
+
 ## Verify
+
+1. `pnpm test api apps/web/src/plugins/connectors` passes, and lists the file under `api`, not `api-isolated`.

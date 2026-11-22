@@ -1,7 +1,6 @@
-// @vitest-isolate
 /**
- * Isolated because it swaps the provider registry for a fixture, which must not leak into another
- * file sharing this worker.
+ * Swaps the provider registry for a fixture (`setConnectorProvidersForTests`) and puts it back in
+ * `afterAll`, so the file shares the host's `api` registry.
  *
  * The connectors plugin on real Postgres, against a FAKE vendor: the routes (roles, no secrets
  * out), the public consent callback (signed state or nothing), the sync engine (paging, cursors,
