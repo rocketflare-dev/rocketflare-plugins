@@ -9,6 +9,35 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.14.0 — 2026-11-22
+
+**analytics** — Analytics imports `react-router` instead of `react-router-dom`, as the kit has since 0.25.0, so it no longer needs the host to keep `react-router-dom` installed (#40).
+[Porting note](plugins/analytics/docs/upgrades/3.14.0.md).
+
+**connectors** — No change to connectors: this release carries the analytics, freeagent, guide, inbox and web-knowledge changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/connectors/docs/upgrades/3.14.0.md).
+
+**freeagent** — FreeAgent's pager reads a single-quoted `rel='next'`, so a mirrored list no longer stops after 100 rows; a full resync re-reads what it missed, and tools register under `tools` (kit 0.41.0) (#38).
+[Porting note](plugins/freeagent/docs/upgrades/3.14.0.md).
+
+**global-search** — No change to global-search: this release carries the analytics, freeagent, guide, inbox and web-knowledge changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/global-search/docs/upgrades/3.14.0.md).
+
+**guide** — Guide registers its tools under `tools` instead of the deprecated `agentTools`, which `pnpm plugin check` warned about, and so needs kit 0.41.0 or later.
+[Porting note](plugins/guide/docs/upgrades/3.14.0.md).
+
+**inbox** — Inbox registers its tools under `tools` instead of the deprecated `agentTools`, which `pnpm plugin check` warned about, and so needs kit 0.41.0 or later. (rocketflare-plugins#39, item 5)
+[Porting note](plugins/inbox/docs/upgrades/3.14.0.md).
+
+**issue-reports** — No change to issue-reports: this release carries the analytics, freeagent, guide, inbox and web-knowledge changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/issue-reports/docs/upgrades/3.14.0.md).
+
+**m365** — No change to m365: this release carries the analytics, freeagent, guide, inbox and web-knowledge changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/m365/docs/upgrades/3.14.0.md).
+
+**web-knowledge** — Web knowledge registers its tools under `tools` instead of the deprecated `agentTools`, which `pnpm plugin check` warned about, and so needs kit 0.41.0 or later.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.14.0.md).
+
 ## 3.13.3 — 2026-11-22
 
 **analytics** — No change to analytics: this release carries the global-search and connectors test changes, and every plugin in this repository ships at one version.

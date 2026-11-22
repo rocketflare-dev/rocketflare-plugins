@@ -1,6 +1,6 @@
 ---
 version: unreleased
-previous: 3.13.3
+previous: 3.14.0
 date: null
 breaking: false
 migrations: []
@@ -12,16 +12,11 @@ manual: false
 
 ## What changed
 
-No change to global-search: this release carries the analytics, freeagent, guide, inbox and web-knowledge changes, and every plugin in this repository ships at one version.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Nothing to do; `pnpm plugin upgrade global-search --apply` only moves the recorded version.
-
 ## Conflicts to expect
 
-None.
-
 ## Verify
-
-1. `pnpm plugin check` passes.
