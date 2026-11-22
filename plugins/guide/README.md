@@ -27,7 +27,7 @@ results, through this plugin's `global-search.providers` contribution.
 
 ## Requirements
 
-- Rocketflare kit **0.31.0** or later (platform knowledge sources, `hostFiles`, `claudeHooks`, the
+- Rocketflare kit **0.41.0** or later (platform knowledge sources, `hostFiles`, `claudeHooks`, the
   header slot and `streamChat`).
 - **Embeddings**: an `EMBEDDINGS_API_KEY`, or the `[ai]` binding (Workers AI). Without one the index
   isn't built: search falls back to keywords, which finds nothing until the index exists, and admins
@@ -38,8 +38,8 @@ results, through this plugin's `global-search.providers` contribution.
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.13.3 --subdir plugins/guide
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.13.3 --subdir plugins/guide --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/guide
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/guide --apply
 ```
 
 The first command prints the plan and stops. `--apply` installs. There is no `db:generate` step,

@@ -27,15 +27,15 @@ job. Other plugins subscribe to parsed messages through the `inbox:consumers` ex
 
 ## Requirements
 
-- Rocketflare kit **0.29.0** or later (the `emailHandlers` slot and `storage()` on background contexts).
+- Rocketflare kit **0.41.0** or later (the `emailHandlers` slot and `storage()` on background contexts).
 - The receiving domain on Cloudflare, with Email Routing enabled and a rule that sends the address to the Worker.
 - The kit's `FILES` (R2) and `JOBS_QUEUE` bindings, which every kit app already has, and its knowledge surface (`feature-knowledge`) for indexing.
 
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.13.3 --subdir plugins/inbox
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.13.3 --subdir plugins/inbox --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/inbox
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/inbox --apply
 pnpm db:generate --name plugin-inbox-<version> && pnpm db:migrate
 ```
 

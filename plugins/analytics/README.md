@@ -36,8 +36,8 @@ one is malformed.
 The first command prints the plan and stops, the second applies it:
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.13.3 --subdir plugins/analytics
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.13.3 --subdir plugins/analytics --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/analytics --apply
 pnpm db:generate --name plugin-analytics-3.9.0 && pnpm db:migrate
 ```
 

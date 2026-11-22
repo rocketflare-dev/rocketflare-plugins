@@ -1,10 +1,10 @@
 ---
 version: unreleased
-previous: 3.13.3
+previous: 3.14.0
 date: null
 breaking: false
 migrations: []
-areas: [api]
+areas: []
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,23 +12,11 @@ manual: false
 
 ## What changed
 
-FreeAgent's pager reads a single-quoted `rel='next'`, so a mirrored list no longer stops after 100 rows; a full resync re-reads what it missed, and tools register under `tools` (kit 0.41.0) (#38).
-
-- `parseLinkHeader` (`services/client.ts`) accepts `rel="next"`, `rel='next'` and an unquoted `rel=next`. Before, a single-quoted relation kept its quotes, no `next` link was found, and bank transactions, explanations, bills, invoices and contacts all stopped at the first page.
-- `POST /api/freeagent/sync` takes an optional `{ "full": true }` body (`freeagentSyncRequestSchema`): the queued job (`full` on its payload) deletes the tenant's `freeagent_sync_state` cursors once it holds the claim, so every resource is read again from its first pass. An empty body is the incremental sync it always was.
-- `ServerPlugin.tools` replaces the deprecated `agentTools` (same signature, kit 0.41.0); `minKit` rises from 0.29.0 to 0.41.0.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. On a kit older than 0.41.0, upgrade the kit first (`pnpm kit:upgrade`).
-2. Run `pnpm plugin upgrade freeagent --apply`.
-3. For each connected organisation, an admin sends `POST /api/freeagent/sync` with the body `{"full": true}` once, so the rows an earlier sync cut short are read. The cron's syncs stay incremental.
-
 ## Conflicts to expect
 
-None: the changed files belong to the plugin.
-
 ## Verify
-
-1. `pnpm plugin check` passes with no `agentTools` warning.
-2. After the resync, an account with more than 100 bank transactions lists all of them.
