@@ -235,8 +235,14 @@ export const freeagentSyncPayloadSchema = z.object({
   tenantId: z.string().uuid(),
   /** Who asked, for the audit trail; absent for the cron. */
   requestedBy: z.string().uuid().optional(),
+  /** Forget every incremental cursor first, so each resource is read again from its first pass. */
+  full: z.boolean().optional(),
 })
 export type FreeAgentSyncPayload = z.infer<typeof freeagentSyncPayloadSchema>
+
+/** `POST /api/freeagent/sync` — an empty body is an incremental sync. */
+export const freeagentSyncRequestSchema = z.object({ full: z.boolean().optional() }).strict()
+export type FreeAgentSyncRequest = z.infer<typeof freeagentSyncRequestSchema>
 
 // ---- The plugin ---------------------------------------------------------------------------------
 

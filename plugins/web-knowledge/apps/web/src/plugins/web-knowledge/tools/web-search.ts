@@ -1,7 +1,7 @@
 /**
  * `web_search` — ranked results from the organisation's configured provider.
  *
- * Offered only to a tenant whose settings are enabled with a key (the `agentTools` builder in
+ * Offered only to a tenant whose settings are enabled with a key (the `tools` builder in
  * `../index.ts` decides), so the handler never has to say "not configured". The key is opened here,
  * at the moment of the call, and never leaves this function.
  *

@@ -4,7 +4,7 @@ previous: 3.13.3
 date: null
 breaking: false
 migrations: []
-areas: []
+areas: [api]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,19 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+Inbox registers its tools under `tools` instead of the deprecated `agentTools`, which `pnpm plugin check` warned about, and so needs kit 0.41.0 or later. (rocketflare-plugins#39, item 5)
+
+- `ServerPlugin.tools` replaced `agentTools` in kit 0.41.0 with the same signature; `minKit` rises from its old floor to 0.41.0.
 
 ## How to apply
 
+1. On a kit older than 0.41.0, upgrade the kit first (`pnpm kit:upgrade`).
+2. Run `pnpm plugin upgrade inbox --apply`.
+
 ## Conflicts to expect
 
+None: the changed files belong to the plugin.
+
 ## Verify
+
+1. `pnpm plugin check` passes with no `agentTools` warning.

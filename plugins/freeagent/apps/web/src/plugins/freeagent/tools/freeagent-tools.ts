@@ -350,7 +350,7 @@ export function createBillTool(
 }
 
 /**
- * What `agentTools` offers this run: nothing unless the organisation is connected (and the
+ * What `tools` offers this run: nothing unless the organisation is connected (and the
  * deployment configured); the two write tools only to a requester who holds `manage FreeAgent`.
  */
 export async function freeagentAgentTools(

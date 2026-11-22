@@ -5,7 +5,7 @@
  */
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { MemoryRouter, useLocation } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import {
   dashboardDateFilters,

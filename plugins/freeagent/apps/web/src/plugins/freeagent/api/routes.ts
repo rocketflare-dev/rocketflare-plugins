@@ -17,6 +17,7 @@ import {
   type FreeAgentTransaction,
   type FreeAgentTransactionListQuery,
   freeagentInvoiceListQuerySchema,
+  freeagentSyncRequestSchema,
   freeagentTransactionListQuerySchema,
 } from '@rocketflare/shared/plugins/freeagent/index'
 import { and, count, desc, eq, type SQL } from 'drizzle-orm'
@@ -36,6 +37,14 @@ import { CONNECT_STATE_PURPOSE, CONNECT_STATE_TTL_SECONDS } from './hooks'
 import { loadStatus } from './status'
 
 export const freeagentRouter = createRouter()
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
 
 freeagentRouter.get('/status', async c => {
   const ctx: RequestCtx = requestCtx(c)
@@ -97,9 +106,17 @@ freeagentRouter.post('/sync', async c => {
   if (connection.status !== 'connected') {
     ctx.conflict('Reconnect to FreeAgent before syncing', 'freeagent_needs_reconnect')
   }
+  // The body is optional (the CLI and the page send none), so it is parsed here, not by validate().
+  const text = await c.req.text()
+  const body = freeagentSyncRequestSchema.safeParse(text.trim() ? safeJson(text) : {})
+  if (!body.success) ctx.badRequest('Invalid sync request', 'validation_error', body.error.issues)
   const job = await ctx.enqueue({
     type: FREEAGENT_SYNC_JOB,
-    payload: { tenantId: ctx.tenantId, requestedBy: ctx.userId },
+    payload: {
+      tenantId: ctx.tenantId,
+      requestedBy: ctx.userId,
+      ...(body.data.full ? { full: true } : {}),
+    },
   })
   return c.json({ jobId: job.id, type: FREEAGENT_SYNC_JOB }, 202)
 })

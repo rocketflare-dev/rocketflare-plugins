@@ -3,7 +3,7 @@
  * query filtered by the tenant id the caller was handed.
  *
  * The key is sealed on the way in and opened only by `openKey`, which a tool calls at the moment it
- * makes the outbound request — never the `agentTools` builder, which runs on every chat turn
+ * makes the outbound request — never the `tools` builder, which runs on every chat turn
  * whether or not a tool is called.
  */
 import {

@@ -42,12 +42,16 @@ export interface FreeAgentClientOptions {
   deps: FreeAgentDeps
 }
 
-/** `<https://…?page=2>; rel="next", <…>; rel="last"` → `{ next, last }`. Pure. */
+/**
+ * `<https://…?page=2>; rel="next", <…>; rel="last"` → `{ next, last }`. Pure. FreeAgent may quote
+ * the relation with single quotes (`rel='next'`), and reading those as part of the name stopped
+ * every list after its first page.
+ */
 export function parseLinkHeader(header: string | null): Record<string, string> {
   const links: Record<string, string> = {}
   if (!header) return links
   for (const part of header.split(',')) {
-    const match = /<([^>]+)>\s*;\s*rel="?([^";]+)"?/.exec(part.trim())
+    const match = /<([^>]+)>\s*;\s*rel=["']?([^"';]+)["']?/.exec(part.trim())
     if (match?.[1] && match[2]) links[match[2]] = match[1]
   }
   return links

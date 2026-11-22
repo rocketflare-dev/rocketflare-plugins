@@ -14,5 +14,5 @@ export const handleFreeagentSync: JobHandler<typeof FREEAGENT_SYNC_JOB> = async 
   job: JobOf<typeof FREEAGENT_SYNC_JOB>,
   ctx
 ) => {
-  await syncTenant(jobCtx(ctx), job.payload.tenantId)
+  await syncTenant(jobCtx(ctx), job.payload.tenantId, { full: job.payload.full === true })
 }

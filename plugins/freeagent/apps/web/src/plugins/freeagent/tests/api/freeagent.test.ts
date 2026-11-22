@@ -651,6 +651,46 @@ describe('sync', () => {
     ).toHaveLength(2)
   })
 
+  it('a full sync forgets the cursors and reads every resource from its first pass again', async () => {
+    const { tenantId, userId, cookie } = await tenantWithOwner()
+    const env = freeagentEnv()
+    await connect(tenantId, userId, env)
+    const fake = fakeFreeAgent(booksRoutes({ pass: 1 }))
+    const ctx = makeJobCtx({ db, env })
+    expect((await syncTenant(ctx, tenantId, { deps: fake.deps, listeners: [] })).status).toBe(
+      'synced'
+    )
+
+    fake.calls.length = 0
+    expect(
+      (await syncTenant(ctx, tenantId, { deps: fake.deps, listeners: [], full: true })).status
+    ).toBe('synced')
+    const txCall = fake.calls.find(c => c.url.pathname === '/v2/bank_transactions')
+    expect(txCall?.url.searchParams.get('updated_since')).toBeNull()
+    expect(txCall?.url.searchParams.get('from_date')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+
+    // The route queues it only when asked; an empty body stays incremental, a bad one is a 400.
+    const sync = (body?: string) =>
+      request(
+        '/api/freeagent/sync',
+        {
+          method: 'POST',
+          headers: { ...cookie, 'Content-Type': 'application/json' },
+          ...(body === undefined ? {} : { body }),
+        },
+        { env }
+      )
+    expect((await sync()).status).toBe(202)
+    expect((await sync('{"full":true}')).status).toBe(202)
+    expect((await sync('{"full":"yes"}')).status).toBe(400)
+    expect((await sync('{"everything":true}')).status).toBe(400)
+    const payloads = stubs(env)
+      .queue.messages.map(m => m.body as { type: string; payload: { full?: boolean } })
+      .filter(m => m.type === 'freeagent.sync')
+      .map(m => m.payload.full ?? false)
+    expect(payloads.slice(-2)).toEqual([false, true])
+  })
+
   it('skips a tenant another sync has claimed, and records a failure for the retry', async () => {
     const { tenantId, userId } = await tenantWithOwner()
     const env = freeagentEnv()

@@ -17,7 +17,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { useCallback, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router'
 import {
   AccessBadge,
   ConfirmModal,

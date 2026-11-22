@@ -114,6 +114,11 @@ interface SyncOptions {
   deps?: FreeAgentDeps
   listeners?: readonly FreeAgentSyncListener[]
   now?: () => Date
+  /**
+   * Forget the tenant's cursors once the claim is held, so every resource is read again from its
+   * first pass — what re-reads rows an earlier sync never reached.
+   */
+  full?: boolean
 }
 
 /** Take the tenant's sync claim, or answer why not. */
@@ -374,6 +379,9 @@ export async function syncTenant(
 
   let counts: Record<string, number>
   try {
+    if (opts.full) {
+      await ctx.db.delete(freeagentSyncState).where(eq(freeagentSyncState.tenantId, tenantId))
+    }
     const client = clientForConnection(ctx, claimed, opts.deps ?? freeagentHttp)
     counts = await runSync(ctx, client, claimed, startedAt)
   } catch (err) {

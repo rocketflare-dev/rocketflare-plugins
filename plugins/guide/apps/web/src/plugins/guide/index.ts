@@ -38,7 +38,7 @@ export const guideServer = {
    * reader's audience. `scope.bypass` is the kit's admin-level check (`isAdminLevel`).
    */
   knowledgeSources: scope => guideSourcesFor(scope.bypass),
-  agentTools: raw => {
+  tools: raw => {
     const ctx = toolCtx(raw)
     const { config } = guideBundle()
     return [
