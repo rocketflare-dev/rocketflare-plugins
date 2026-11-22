@@ -9,6 +9,35 @@ release with no note is a permanent gap every copy has to step over.
 is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
 release was it proved against" have one answer each.
 
+## 3.13.3 — 2026-11-22
+
+**analytics** — No change to analytics: this release carries the global-search and connectors test changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/analytics/docs/upgrades/3.13.3.md).
+
+**connectors** — The connectors API test shares the host's `api` module registry: it drops a `// @vitest-isolate` marker it did not need.
+[Porting note](plugins/connectors/docs/upgrades/3.13.3.md).
+
+**freeagent** — No change to freeagent: this release carries the global-search and connectors test changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/freeagent/docs/upgrades/3.13.3.md).
+
+**global-search** — The plugin's API tests pass in a host where another installed plugin also registers search providers, such as `guide`, and share the host's `api` module registry.
+[Porting note](plugins/global-search/docs/upgrades/3.13.3.md).
+
+**guide** — No change to guide: this release carries the global-search and connectors test changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/guide/docs/upgrades/3.13.3.md).
+
+**inbox** — No change to inbox: this release carries the global-search and connectors test changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/inbox/docs/upgrades/3.13.3.md).
+
+**issue-reports** — No change to issue-reports: this release carries the global-search and connectors test changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/issue-reports/docs/upgrades/3.13.3.md).
+
+**m365** — No change to m365: this release carries the global-search and connectors test changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/m365/docs/upgrades/3.13.3.md).
+
+**web-knowledge** — No change to web-knowledge: this release carries the global-search and connectors test changes, and every plugin in this repository ships at one version.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.13.3.md).
+
 ## 3.13.2 — 2026-11-21
 
 **analytics** — The analytics manifest now carries a one-line `description`, which the kit's `pnpm plugin list --available` prints in place of the README's opening line.
