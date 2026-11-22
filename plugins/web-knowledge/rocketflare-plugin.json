@@ -2,7 +2,7 @@
   "id": "web-knowledge",
   "label": "Web knowledge",
   "description": "Web search and page reading for your app's agents and chat, on each organisation's own search API key.",
-  "version": "3.13.2",
+  "version": "3.13.3",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "minKit": "0.33.0",
   "anchor": "apps/web/src/plugins/web-knowledge/plugin.json",

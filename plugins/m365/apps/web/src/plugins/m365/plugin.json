@@ -2,7 +2,7 @@
   "id": "m365",
   "label": "Microsoft 365",
   "description": "Microsoft 365 for connectors: an admin consents once, and your app syncs the Entra ID directory and members' Outlook calendars, app-only.",
-  "version": "3.13.2",
+  "version": "3.13.3",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "minKit": "0.29.0",
   "anchor": "apps/web/src/plugins/m365/plugin.json",
