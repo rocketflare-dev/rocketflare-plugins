@@ -51,6 +51,7 @@ rocketflare-plugins/
   CHANGELOG.md                    the human index; the porting notes live per plugin
   scripts/                        the kit's release tooling, ONE copy (see below)
   .github/workflows/ci.yml        one job per plugin, calling the kit's reusable workflow
+  .github/workflows/plugin-matrix.yml  the release-time matrix, calling the kit's (see CI)
   plugins/<id>/
     rocketflare-plugin.json       what makes a directory a plugin
     apps/web/src/plugins/<id>/**  }
@@ -136,9 +137,13 @@ installs this checkout into it, generates and applies the migrations the host ow
 kit's whole gate, off one include-matrix: the floor an adopter may still be on, and the ceiling
 the kit has just reached.
 
-The kit also dispatches `kit-released` here on every tag it cuts, and `ci.yml` listens for it: that
-run proves the plugins against the ref just released rather than re-resolving the same range, so a
-kit that moves under a plugin is discovered on the day rather than whenever somebody next pushes.
+**The plugin matrix** (rocketflare-dev/rocketflare#180) proves the RELEASED plugins at release
+time, from both ends, with one workflow — the kit's `plugin-matrix.yml`: one `matrix <id>` job per
+plugin and one full-house job with every plugin installed together. The kit runs it on every kit
+tag, against this repository's newest release; `.github/workflows/plugin-matrix.yml` here calls it
+on every tag of this repository, against the newest kit release (and on `workflow_dispatch`, with a
+plugin set, a ref of this repository or a kit ref). A failing plugin fails its job and the run; the
+run's summary has one row per plugin. Nothing opens or edits an issue.
 
 Failing at the FLOOR means the plugin has started using something the kit only gained later —
 raise `minKit` and release. Failing at the CEILING means the kit has moved under it: port the

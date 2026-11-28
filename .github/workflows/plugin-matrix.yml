@@ -1,0 +1,56 @@
+# The plugin matrix, from this end (rocketflare-dev/rocketflare#180).
+#
+# On every release of this repository — a plain `X.Y.Z` tag, cut by `scripts/release.mjs`, and
+# every plugin here ships at that one version — this proves the RELEASED plugins against the
+# NEWEST kit release: one `matrix <id>` job per plugin, and one full-house job with every plugin
+# installed together, because a collision between two plugins is a fault of neither alone.
+# `ci.yml` keeps proving each plugin's `minKit` floor and the ceiling on every push; this adds
+# the full house, at release time.
+#
+# The steps live in the KIT (`.github/workflows/plugin-matrix.yml`), the same workflow the kit
+# runs on its own tags, so the two ends prove a release in one way. It is called at `@main`, with
+# `tools_ref` left at its default `main`, for the reason `ci.yml` calls `plugin-ci.yml@main`: the
+# workflow and the `scripts/plugin-matrix.mjs` it runs must be the same revision, and a pinned
+# ref here would go stale against the kit's script with nobody noticing. What is PROVEN is pinned
+# separately — `kit_ref` resolves to the newest kit tag, `plugins_ref` to the tag just pushed.
+#
+# It reports through the run and nothing else: a failing plugin fails its job and so the run, and
+# the summary job writes one row per plugin (pass/fail, the failing step, the value-check warning
+# count, the kit sha). It never creates, edits or closes an issue.
+name: Plugin matrix
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      plugins:
+        description: Comma-separated plugin ids. Empty = every plugin in this repository.
+        type: string
+        default: ''
+      full_house:
+        description: Also run the job with every plugin installed together.
+        type: boolean
+        default: true
+      plugins_ref:
+        description: A tag or a branch without '/' (`plugin add` reads one after '@' as a path) instead of the newest release.
+        type: string
+        default: ''
+      kit_ref:
+        description: Kit branch, tag or sha to prove against. Empty = the newest kit release tag.
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    uses: rocketflare-dev/rocketflare/.github/workflows/plugin-matrix.yml@main
+    with:
+      kit_ref: ${{ inputs.kit_ref || '' }}
+      # A release proves every plugin (one lockstep version), so `plugins` is empty on a tag.
+      plugins: ${{ inputs.plugins || '' }}
+      full_house: ${{ github.event_name == 'push' || inputs.full_house }}
+      # The tag just pushed, named rather than re-resolved as "the newest".
+      plugins_ref: ${{ github.event_name == 'push' && github.ref_name || inputs.plugins_ref || '' }}
