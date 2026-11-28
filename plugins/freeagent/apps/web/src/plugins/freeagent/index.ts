@@ -22,24 +22,25 @@ import { FREEAGENT_ANALYTICS_EXTENSIONS } from './cubes'
 import { handleFreeagentSync } from './jobs/sync'
 import { freeagentAgentTools } from './tools/freeagent-tools'
 
+export type { FreeAgentErrorCode } from '@rocketflare/shared/plugins/freeagent/errors'
+export { FreeAgentError, isFreeAgentError } from '@rocketflare/shared/plugins/freeagent/errors'
+/** Behind the kill switch: each refuses while `freeagent` is off for the organisation (`./public`). */
+export {
+  attachToExplanation,
+  createBill,
+  deleteExplanation,
+  explainTransaction,
+  freeagentClientFor,
+  listUnexplainedTransactions,
+} from './public'
 export type { FreeAgentClient, Query as FreeAgentQuery } from './services/client'
 export type { FreeAgentCtx } from './services/connection'
-export { freeagentClientFor } from './services/connection'
-export type { FreeAgentErrorCode } from './services/errors'
-export { FreeAgentError, isFreeAgentError } from './services/errors'
 export type { FreeAgentSyncListener, FreeAgentSyncSummary } from './services/sync'
 export type {
   AttachmentInput,
   BillView,
   ExplanationView,
   UnexplainedTransaction,
-} from './services/writes'
-export {
-  attachToExplanation,
-  createBill,
-  deleteExplanation,
-  explainTransaction,
-  listUnexplainedTransactions,
 } from './services/writes'
 
 export const freeagentServer = {

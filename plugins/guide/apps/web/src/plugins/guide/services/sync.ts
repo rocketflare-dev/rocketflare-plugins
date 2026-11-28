@@ -128,6 +128,9 @@ export const handleGuideSync: JobHandler<typeof GUIDE_SYNC_JOB> = async (
 
 export const guideSyncTask: ScheduledTask = {
   name: 'guide.sync',
+  // The guide is PLATFORM knowledge (no `tenant_id`), indexed once for every organisation, so this
+  // task belongs to none: turning the guide off for one hides it there, never un-indexes it.
+  allTenants: true,
   run: async raw => {
     const ctx = cronCtx(raw)
     await ctx.enqueue({ type: GUIDE_SYNC_JOB, payload: { reason: 'cron' } })

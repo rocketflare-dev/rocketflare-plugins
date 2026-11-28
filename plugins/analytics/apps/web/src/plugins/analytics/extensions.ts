@@ -27,7 +27,10 @@
  * Live bindings make the call-time read safe; the memo below makes it cheap.
  */
 
-import { ANALYTICS_PLUGIN_ID } from '@rocketflare/shared/plugins/analytics/index'
+import {
+  ANALYTICS_EXTENSION_KEYS,
+  analyticsExtensions as buildExtensions,
+} from '@rocketflare/shared/plugins/analytics/index'
 import type { Cube } from 'drizzle-cube/server'
 import { z } from 'zod'
 import { extensionSources, extensions } from '@/plugins/api/peers'
@@ -36,12 +39,7 @@ import type { FactTableDefinition } from './services/fact-tables'
 import type { CubeIsolationCase } from './testing'
 
 /** The `extensions` keys this plugin reads. Namespaced, so two plugins can never collide. */
-export const ANALYTICS_EXTENSION_KEYS = {
-  cubes: `${ANALYTICS_PLUGIN_ID}:cubes`,
-  factTables: `${ANALYTICS_PLUGIN_ID}:factTables`,
-  dashboardTemplates: `${ANALYTICS_PLUGIN_ID}:dashboardTemplates`,
-  cubeIsolationCases: `${ANALYTICS_PLUGIN_ID}:cubeIsolationCases`,
-} as const
+export { ANALYTICS_EXTENSION_KEYS }
 
 export interface AnalyticsContribution {
   cubes?: readonly Cube[]
@@ -55,21 +53,14 @@ export interface AnalyticsContribution {
   cubeIsolationCases?: readonly CubeIsolationCase[]
 }
 
-/** Build the `extensions` record for a contributing plugin's `ServerPlugin`. Typed here, `unknown[]` there. */
-export function analyticsExtensions(
+/**
+ * Build the `extensions` record for a contributing plugin's `ServerPlugin`. Typed here, `unknown[]`
+ * there: it IS the shared builder, narrowed in type, and reads no organisation, so it needs no
+ * `definePublic`.
+ */
+export const analyticsExtensions: (
   contribution: AnalyticsContribution
-): Record<string, readonly unknown[]> {
-  const out: Record<string, readonly unknown[]> = {}
-  if (contribution.cubes) out[ANALYTICS_EXTENSION_KEYS.cubes] = contribution.cubes
-  if (contribution.factTables) out[ANALYTICS_EXTENSION_KEYS.factTables] = contribution.factTables
-  if (contribution.dashboardTemplates) {
-    out[ANALYTICS_EXTENSION_KEYS.dashboardTemplates] = contribution.dashboardTemplates
-  }
-  if (contribution.cubeIsolationCases) {
-    out[ANALYTICS_EXTENSION_KEYS.cubeIsolationCases] = contribution.cubeIsolationCases
-  }
-  return out
-}
+) => Record<string, readonly unknown[]> = buildExtensions
 
 // ---- Narrowing ---------------------------------------------------------------------------------
 

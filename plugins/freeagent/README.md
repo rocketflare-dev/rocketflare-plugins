@@ -19,7 +19,7 @@ the `freeagent:sync-listeners` extension.
 | Client | One typed wrapper: always `X-Api-Version: 2026-09-01`, token refresh 2 minutes before expiry (single-flight), bounded back-off on 429 `Retry-After`, `Link` pagination, typed `FreeAgentError`, and the token never sent off the FreeAgent API host |
 | UI | **Settings → FreeAgent**: connect, reconnect, disconnect, environment, company, last sync, errors, Sync now. **FreeAgent** page: unexplained transactions and invoices (overdue filter) |
 | Agent tools | Read: `freeagent_company`, `freeagent_search_transactions`, `freeagent_list_categories`, `freeagent_list_invoices`, `freeagent_list_bills`. Write, approval required: `freeagent_explain_transaction`, `freeagent_create_bill`, offered only to a requester holding `manage FreeAgent` (owner, admin), and only in agent runs, where the approval gate applies. Chat never offers them. None offered until the organisation is connected |
-| Service API | `freeagentClientFor`, `explainTransaction`, `attachToExplanation`, `deleteExplanation`, `createBill`, `listUnexplainedTransactions` — each write updates the mirror row it touched |
+| Service API | `freeagentClientFor`, `explainTransaction`, `attachToExplanation`, `deleteExplanation`, `createBill`, `listUnexplainedTransactions` — each write updates the mirror row it touched, and each answers 404 `domain_unavailable` while FreeAgent is turned off for the organisation |
 | Extension | `freeagent:sync-listeners`: a plugin contributes `{ id, onSync(summary, ctx) }`, called after every successful sync |
 | Analytics | When the `analytics` plugin is installed: cubes `FreeAgentTransactions`, `FreeAgentExplanations` (+ `FreeAgentCategories`), `FreeAgentInvoices`, `FreeAgentBills` — spend and income by month and category, unexplained count and amount, outstanding and overdue. Inert without analytics |
 | Data | `freeagent_connections`, `freeagent_sync_state` and seven mirror tables, all with row-level security; money as `numeric` |
@@ -28,7 +28,7 @@ the `freeagent:sync-listeners` extension.
 
 ## Requirements
 
-- Rocketflare kit **0.47.0** or later (tools answer `egress`).
+- Rocketflare kit **0.48.0** or later (tools answer `egress`; the cron is a `perTenantTask` and the service API is `definePublic`, so both stop where an organisation turned FreeAgent off).
 - A FreeAgent app registered at [dev.freeagent.com](https://dev.freeagent.com) with the redirect
   URI `{APP_URL}/api/hooks/freeagent/callback`.
 - `OAUTH_ENCRYPTION_KEY` (the kit's bootstrap sets it) and the kit's `JOBS_QUEUE`.
@@ -36,8 +36,8 @@ the `freeagent:sync-listeners` extension.
 ## Install
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@freeagent-v3.16.0 --subdir plugins/freeagent
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@freeagent-v3.16.0 --subdir plugins/freeagent --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@freeagent-v3.17.0 --subdir plugins/freeagent
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@freeagent-v3.17.0 --subdir plugins/freeagent --apply
 pnpm db:generate --name plugin-freeagent-<version> && pnpm db:migrate
 ```
 

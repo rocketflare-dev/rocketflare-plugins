@@ -57,4 +57,5 @@ skills from 0.13.0).
 - A BYO Microsoft app must be registered multi-tenant: consent goes through `/organizations`.
 - Directory rows are soft-deleted and never purged while the installation lives.
 - Admins can read every synced calendar in their organisation; there is no per-person opt-out.
-- The cron reconciles every active installation every tick (a few indexed statements each).
+- The cron is a `perTenantTask`: once per organisation, never one that turned connectors off, it
+  reconciles that organisation's active installations every tick (a few indexed statements each).

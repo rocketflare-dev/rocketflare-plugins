@@ -17,8 +17,11 @@ every `freeagent:sync-listeners` extension.
   `Number()` an amount.
 - **Mirror rows are keyed `(tenant_id, url)`** and written only through `services/mirror.ts`
   (`upsertMirror`), by the sync and by every write — a write updates the row it touched.
-- **The one cross-tenant read** is the cron fan-out in `api/scheduled.ts` (tenant ids only). It
-  needs no `unscopedAllowlist` entry: the kit scan sees the `tenantId` it selects.
+- **The cron is a `perTenantTask`** (`api/scheduled.ts`): the kit calls it once per organisation,
+  never where FreeAgent is turned off, and every query in it names that tenant.
+- **The service API other plugins import is `./public.ts`**: each function wrapped in
+  `definePublic`, same signature, refusing while FreeAgent is off for the organisation. The
+  plugin's own code calls the unwrapped `services/`.
 - **Cubes are plain data** contributed under `analytics:*` keys (`cubes/index.ts`): no import of
   analytics or drizzle-cube, inert without it. A new cube needs an isolation case beside it.
 - **Listeners** (`FreeAgentSyncListener`) are called after a successful sync; a throw is logged and

@@ -33,7 +33,7 @@ import { and, eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { activityEvents } from '@/db/schema/kit'
 import { analyticsServer } from '../..'
-import { refreshFactTables } from '../../api/scheduled'
+import { refreshFactTables, refreshFactTablesTask } from '../../api/scheduled'
 import { tenantActivityDailyFacts } from '../../db/schema/facts'
 
 const db = setupTestDatabase()
@@ -68,7 +68,7 @@ describe('scheduled: fact-table refresh', () => {
       { tenantId: tenant.id, userId: user.id, type: 'cron.b' },
     ])
 
-    await refreshFactTables(makeCronCtx({ db }))
+    await refreshFactTables({ ...makeCronCtx({ db }), tenantId: tenant.id })
 
     const rows = await db
       .select()
@@ -82,5 +82,12 @@ describe('scheduled: fact-table refresh', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]?.eventCount).toBe(2)
     expect(rows[0]?.distinctEventTypes).toBe(2)
+  })
+
+  it('runs once per organisation, so the kit never runs it where analytics is turned off', () => {
+    // `perTenantTask` (kit 0.48.0): the host's dispatcher calls it per organisation and leaves out
+    // every one where an admin turned the plugin off. The kit's own suite proves the skipping; a
+    // dispatch here would rebuild every tenant the whole suite has made.
+    expect(refreshFactTablesTask.perTenant).toBe(true)
   })
 })

@@ -17,11 +17,12 @@ import {
   stubs,
 } from '@testkit/integration'
 import { makeEmailCtx, makeJobCtx } from '@testkit/unit'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { allTables } from '@/plugins/api/peers'
 import { inboxAttachments, inboxMessages } from '../../db/schema'
 import type { InboxConsumer, InboxParsedMessage } from '../../index'
+import * as publicApi from '../../index'
 import { parseMessage, readInboxAttachment } from '../../services/parse'
 import { receiveMessage } from '../../services/receive'
 
@@ -242,6 +243,24 @@ describe('receive', () => {
       .where(eq(inboxAttachments.messageId, outcome.messageId))
     expect(attachments.map(a => a.id)).toEqual([attachmentId])
     expect(seen).toHaveLength(2)
+
+    // What another plugin imports is behind the kill switch: off for the organisation, it refuses.
+    await db.execute(
+      sql`insert into domain_settings (tenant_id, domain, enabled) values (${tenantId}, 'inbox', false)`
+    )
+    try {
+      await expect(
+        publicApi.readInboxAttachment(jobCtx, tenantId, attachmentId)
+      ).rejects.toMatchObject({ statusCode: 404, code: 'domain_unavailable' })
+      await expect(
+        publicApi.readInboxHtml(jobCtx, tenantId, outcome.messageId)
+      ).rejects.toMatchObject({ code: 'domain_unavailable' })
+    } finally {
+      await db.execute(
+        sql`delete from domain_settings where tenant_id = ${tenantId} and domain = 'inbox'`
+      )
+    }
+    expect(await publicApi.readInboxAttachment(jobCtx, tenantId, attachmentId)).not.toBeNull()
   })
 
   it('stores a message delivered twice only once', async () => {

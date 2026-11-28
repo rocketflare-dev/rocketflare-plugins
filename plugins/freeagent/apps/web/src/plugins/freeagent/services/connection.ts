@@ -2,10 +2,9 @@
  * The organisation's connection: read it, build a client for it, store a new one, remove it.
  *
  * `freeagentClientFor` is the front door every write and the sync use, and the one exported to
- * other plugins: it answers a client bound to THIS tenant's tokens and API host, or throws a
- * `FreeAgentError` saying exactly why it cannot (`not_configured`, `not_connected`,
- * `needs_reconnect`). Every query here names the tenant; the cron's fan-out is the plugin's only
- * cross-tenant read and lives in `api/scheduled.ts`.
+ * other plugins (behind the kill switch, `../public.ts`): it answers a client bound to THIS
+ * tenant's tokens and API host, or throws a `FreeAgentError` saying exactly why it cannot
+ * (`not_configured`, `not_connected`, `needs_reconnect`). Every query here names the tenant.
  */
 import type { FreeAgentEnvironment } from '@rocketflare/shared/plugins/freeagent/index'
 import { eq } from 'drizzle-orm'

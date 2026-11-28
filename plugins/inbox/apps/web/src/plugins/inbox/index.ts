@@ -21,8 +21,9 @@ import { handleInboxParse } from './jobs/parse'
 import { receiveMessage } from './services/receive'
 import { getInboxMessageTool, listInboxMessagesTool } from './tools/inbox-tools'
 
+/** Behind the kill switch: each refuses while `inbox` is off for the organisation (`./public`). */
+export { readInboxAttachment, readInboxHtml } from './public'
 export type { InboxAttachmentRef, InboxConsumer, InboxParsedMessage } from './services/parse'
-export { readInboxAttachment, readInboxHtml } from './services/parse'
 
 export const inboxServer = {
   shared: inboxShared,

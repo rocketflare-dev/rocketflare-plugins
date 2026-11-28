@@ -4,42 +4,35 @@
  * added to `[triggers].crons` in both wrangler tomls by `pnpm provision cloudflare <env>` — a
  * plugin never edits a toml, so an install prints that step rather than doing it.
  *
- * This is the cross-tenant path, and it is the only one: it runs in the Worker's own `scheduled`
- * handler with no request behind it. The job a route can enqueue (`analytics.refresh-facts`) is
- * always one tenant.
+ * A `perTenantTask` (kit 0.48.0): the kit calls it once per organisation, and never for one where
+ * an admin has turned `analytics` off (Settings → Domains), so each call rebuilds ONE tenant's
+ * rows, as the job a route can enqueue (`analytics.refresh-facts`) does.
  *
- * Per-tenant failures are collected by `refreshAllFactTables` and logged as a warning rather than
- * thrown — one bad tenant must not cost every other tenant its rebuild, and the rows are derived
- * data that the next run repairs.
- *
- * `cronCtx` adapts the kit's `TaskContext` at this one boundary, so the body below is written
- * against `CronCtx` and names no kit internal. Note what `CronCtx` does NOT carry: a `tenantId`.
- * A cron runs across every organisation, so there is no ambient tenant to reach for absently.
+ * Failures are collected by `refreshAllFactTables` and logged as a warning rather than thrown —
+ * the rows are derived data that the next run repairs — and the kit runs every other
+ * organisation whatever happens to one.
  */
-import type { CronCtx, ScheduledTask } from '@/plugins/api'
-import { cronCtx } from '@/plugins/api'
+import type { ScheduledTask, TenantCronCtx } from '@/plugins/api'
+import { perTenantTask } from '@/plugins/api'
 import { refreshAllFactTables } from '../services/fact-tables'
 
-export async function refreshFactTables({ db, logger }: CronCtx): Promise<void> {
-  const summary = await refreshAllFactTables(db, { logger })
-  const log = summary.failed > 0 ? logger.warn.bind(logger) : logger.info.bind(logger)
-  log(
+/** Rebuild every fact table for the organisation this turn of the cron is for. */
+export async function refreshFactTables({ db, logger, tenantId }: TenantCronCtx): Promise<void> {
+  const summary = await refreshAllFactTables(db, { tenantId, logger })
+  if (summary.failed === 0) return
+  logger.warn(
     {
+      tenantId,
       durationMs: summary.durationMs,
       failed: summary.failed,
-      tables: summary.results.map(r => ({
-        table: r.table,
-        tenants: r.tenants,
-        rows: r.rows,
-        errors: r.errors,
-      })),
+      tables: summary.results.map(r => ({ table: r.table, rows: r.rows, errors: r.errors })),
     },
-    'analytics.refreshFactTables: fact tables rebuilt'
+    'analytics.refreshFactTables: some fact tables failed to rebuild'
   )
 }
 
-/** What `ServerPlugin.scheduledTasks` registers — the adapter, and the whole of the boundary. */
-export const refreshFactTablesTask: ScheduledTask = {
-  name: 'analytics.refreshFactTables',
-  run: raw => refreshFactTables(cronCtx(raw)),
-}
+/** What `ServerPlugin.scheduledTasks` registers. */
+export const refreshFactTablesTask: ScheduledTask = perTenantTask(
+  'analytics.refreshFactTables',
+  refreshFactTables
+)

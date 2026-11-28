@@ -10,22 +10,26 @@
  * The provider registry is replaced with `fakeProvider` for this file, so the suite proves the
  * engine whether or not any real provider plugin is installed beside it.
  */
+
+import { readFileSync } from 'node:fs'
 import { CONNECTORS_FLAG, CONNECTORS_SYNC_JOB } from '@rocketflare/shared/plugins/connectors/index'
 import {
+  createExecutionContext,
   createTestEnv,
   createTestSession,
   createTestTenant,
   createTestUser,
+  dispatchScheduled,
   json,
   linkUserToTenant,
   request,
   sessionCookieHeader,
   setupTestDatabase,
   stubs,
+  waitOnExecutionContext,
 } from '@testkit/integration'
 import { makeCronCtx, makeJobCtx } from '@testkit/unit'
-import { readFileSync } from 'node:fs'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { tenantUsers } from '@/db/schema/kit'
 import { signState } from '@/plugins/api'
@@ -850,8 +854,7 @@ describe('calendar visibility', () => {
     await db
       .delete(tenantUsers)
       .where(and(eq(tenantUsers.tenantId, tenantId), eq(tenantUsers.userId, bobId)))
-    const cron = makeCronCtx({ db })
-    await enqueueDueSyncs(cron)
+    await enqueueDueSyncs({ ...makeCronCtx({ db }), tenantId })
     const events = await db
       .select()
       .from(connectorsCalendarEvents)
@@ -898,12 +901,12 @@ describe('the hourly cron', () => {
     expect(SYNC_INTERVAL_MS).toBeLessThan(55 * 60_000)
     await syncedAgo(55 * 60_000)
     const hourLater = createTestEnv()
-    await enqueueDueSyncs(makeCronCtx({ db, env: hourLater }), now)
+    await enqueueDueSyncs({ ...makeCronCtx({ db, env: hourLater }), tenantId }, now)
     expect(mineQueued(hourLater)).toBeGreaterThanOrEqual(3)
 
     await syncedAgo(10 * 60_000)
     const justSynced = createTestEnv()
-    await enqueueDueSyncs(makeCronCtx({ db, env: justSynced }), now)
+    await enqueueDueSyncs({ ...makeCronCtx({ db, env: justSynced }), tenantId }, now)
     expect(mineQueued(justSynced)).toBe(0)
   })
 
@@ -913,7 +916,7 @@ describe('the hourly cron', () => {
       .set({ lastSyncedAt: new Date(0) })
       .where(eq(connectorsSyncCursors.tenantId, tenantId))
     const env = createTestEnv()
-    const queued = await enqueueDueSyncs(makeCronCtx({ db, env }))
+    const queued = await enqueueDueSyncs({ ...makeCronCtx({ db, env }), tenantId })
     expect(queued).toBeGreaterThanOrEqual(3)
 
     const { featureFlags, tenantFeatureOverrides } = allTables()
@@ -929,7 +932,7 @@ describe('the hourly cron', () => {
         set: { enabled: false },
       })
     const env2 = createTestEnv()
-    await enqueueDueSyncs(makeCronCtx({ db, env: env2 }))
+    await enqueueDueSyncs({ ...makeCronCtx({ db, env: env2 }), tenantId })
     const mine = stubs(env2).queue.messages.filter(
       m => (m.body as { payload: { tenantId: string } }).payload.tenantId === tenantId
     )
@@ -942,6 +945,33 @@ describe('the hourly cron', () => {
           eq(tenantFeatureOverrides.flagKey, CONNECTORS_FLAG)
         )
       )
+  })
+
+  it('enqueues nothing for an organisation that turned connectors off', async () => {
+    await db
+      .update(connectorsSyncCursors)
+      .set({ lastSyncedAt: new Date(0) })
+      .where(eq(connectorsSyncCursors.tenantId, tenantId))
+    await db.execute(
+      sql`insert into domain_settings (tenant_id, domain, enabled) values (${tenantId}, 'connectors', false)`
+    )
+    try {
+      const env = createTestEnv()
+      const execution = createExecutionContext()
+      const reports = await dispatchScheduled(CONNECTORS_CRON, env, execution)
+      await waitOnExecutionContext(execution)
+      expect(reports).toContainEqual(
+        expect.objectContaining({ task: 'connectors.enqueueDueSyncs', status: 'ok' })
+      )
+      const mine = stubs(env).queue.messages.filter(
+        m => (m.body as { payload: { tenantId: string } }).payload.tenantId === tenantId
+      )
+      expect(mine).toEqual([])
+    } finally {
+      await db.execute(
+        sql`delete from domain_settings where tenant_id = ${tenantId} and domain = 'connectors'`
+      )
+    }
   })
 })
 
