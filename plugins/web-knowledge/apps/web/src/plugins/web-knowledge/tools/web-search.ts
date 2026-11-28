@@ -52,6 +52,9 @@ export function webSearchTool(
       'Answers titles, URLs and snippets; call fetch_page on a result to read it in full. ' +
       'Cite the URLs you use.',
     schema: webSearchInputSchema,
+    // Sends the query to the organisation's search provider.
+    egress: true,
+    readsContent: true,
     async handler(input) {
       const limit = Math.min(input.maxResults ?? search.maxResults, search.maxResults)
       try {

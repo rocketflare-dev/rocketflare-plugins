@@ -20,7 +20,7 @@ on that organisation's chat turns and agent runs carry two more tools, `web_sear
 
 ## Requirements
 
-- Rocketflare kit **0.41.0** or later.
+- Rocketflare kit **0.47.0** or later (tools answer `egress`).
 - `OAUTH_ENCRYPTION_KEY` set in the app (the kit's key for sealing credentials). Without it, saving a
   key answers 503 `encryption_key_missing`.
 - An API key from one of the supported providers, per organisation. No other plugin, binding or

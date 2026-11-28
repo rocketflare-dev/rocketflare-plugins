@@ -1,18 +1,20 @@
-# The plugin matrix, from this end (rocketflare-dev/rocketflare#180).
+# The plugin matrix, from this end (rocketflare-dev/rocketflare#180, #181).
 #
-# On every release of this repository — a plain `X.Y.Z` tag, cut by `scripts/release.mjs`, and
-# every plugin here ships at that one version — this proves the RELEASED plugins against the
-# NEWEST kit release: one `matrix <id>` job per plugin, and one full-house job with every plugin
-# installed together, because a collision between two plugins is a fault of neither alone.
-# `ci.yml` keeps proving each plugin's `minKit` floor and the ceiling on every push; this adds
-# the full house, at release time.
+# Each plugin here is released on its own and tagged `<id>-vX.Y.Z` (`scripts/release-plugin.mjs`).
+# A tag push proves THAT plugin's new release against the NEWEST kit release — one `matrix <id>`
+# job — plus a full-house job with every plugin installed together, each at its own latest
+# release, because a collision between two plugins is a fault of neither alone. `ci.yml` proves
+# every plugin on every push; this adds the released form and the full house, at release time.
 #
-# The steps live in the KIT (`.github/workflows/plugin-matrix.yml`), the same workflow the kit
-# runs on its own tags, so the two ends prove a release in one way. It is called at `@main`, with
+# The steps live in the KIT (`.github/workflows/plugin-matrix.yml`), the same workflow the kit runs
+# on its own tags, so the two ends prove a release in one way. It is called at `@main`, with
 # `tools_ref` left at its default `main`, for the reason `ci.yml` calls `plugin-ci.yml@main`: the
-# workflow and the `scripts/plugin-matrix.mjs` it runs must be the same revision, and a pinned
-# ref here would go stale against the kit's script with nobody noticing. What is PROVEN is pinned
-# separately — `kit_ref` resolves to the newest kit tag, `plugins_ref` to the tag just pushed.
+# workflow and the `scripts/plugin-matrix.mjs` it runs must be the same revision. What is PROVEN is
+# resolved separately: the kit ref is the newest `X.Y.Z` kit tag (a tag of THIS repository never
+# names a kit), and with `plugins_ref` empty every plugin installs at its own newest release,
+# either tag form — which, after a tag push, includes the tag just pushed.
+#
+# Push each tag on its own: GitHub starts no workflow for a push of more than three tags at once.
 #
 # It reports through the run and nothing else: a failing plugin fails its job and so the run, and
 # the summary job writes one row per plugin (pass/fail, the failing step, the value-check warning
@@ -21,7 +23,7 @@ name: Plugin matrix
 
 on:
   push:
-    tags: ['[0-9]+.[0-9]+.[0-9]+']
+    tags: ['*-v[0-9]+.[0-9]+.[0-9]+']
   workflow_dispatch:
     inputs:
       plugins:
@@ -33,7 +35,9 @@ on:
         type: boolean
         default: true
       plugins_ref:
-        description: A tag or a branch without '/' (`plugin add` reads one after '@' as a path) instead of the newest release.
+        description: >-
+          A tag or a branch without '/' (`plugin add` reads one after '@' as a path) to install
+          EVERY plugin from, instead of each plugin's newest release.
         type: string
         default: ''
       kit_ref:
@@ -45,12 +49,39 @@ permissions:
   contents: read
 
 jobs:
+  # A reusable workflow's inputs are expressions, and an expression cannot cut `<id>` out of
+  # `<id>-vX.Y.Z`; this job does, for a tag push. On a dispatch it passes the inputs through.
+  select:
+    name: Select the released plugin
+    runs-on: ${{ vars.RF_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    outputs:
+      plugins: ${{ steps.select.outputs.plugins }}
+    steps:
+      - id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.ref_name }}
+          PLUGINS: ${{ inputs.plugins }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = push ]; then
+            if [[ ! "$TAG" =~ ^([a-z][a-z0-9-]*)-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::tag '$TAG' is not <id>-vX.Y.Z"
+              exit 1
+            fi
+            plugins="${BASH_REMATCH[1]}"
+          else
+            plugins="$PLUGINS"
+          fi
+          echo "plugins: ${plugins:-<every plugin>}"
+          echo "plugins=$plugins" >> "$GITHUB_OUTPUT"
+
   matrix:
+    needs: select
     uses: rocketflare-dev/rocketflare/.github/workflows/plugin-matrix.yml@main
     with:
       kit_ref: ${{ inputs.kit_ref || '' }}
-      # A release proves every plugin (one lockstep version), so `plugins` is empty on a tag.
-      plugins: ${{ inputs.plugins || '' }}
+      plugins: ${{ needs.select.outputs.plugins }}
       full_house: ${{ github.event_name == 'push' || inputs.full_house }}
-      # The tag just pushed, named rather than re-resolved as "the newest".
-      plugins_ref: ${{ github.event_name == 'push' && github.ref_name || inputs.plugins_ref || '' }}
+      plugins_ref: ${{ inputs.plugins_ref || '' }}

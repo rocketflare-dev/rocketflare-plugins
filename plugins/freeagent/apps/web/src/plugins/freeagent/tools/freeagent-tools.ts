@@ -98,6 +98,9 @@ export function companyTool(ctx: ToolCtx): Tool<Record<string, never>> {
       "The organisation's FreeAgent connection: company name, currency, environment, when the books " +
       'were last synced, and how many accounts, transactions (and unexplained ones), invoices and bills are mirrored.',
     schema: z.object({}).strict() as unknown as z.ZodType<Record<string, never>>,
+    // Reads the mirror in this database; returns the company name and the last sync error.
+    egress: false,
+    readsContent: true,
     async handler() {
       const s = await loadStatus(ctx.db, ctx.config, ctx.tenantId)
       return JSON.stringify({
@@ -136,6 +139,9 @@ export function searchTransactionsTool(ctx: ToolCtx): Tool<SearchTransactionsInp
       'description text, or unexplained only. Answers each transaction URL (use it with ' +
       'freeagent_explain_transaction), date, amount, unexplained amount and bank account.',
     schema: searchTransactionsInputSchema,
+    // Reads the mirror; returns bank descriptions.
+    egress: false,
+    readsContent: true,
     async handler(input) {
       const t = freeagentBankTransactions
       const filters: SQL[] = [eq(t.tenantId, ctx.tenantId)]
@@ -203,6 +209,9 @@ export function listCategoriesTool(ctx: ToolCtx): Tool<ListCategoriesInput> {
       'List FreeAgent accounting categories (nominal codes): URL, description, code, group and ' +
       'automatic VAT rate. Use a category URL with freeagent_explain_transaction or freeagent_create_bill.',
     schema: listCategoriesInputSchema,
+    // Reads the mirror; returns category descriptions.
+    egress: false,
+    readsContent: true,
     async handler(input) {
       const c = freeagentCategories
       const filters: SQL[] = [eq(c.tenantId, ctx.tenantId)]
@@ -257,6 +266,9 @@ function documentsTool(ctx: ToolCtx, kind: 'invoices' | 'bills'): Tool<ListDocum
         ? 'List sales invoices from FreeAgent, newest first: reference, client, dates, total, paid, still due, and whether overdue.'
         : 'List supplier bills from FreeAgent, newest first: reference, supplier, dates, total, paid, still due, and whether overdue.',
     schema: listDocumentsInputSchema,
+    // Reads the mirror; returns references and contact names.
+    egress: false,
+    readsContent: true,
     async handler(input) {
       const filters: SQL[] = [eq(t.tenantId, ctx.tenantId)]
       if (input.overdueOnly) filters.push(overdueSql(table))
@@ -308,6 +320,9 @@ export function explainTransactionTool(
       'transaction URL from freeagent_search_transactions, a category URL from freeagent_list_categories, ' +
       'the gross value signed like the transaction (money out negative), the date, a description, and optionally the VAT rate.',
     schema: freeagentExplainInputSchema,
+    // Sends the explanation to the FreeAgent API: a web request out of the app.
+    egress: true,
+    readsContent: true,
     requiresApproval: true,
     approvalMessage: 'Explain this bank transaction in FreeAgent?',
     allowEdits: true,
@@ -335,6 +350,9 @@ export function createBillTool(
       'supplier contact URL, a reference, dated and due dates, and one or more items each with a ' +
       'category URL, description and total including VAT.',
     schema: freeagentCreateBillInputSchema,
+    // Sends the bill to the FreeAgent API: a web request out of the app.
+    egress: true,
+    readsContent: true,
     requiresApproval: true,
     approvalMessage: 'Create this bill in FreeAgent?',
     allowEdits: true,

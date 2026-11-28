@@ -128,7 +128,7 @@ other than the one recorded. On a bump:
 
 1. Run `pnpm --filter @rocketflare/web exec vitest run --project config src/plugins/analytics/tests/config/cube-tools-pinned.test.ts`
    and read what changed.
-2. A new tool: add it to `CUBE_TOOLS` (title, annotations — is it still read-only?) or to
+2. A new tool: add it to `CUBE_TOOLS` (title, annotations, `readsContent` — is it still read-only?) or to
    `EXCLUDED_CUBE_TOOLS` with the reason. A removed one: delete it from whichever list held it.
 3. A changed description: check `describeCubeTool` still renames every tool reference and still
    drops what is not offered. A changed input schema: check it still converts

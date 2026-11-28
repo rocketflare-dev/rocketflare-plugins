@@ -5,9 +5,9 @@ that plugin's own `plugins/<id>/docs/upgrades/<version>.md`; this file is the hu
 `pnpm plugin upgrade <id>` in a host app reads those notes and walks the `previous` chain, so a
 release with no note is a permanent gap every copy has to step over.
 
-**One version for the whole repository.** Every plugin here ships at the repository's version and
-is tagged `X.Y.Z`, with no per-plugin prefix — so "which analytics do I have" and "which kit
-release was it proved against" have one answer each.
+**Each plugin has its own version.** A release names one plugin, `## <id> X.Y.Z — <date>`, and is
+tagged `<id>-vX.Y.Z` (rocketflare-dev/rocketflare#181). Up to and including `3.14.0` every plugin
+shipped at one version under a plain `X.Y.Z` tag; those sections below cover every plugin at once.
 
 ## 3.14.0 — 2026-11-22
 

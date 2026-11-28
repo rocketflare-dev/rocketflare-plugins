@@ -1,13 +1,12 @@
 {
   "name": "rocketflare-plugins",
   "license": "MIT",
-  "version": "3.14.0",
   "private": true,
-  "description": "The first-party plugins for Rocketflare — copied into an app, never installed from npm.",
+  "description": "The first-party plugins for Rocketflare — copied into an app, never installed from npm. Each plugin carries its own version (rocketflare-plugin.json) and is tagged <id>-vX.Y.Z.",
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
-    "release": "node scripts/release.mjs",
-    "release:check": "node scripts/release-check.mjs"
+    "release": "node scripts/release-plugin.mjs",
+    "release:check": "node scripts/release-plugin.mjs --check"
   }
 }

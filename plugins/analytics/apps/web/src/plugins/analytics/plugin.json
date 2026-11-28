@@ -4,7 +4,7 @@
   "description": "Dashboards, a tenant-scoped semantic layer and MCP tools for your app, built on drizzle-cube.",
   "version": "3.14.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.41.0",
+  "minKit": "0.47.0",
   "skills": ["analytics", "analytics-cubes", "analytics-queries", "analytics-dashboards"],
   "anchor": "apps/web/src/plugins/analytics/plugin.json",
   "paths": [

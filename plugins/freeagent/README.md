@@ -28,7 +28,7 @@ the `freeagent:sync-listeners` extension.
 
 ## Requirements
 
-- Rocketflare kit **0.41.0** or later.
+- Rocketflare kit **0.47.0** or later (tools answer `egress`).
 - A FreeAgent app registered at [dev.freeagent.com](https://dev.freeagent.com) with the redirect
   URI `{APP_URL}/api/hooks/freeagent/callback`.
 - `OAUTH_ENCRYPTION_KEY` (the kit's bootstrap sets it) and the kit's `JOBS_QUEUE`.

@@ -60,6 +60,9 @@ export function fetchPageTool(
       'Long pages come back ' +
       'in windows: pass nextOffset to read on. Only public http(s) pages can be read.',
     schema: fetchPageInputSchema,
+    // Fetches a public URL; the page it returns is untrusted text.
+    egress: true,
+    readsContent: true,
     async handler(input) {
       const verdict = guardUrl(input.url)
       if (!verdict.ok) {

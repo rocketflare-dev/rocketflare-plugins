@@ -23,6 +23,6 @@ apply**, **Conflicts to expect**, **Verify**.
 
 - **Released history is never rewritten.** Every app pins a commit of this repository.
 - **A behaviour change adds an entry to `unreleased.md` in the same commit.**
-  `node scripts/release.mjs X.Y.Z` folds it into `X.Y.Z.md`.
+  `node scripts/release-plugin.mjs guide@X.Y.Z` folds it into `X.Y.Z.md`, tagged `guide-vX.Y.Z`.
 - **Never rename anything across releases**, whether a table, a column, a provider id or a tool
   name. Expand and contract instead.

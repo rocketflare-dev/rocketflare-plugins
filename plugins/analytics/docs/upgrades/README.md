@@ -30,6 +30,7 @@ Frontmatter, then four fixed headings — **What changed**, **How to apply**, **
 - **Released history is never rewritten.** Every app pins a commit of this repository; a force-push
   to a released tag orphans them.
 - **A behaviour change adds an entry to `unreleased.md` in the same commit.** `node
-  scripts/release.mjs X.Y.Z` folds it into `X.Y.Z.md` and prepends the `CHANGELOG.md` section.
+  scripts/release-plugin.mjs analytics@X.Y.Z` folds it into `X.Y.Z.md` and prepends the `CHANGELOG.md`
+  section; the release is tagged `analytics-vX.Y.Z`.
 - **Never rename anything across releases** — expand/contract only. drizzle-kit's rename prompt has
   no non-interactive answer, so a rename stops an unattended install dead.

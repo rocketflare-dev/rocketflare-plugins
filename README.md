@@ -15,26 +15,30 @@ sees what and its known gaps. They are also published at
 
 | Plugin | What it adds | Needs |
 |---|---|---|
-| [**analytics**](plugins/analytics/README.md) | Dashboards, tenant-scoped drizzle-cube cubes at `/cubejs-api` and `/mcp`, an hourly fact table, CLI, and four `analytics-*` agent skills. Installed by the kit's bootstrap | kit 0.41.0 |
-| [**web-knowledge**](plugins/web-knowledge/README.md) | `web_search` and `fetch_page` tools for agents and chat on each organisation's own key (Tavily, Brave, Exa, Serper, Firecrawl), Settings → Web search | kit 0.41.0 |
+| [**analytics**](plugins/analytics/README.md) | Dashboards, tenant-scoped drizzle-cube cubes at `/cubejs-api` and `/mcp`, an hourly fact table, CLI, and four `analytics-*` agent skills. Installed by the kit's bootstrap | kit 0.47.0 |
+| [**web-knowledge**](plugins/web-knowledge/README.md) | `web_search` and `fetch_page` tools for agents and chat on each organisation's own key (Tavily, Brave, Exa, Serper, Firecrawl), Settings → Web search | kit 0.47.0 |
 | [**connectors**](plugins/connectors/README.md) | Organisation connections: admin consent once, then directory and calendar sync every 15 minutes; Settings → Connections, My calendar, CLI and the `connectors` setup skill | kit 0.29.0 and a provider |
 | [**m365**](plugins/m365/README.md) | Microsoft 365 as a `connectors` provider: Entra admin consent, app-only Graph delta sync of users, groups and calendars | kit 0.29.0 and `connectors` |
 | [**issue-reports**](plugins/issue-reports/README.md) | Ideas & issues: anyone talks a bug or an idea through with an agent that asks until it is clear, checks for a duplicate, and logs it as a GitHub issue (or a comment) once they approve the draft | kit 0.29.0 and a GitHub token |
-| [**inbox**](plugins/inbox/README.md) | Inbound email through Cloudflare Email Routing: per-organisation address and sender allow-list, SPF/DKIM/DMARC checks, parsed bodies and attachments, Gmail/Proton forwarding-confirmation codes, an Inbox page, CLI, read-only agent tools, and an `inbox:consumers` extension other plugins build on | kit 0.41.0 and Email Routing on the domain |
-| [**freeagent**](plugins/freeagent/README.md) | FreeAgent (UK accounting) per organisation: OAuth connection, a 30-minute incremental mirror of bank transactions, explanations, categories, contacts, bills and invoices, Settings → FreeAgent and a FreeAgent page, read tools plus approval-gated write tools for agents, analytics cubes, CLI, a service API and a `freeagent:sync-listeners` extension for plugins built on top | kit 0.41.0 and a FreeAgent app |
-| [**guide**](plugins/guide/README.md) | An in-app user guide about your app: markdown pages in `docs/guide/` stored as always-embedded platform knowledge, a reader with semantic search and Ask (chat with page citations), a `?` header button, the `/guide` skill, and a Claude Code Stop hook that tells your coding agent when the guide may be stale | kit 0.41.0 and an embeddings provider |
+| [**inbox**](plugins/inbox/README.md) | Inbound email through Cloudflare Email Routing: per-organisation address and sender allow-list, SPF/DKIM/DMARC checks, parsed bodies and attachments, Gmail/Proton forwarding-confirmation codes, an Inbox page, CLI, read-only agent tools, and an `inbox:consumers` extension other plugins build on | kit 0.47.0 and Email Routing on the domain |
+| [**freeagent**](plugins/freeagent/README.md) | FreeAgent (UK accounting) per organisation: OAuth connection, a 30-minute incremental mirror of bank transactions, explanations, categories, contacts, bills and invoices, Settings → FreeAgent and a FreeAgent page, read tools plus approval-gated write tools for agents, analytics cubes, CLI, a service API and a `freeagent:sync-listeners` extension for plugins built on top | kit 0.47.0 and a FreeAgent app |
+| [**guide**](plugins/guide/README.md) | An in-app user guide about your app: markdown pages in `docs/guide/` stored as always-embedded platform knowledge, a reader with semantic search and Ask (chat with page citations), a `?` header button, the `/guide` skill, and a Claude Code Stop hook that tells your coding agent when the guide may be stale | kit 0.47.0 and an embeddings provider |
 | [**global-search**](plugins/global-search/README.md) | A ⌘K palette and `/search/all` page: instant Go to over everything you may open, commands, people, agents, your chats and documents, fused with RRF and an optional reranker; any plugin adds results through `global-search.providers` and commands through `global-search.commands` | kit 0.31.0 |
 
 ## Installing one
 
 ```bash
 # Read the plan first — it always prints and stops.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@analytics-v3.15.0 --subdir plugins/analytics
 # Then install it.
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/analytics --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@analytics-v3.15.0 --subdir plugins/analytics --apply
 # The HOST generates the migration. Always.
 pnpm db:generate --name plugin-analytics-<version> && pnpm db:migrate
 ```
+
+Each plugin has its own tag, `<id>-vX.Y.Z`; its README names its newest one. A plugin with no
+release of its own yet installs from the last shared tag, `3.14.0`. `pnpm plugin list --available`
+(kit 0.47.0 or later) lists each plugin at its newest release, either tag form.
 
 `--subdir` is what tells `pnpm plugin add` which plugin in this repository you mean; each plugin
 also records its own subdirectory in its `rocketflare-plugin.json`, so `pnpm plugin upgrade
@@ -47,13 +51,13 @@ request — which is why every command prints its plan and waits for `--apply`.
 
 ```
 rocketflare-plugins/
-  package.json                    the ONE version for the whole repository
+  package.json                    the release scripts (no version: each plugin has its own)
   CHANGELOG.md                    the human index; the porting notes live per plugin
-  scripts/                        the kit's release tooling, ONE copy (see below)
+  scripts/                        the release tooling (see below)
   .github/workflows/ci.yml        one job per plugin, calling the kit's reusable workflow
   .github/workflows/plugin-matrix.yml  the release-time matrix, calling the kit's (see CI)
   plugins/<id>/
-    rocketflare-plugin.json       what makes a directory a plugin
+    rocketflare-plugin.json       what makes a directory a plugin; carries ITS version
     apps/web/src/plugins/<id>/**  }
     packages/shared/src/plugins/<id>/**  }  mirrors the host tree exactly
     apps/cli/src/plugins/<id>/**  }
@@ -80,50 +84,57 @@ the kit's surface ledger (`docs/plugin-api.md` in the kit) before copying anythi
 declared number is the top-level `minKit`, the oldest kit release the plugin may be installed into.
 `requires.kit` and `requires.pluginApi` are gone and are refused by name.
 
-## One version, one tag
+## One plugin, one version, one tag
 
-Every plugin here ships at the repository's version and is tagged plain `X.Y.Z` — no tag prefixes,
-no per-plugin version namespacing. A release cuts every plugin at once, whether or not its own
-files changed.
+Each plugin is released on its own schedule (rocketflare-dev/rocketflare#181): its version lives
+in its `rocketflare-plugin.json` (and the anchor `plugin.json`), and a release is tagged
+`<id>-vX.Y.Z`, for example `freeagent-v3.15.0`. `-v` rather than `@`, because `pnpm plugin add
+<repo>@<ref>` splits on its last `@`. A plugin with no change is never re-released.
 
-The trade is deliberate. Independent versions would mean prefixed tags (`analytics-v1.3.0`), a
-resolver to match them, and a matrix of which plugin versions have ever been proved against each
-other. Lockstep costs an occasional no-op version bump and buys one answer to "which release am I
-on" and one CI run that proves the whole set against a kit ref.
+Up to and including `3.14.0` every plugin shipped at one version under a plain `X.Y.Z` tag. Those
+tags stay valid, and each plugin's own version line continues from there. The kit's resolver
+(0.47.0 and later) reads both forms and takes the newer release of each plugin; a copy on an older
+kit keeps resolving `3.14.0`, which is stale but not broken.
+
+`minKit` is information: the kit the plugin was proven on when it set that floor.
 
 ## The shared tooling
 
-`scripts/` holds the kit's release machinery — `release.mjs`, `release-check.mjs` and the five
-`lib/*.mjs` they import — in **one copy**, at the repository root.
+`scripts/` holds the release tooling, at the repository root and so **outside every
+`plugins/<id>/` directory**: `classifyPluginFile` never sees these files and they cannot leak into
+a host app by construction.
 
-That location is load-bearing. It sits **outside every `plugins/<id>/` directory**, so
-`classifyPluginFile` never sees these files and they cannot leak into a host app by construction —
-where before, each plugin repository vendored its own copy and nothing kept the copies in step.
-They are maintained in the kit (`rocketflare-dev/rocketflare`, `scripts/`) and copied here; when
-the kit's move, copy them again rather than editing them in place.
+- `release-plugin.mjs` is this repository's own: it releases one plugin or a named set.
+- `lib/upgrade-lib.mjs` and `lib/rename-lib.mjs` are copied from the kit
+  (`rocketflare-dev/rocketflare`, `scripts/lib/`) for the note parser and version order; when the
+  kit's move, copy them again rather than editing them in place.
+- `release-site-nudge.mjs` and `lib/nudge-lib.mjs` are the Claude Code hook that reminds you to
+  update rocketflare.dev after a release commit.
 
 ## Releasing
 
-Every plugin ships at one version, so a release covers all of `plugins/*`, on a branch:
+Release only the plugins that changed, on a branch:
 
-1. Give every plugin a non-empty `docs/upgrades/unreleased.md`. A plugin with no change of its own
-   gets a "version stamps only" note (`plugins/<id>/docs/upgrades/3.7.0.md` is the pattern);
-   `release.mjs` refuses an empty one.
-2. Run the kit's release script with every plugin named. Without `--plugin` it finds no manifest at
-   the root and exits 1:
+1. Each one has a non-empty `plugins/<id>/docs/upgrades/unreleased.md`, written in the same pull
+   request as the change. The script refuses an empty one.
+2. Name each plugin with its new version:
 
    ```bash
-   args=(); for p in plugins/*/; do args+=(--plugin "${p%/}"); done
-   node scripts/release.mjs X.Y.Z "${args[@]}"
+   node scripts/release-plugin.mjs freeagent@3.15.0 inbox@3.15.0
    ```
 
-   It folds each `unreleased.md` into `X.Y.Z.md`, stamps every `rocketflare-plugin.json`, its
-   anchor `plugin.json` and the root `package.json`, and prepends the `CHANGELOG.md` section.
-3. Move the `rocketflare-plugins.git@<previous>` install refs in `README.md` and
-   `plugins/*/README.md` to `@X.Y.Z`; the script does not touch them.
-4. `node scripts/release-check.mjs --tag X.Y.Z` must report `release-check ok`.
-5. Commit `Release X.Y.Z`, open a PR, and once it merges tag the merge commit `X.Y.Z` and push the
-   tag.
+   For each it folds `unreleased.md` into `<X.Y.Z>.md` (`previous` is that plugin's own last
+   release), resets `unreleased.md`, stamps that plugin's `rocketflare-plugin.json` and anchor
+   `plugin.json`, and prepends a `## <id> <X.Y.Z> — <date>` section to `CHANGELOG.md`.
+3. Move the install refs in that plugin's `README.md` and in the table above to `@<id>-vX.Y.Z`;
+   the script does not touch them.
+4. `node scripts/release-plugin.mjs --check freeagent-v3.15.0 inbox-v3.15.0` must report
+   `release check ok`.
+5. Commit `Release freeagent 3.15.0, inbox 3.15.0`, open a PR, and once it merges tag the merge
+   commit `<id>-vX.Y.Z` for each plugin and push the tags **one at a time**: GitHub starts no
+   workflow for a push of more than three tags at once, and each tag starts the plugin matrix.
+6. Create a GitHub Release per tag (`gh release create <id>-vX.Y.Z --title "<id> X.Y.Z"`), then
+   update rocketflare.dev (`sync:plugins` reads the per-plugin tags).
 
 **Released history is never rewritten.** Every app pins a commit of this repository; a force-push
 to a released tag orphans them.
@@ -131,23 +142,24 @@ to a released tag orphans them.
 ## CI
 
 `.github/workflows/ci.yml` calls the kit's reusable `plugin-ci.yml` **once for the whole
-repository**, passing `plugin_subdirs`. For each plugin it reads that plugin's `minKit` and
-the **newest** kit release, and for each of the two clones that kit,
-installs this checkout into it, generates and applies the migrations the host owns, and runs the
-kit's whole gate, off one include-matrix: the floor an adopter may still be on, and the ceiling
-the kit has just reached.
+repository**, passing `plugin_subdirs`, on every push and pull request. For each plugin it clones
+the **newest** kit release, installs this checkout into it (after the plugins its
+`requires.plugins` names), generates and applies the migrations the host owns, and runs the kit's
+whole gate. There is no `minKit` floor job: a floor is proven on the day it is raised, because the
+kit it names is the newest then, and every kit tag re-proves each plugin's latest release. A
+`minKit` that names no released kit fails the run.
 
-**The plugin matrix** (rocketflare-dev/rocketflare#180) proves the RELEASED plugins at release
-time, from both ends, with one workflow — the kit's `plugin-matrix.yml`: one `matrix <id>` job per
-plugin and one full-house job with every plugin installed together. The kit runs it on every kit
-tag, against this repository's newest release; `.github/workflows/plugin-matrix.yml` here calls it
-on every tag of this repository, against the newest kit release (and on `workflow_dispatch`, with a
-plugin set, a ref of this repository or a kit ref). A failing plugin fails its job and the run; the
-run's summary has one row per plugin. Nothing opens or edits an issue.
+**The plugin matrix** (rocketflare-dev/rocketflare#180) proves the RELEASED plugins, from both
+ends, with one workflow — the kit's `plugin-matrix.yml`: a `matrix <id>` job per plugin and one
+full-house job with every plugin installed together, each at its own newest release. The kit runs
+it on every kit tag; `.github/workflows/plugin-matrix.yml` here calls it on every `<id>-vX.Y.Z`
+tag, for that plugin plus the full house, against the newest kit release (and on
+`workflow_dispatch`, with a plugin set, a ref of this repository or a kit ref). A failing plugin
+fails its job and the run; the run's summary has one row per plugin, with its value-check warning
+count. Nothing opens or edits an issue.
 
-Failing at the FLOOR means the plugin has started using something the kit only gained later —
-raise `minKit` and release. Failing at the CEILING means the kit has moved under it: port the
-plugin.
+A failure means the kit has moved under the plugin, or the plugin has started using something
+newer than its `minKit`: port the plugin, raise `minKit` if it needs to, and release it.
 
 ## Adding a plugin to this repository
 

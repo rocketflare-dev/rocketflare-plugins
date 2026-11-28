@@ -44,6 +44,9 @@ export function listInboxMessagesTool(ctx: ToolCtx): Tool<ListInboxMessagesInput
       'List email received by this workspace’s inbox (forwarded receipts, invoices, notices), ' +
       'newest first: sender, subject, dates and attachment count. Use inbox_get_message to read one.',
     schema: listInboxMessagesInputSchema,
+    // Reads stored mail in this database; senders and subjects are untrusted text.
+    egress: false,
+    readsContent: true,
     async handler(input) {
       const filters = [eq(inboxMessages.tenantId, ctx.tenantId)]
       if (input.search) {
@@ -110,6 +113,9 @@ export function getInboxMessageTool(ctx: ToolCtx): Tool<GetInboxMessageInput> {
       'Read one inbound email: headers, its plain-text body (windowed by offset/maxChars) and the ' +
       'names and types of its attachments.',
     schema: getInboxMessageInputSchema,
+    // Reads stored mail in this database; the body is untrusted text.
+    egress: false,
+    readsContent: true,
     async handler(input) {
       const [row] = await ctx.db
         .select()
