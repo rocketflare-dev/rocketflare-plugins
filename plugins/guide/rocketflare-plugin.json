@@ -2,7 +2,7 @@
   "id": "guide",
   "label": "User guide",
   "description": "An in-app user guide about your app, written by your coding agent, kept in step with the code, and answered from by \"Ask the Guide\".",
-  "version": "3.14.0",
+  "version": "3.15.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "subdir": "plugins/guide",
   "anchor": "apps/web/src/plugins/guide/plugin.json",

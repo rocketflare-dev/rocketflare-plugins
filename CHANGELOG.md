@@ -9,6 +9,31 @@ release with no note is a permanent gap every copy has to step over.
 tagged `<id>-vX.Y.Z` (rocketflare-dev/rocketflare#181). Up to and including `3.14.0` every plugin
 shipped at one version under a plain `X.Y.Z` tag; those sections below cover every plugin at once.
 
+## analytics 3.15.0 — 2026-11-28
+
+Analytics' cube tools answer `egress` and `readsContent`, so `pnpm plugin check` no longer warns about them, and the plugin needs kit 0.47.0 or later.
+[Porting note](plugins/analytics/docs/upgrades/3.15.0.md).
+
+## freeagent 3.15.0 — 2026-11-28
+
+FreeAgent's tools answer `egress` and `readsContent`, so `pnpm plugin check` no longer warns about them, and the plugin needs kit 0.47.0 or later.
+[Porting note](plugins/freeagent/docs/upgrades/3.15.0.md).
+
+## guide 3.15.0 — 2026-11-28
+
+Guide's `search_guide` tool answers `egress` and `readsContent`, so `pnpm plugin check` no longer warns about it, and the plugin needs kit 0.47.0 or later.
+[Porting note](plugins/guide/docs/upgrades/3.15.0.md).
+
+## inbox 3.15.0 — 2026-11-28
+
+Inbox's tools answer `egress` and `readsContent`, so `pnpm plugin check` no longer warns about them, and the plugin needs kit 0.47.0 or later.
+[Porting note](plugins/inbox/docs/upgrades/3.15.0.md).
+
+## web-knowledge 3.15.0 — 2026-11-28
+
+Web knowledge's tools answer `egress` and `readsContent`, so `pnpm plugin check` no longer warns about them, and the plugin needs kit 0.47.0 or later.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.15.0.md).
+
 ## 3.14.0 — 2026-11-22
 
 **analytics** — Analytics imports `react-router` instead of `react-router-dom`, as the kit has since 0.25.0, so it no longer needs the host to keep `react-router-dom` installed (#40).
