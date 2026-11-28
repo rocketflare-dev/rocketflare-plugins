@@ -111,7 +111,7 @@ export function companyTool(ctx: ToolCtx): Tool<Record<string, never>> {
         lastSyncAt: s.lastSyncAt?.toISOString() ?? null,
         lastError: s.lastError,
         counts: s.counts,
-        note: 'Figures come from a mirror synced every 30 minutes; recent changes in FreeAgent may not show yet.',
+        note: 'Figures come from a mirror synced every hour; recent changes in FreeAgent may not show yet.',
       })
     },
   })

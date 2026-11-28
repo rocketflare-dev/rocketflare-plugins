@@ -1,7 +1,7 @@
 # freeagent plugin — rules for this directory
 
 An organisation's FreeAgent books: OAuth (`api/routes.ts` connect → FreeAgent → `api/hooks.ts`
-callback) → sealed tokens on `freeagent_connections` → `freeagent.sync` (cron `*/30`, "Sync now",
+callback) → sealed tokens on `freeagent_connections` → `freeagent.sync` (cron `18 * * * *`, "Sync now",
 the callback) → `services/sync.ts` → the `freeagent_*` mirror → agent tools, the page, cubes, and
 every `freeagent:sync-listeners` extension.
 

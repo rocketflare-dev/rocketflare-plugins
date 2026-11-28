@@ -8,7 +8,7 @@ argument-hint: "[explain | register | secrets | connect | verify | troubleshoot]
 
 The `freeagent` plugin connects ONE FreeAgent company per organisation over OAuth, mirrors its
 bank accounts, transactions, explanations, categories, contacts, bills and invoices into
-`freeagent_*` tables every 30 minutes, gives agents read tools (and two approval-gated write
+`freeagent_*` tables every hour, gives agents read tools (and two approval-gated write
 tools), and exports a service API other plugins (a receipts matcher) build on. Code rules:
 `apps/web/src/plugins/freeagent/CLAUDE.md`.
 
@@ -38,7 +38,7 @@ tools), and exports a service API other plugins (a receipts matcher) build on. C
 In this order: the deployment registers one FreeAgent app; an admin of each organisation clicks
 **Connect FreeAgent** in Settings → FreeAgent and approves it in FreeAgent; FreeAgent redirects to
 `{APP_URL}/api/hooks/freeagent/callback`, which stores the tokens sealed and queues the first sync;
-every 30 minutes the cron queues `freeagent.sync` per connected organisation; the sync is
+every hour (`18 * * * *`) the cron queues `freeagent.sync` per connected organisation; the sync is
 incremental (`updated_since`), and the first one reaches back about 400 days for transactions;
 agents read the mirror and may propose an explanation or a bill, which a person approves.
 
@@ -90,7 +90,7 @@ printf production | pnpm --filter @rocketflare/web exec wrangler secret put FREE
 ```
 
 Or `pnpm provision secrets <env>`, which reads them from the shell or `apps/web/.provision.env`.
-The `*/30 * * * *` cron is written into both tomls by `pnpm provision cloudflare <env>`.
+The `18 * * * *` cron is written into both tomls by `pnpm provision cloudflare <env>`.
 
 ## Mode: connect
 

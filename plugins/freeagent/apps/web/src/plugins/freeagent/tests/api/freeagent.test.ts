@@ -746,6 +746,8 @@ describe('sync', () => {
       readFileSync(new URL('../../plugin.json', import.meta.url), 'utf8')
     ) as { crons: string[] }
     expect(manifest.crons).toEqual([FREEAGENT_CRON])
+    // Hourly at most: a sub-hourly tick reads Postgres often enough that Neon never suspends.
+    expect(FREEAGENT_CRON).toMatch(/^\d{1,2} \* \* \* \*$/)
     const execution = createExecutionContext()
     const report = await dispatchScheduled(FREEAGENT_CRON, freeagentEnv(), execution)
     await waitOnExecutionContext(execution)

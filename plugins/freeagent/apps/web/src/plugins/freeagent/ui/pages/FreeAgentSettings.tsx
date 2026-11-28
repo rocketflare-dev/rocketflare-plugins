@@ -89,7 +89,7 @@ function Connection({ status }: { status: FreeAgentStatus }) {
   return (
     <SectionPanel
       title="FreeAgent"
-      description="Connect this organisation's FreeAgent company. Its bank transactions, explanations, categories, contacts, bills and invoices are mirrored here every 30 minutes."
+      description="Connect this organisation's FreeAgent company. Its bank transactions, explanations, categories, contacts, bills and invoices are mirrored here every hour."
     >
       <SettingRow label="Environment" description="Set by the deployment (FREEAGENT_ENVIRONMENT).">
         <span

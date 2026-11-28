@@ -1,6 +1,6 @@
 /**
  * `freeagent` — the server entry (D31). Read top to bottom: the authed mount, the public OAuth
- * callback, the one job, the half-hourly cron, the agent tools, the grants and the analytics
+ * callback, the one job, the hourly cron, the agent tools, the grants and the analytics
  * contribution.
  *
  * What it exports beyond the `ServerPlugin` is the service API another plugin builds on — a

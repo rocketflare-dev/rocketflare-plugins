@@ -3,7 +3,7 @@
  *
  * Read top to bottom: one authenticated mount (settings, status, the synced data) behind the
  * `connectors` flag, one PUBLIC mount (the providers' consent callback, later their webhooks), one
- * job, one quarter-hour cron, one CASL subject. No provider lives here — `m365` and, later,
+ * job, one hourly cron, one CASL subject. No provider lives here — `m365` and, later,
  * `google-workspace` contribute theirs through `extensions`, which is why this file also publishes
  * `connectorExtensions` and the provider contract: they are part of this plugin's four-entry API,
  * and its semver covers them.

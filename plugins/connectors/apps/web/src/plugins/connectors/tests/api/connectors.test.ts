@@ -24,13 +24,14 @@ import {
   stubs,
 } from '@testkit/integration'
 import { makeCronCtx, makeJobCtx } from '@testkit/unit'
+import { readFileSync } from 'node:fs'
 import { and, eq, inArray } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { tenantUsers } from '@/db/schema/kit'
 import { signState } from '@/plugins/api'
 import { allTables } from '@/plugins/api/peers'
 import { CONSENT_STATE_PURPOSE } from '../../api/consent'
-import { enqueueDueSyncs } from '../../api/scheduled'
+import { CONNECTORS_CRON, enqueueDueSyncs, SYNC_INTERVAL_MS } from '../../api/scheduled'
 import {
   connectorsCalendarEvents,
   connectorsConnections,
@@ -868,7 +869,44 @@ describe('calendar visibility', () => {
 
 // ---- The cron ---------------------------------------------------------------------------------------
 
-describe('the quarter-hour cron', () => {
+describe('the hourly cron', () => {
+  it('runs hourly at most, on the expression the manifest declares', () => {
+    // A sub-hourly tick reads Postgres often enough that a Neon compute never suspends.
+    expect(CONNECTORS_CRON).toMatch(/^\d{1,2} \* \* \* \*$/)
+    const manifest = JSON.parse(
+      readFileSync(new URL('../../plugin.json', import.meta.url), 'utf8')
+    ) as { crons: string[] }
+    expect(manifest.crons).toEqual([CONNECTORS_CRON])
+  })
+
+  it('a cursor the previous tick synced is due on this one; one synced moments ago is not', async () => {
+    const now = new Date()
+    const mineQueued = (env: ReturnType<typeof createTestEnv>) =>
+      stubs(env).queue.messages.filter(
+        m => (m.body as { payload: { tenantId: string } }).payload.tenantId === tenantId
+      ).length
+    const syncedAgo = (ms: number) =>
+      db
+        .update(connectorsSyncCursors)
+        .set({
+          lastSyncedAt: new Date(now.getTime() - ms),
+          inProgress: false,
+          claimedUntil: null,
+        })
+        .where(eq(connectorsSyncCursors.tenantId, tenantId))
+    // The last tick's job finished a few minutes after it: under an hour ago by this tick.
+    expect(SYNC_INTERVAL_MS).toBeLessThan(55 * 60_000)
+    await syncedAgo(55 * 60_000)
+    const hourLater = createTestEnv()
+    await enqueueDueSyncs(makeCronCtx({ db, env: hourLater }), now)
+    expect(mineQueued(hourLater)).toBeGreaterThanOrEqual(3)
+
+    await syncedAgo(10 * 60_000)
+    const justSynced = createTestEnv()
+    await enqueueDueSyncs(makeCronCtx({ db, env: justSynced }), now)
+    expect(mineQueued(justSynced)).toBe(0)
+  })
+
   it('enqueues due cursors, and nothing for a tenant with the flag off', async () => {
     await db
       .update(connectorsSyncCursors)

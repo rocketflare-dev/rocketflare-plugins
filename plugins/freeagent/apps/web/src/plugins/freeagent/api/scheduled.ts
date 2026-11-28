@@ -1,5 +1,5 @@
 /**
- * The half-hourly tick: one `freeagent.sync` per connected organisation. Contributed through
+ * The hourly tick: one `freeagent.sync` per connected organisation. Contributed through
  * `ServerPlugin.scheduledTasks`; the same expression is `plugin.json`'s `crons`, which
  * `pnpm provision cloudflare <env>` writes into both tomls.
  *
@@ -17,7 +17,12 @@ import type { CronCtx, JobInput, ScheduledTask } from '@/plugins/api'
 import { cronCtx } from '@/plugins/api'
 import { freeagentConnections } from '../db/schema'
 
-export const FREEAGENT_CRON = '*/30 * * * *'
+/**
+ * Hourly, never faster: the tick reads Postgres even when nobody is connected, and a sub-hourly
+ * read keeps a Neon compute from ever suspending. `:18` wakes the database in the same minutes as
+ * the kit's `16 * * * *` sweep and analytics' `15 * * * *`, without sharing either expression.
+ */
+export const FREEAGENT_CRON = '18 * * * *'
 
 export async function enqueueSyncs(ctx: CronCtx): Promise<number> {
   const connected = await ctx.db

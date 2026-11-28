@@ -129,7 +129,7 @@
   },
   "bindings": [],
   "crons": [
-    "*/30 * * * *"
+    "18 * * * *"
   ],
   "apiPrefixes": [],
   "coreEdits": [],

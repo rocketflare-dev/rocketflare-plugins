@@ -11,7 +11,7 @@ skills from 0.13.0).
 | Where | What |
 |---|---|
 | `packages/shared/src/plugins/connectors/index.ts` | Contracts, `connectors.sync` job, flag `connectors` (default on), subject `Connector`, and `connectorExtensions` + `CONNECTOR_EXTENSION_KEYS` — in the SHARED half so a provider can call it at module scope without closing the server-barrel cycle |
-| `index.ts` | Server entry: `/api/connectors` (gated on the flag), public `/api/hooks/connectors`, the job, the `*/15` cron, grants (owner/admin `manage`, support `read`, members none — they read their own events without a subject). Re-exports the provider contract and errors |
+| `index.ts` | Server entry: `/api/connectors` (gated on the flag), public `/api/hooks/connectors`, the job, the hourly `17 * * * *` cron, grants (owner/admin `manage`, support `read`, members none — they read their own events without a subject). Re-exports the provider contract and errors |
 | `providers.ts` | `ConnectorProvider` and what it is handed/returns (`SourceCtx`, `SyncPage`, items), the errors that steer the engine (`CursorExpiredError`, `RetryLaterError`, `ConnectorAuthError`, `ConsentError`), the zod-narrowed registry, `setConnectorProvidersForTests` |
 | `db/schema/` | `installations` (admin act, sealed BYO secret) → `connections` (organisation `'*'`, one per mailbox, later per user; sealed token cache) → `sync_cursors` (opaque cursor, generation, DB claim); `directory_users/groups`, `group_members`; `calendar_events` (owner-visible). Everything cascades from the installation |
 | `services/sync.ts` | The engine: load → claim → (full pass?) → page → apply → save cursor after EVERY page → final: sweep (full passes only) + reconcile → release / continue. Failure → instruction mapping is in its header |
@@ -50,7 +50,7 @@ skills from 0.13.0).
 
 ## Known gaps
 
-- Phase 1 is polling only (every 15 minutes). Webhooks (Graph subscriptions, Google channels) are
+- Phase 1 is polling only (hourly). Webhooks (Graph subscriptions, Google channels) are
   phase 2 and will live on the public mount beside the callback.
 - No per-user delegated connections yet (phase 4) — the columns exist (`owner_type = 'user'`,
   `refresh_token_enc`), the flow does not.
