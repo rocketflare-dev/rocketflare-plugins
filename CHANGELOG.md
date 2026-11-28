@@ -9,6 +9,16 @@ release with no note is a permanent gap every copy has to step over.
 tagged `<id>-vX.Y.Z` (rocketflare-dev/rocketflare#181). Up to and including `3.14.0` every plugin
 shipped at one version under a plain `X.Y.Z` tag; those sections below cover every plugin at once.
 
+## connectors 3.15.0 — 2026-11-28
+
+The sync cron runs hourly, at `17 * * * *`, instead of every 15 minutes (`*/15 * * * *`).
+[Porting note](plugins/connectors/docs/upgrades/3.15.0.md).
+
+## freeagent 3.16.0 — 2026-11-28
+
+The sync cron runs hourly, at `18 * * * *`, instead of every 30 minutes (`*/30 * * * *`).
+[Porting note](plugins/freeagent/docs/upgrades/3.16.0.md).
+
 ## analytics 3.15.0 — 2026-11-28
 
 Analytics' cube tools answer `egress` and `readsContent`, so `pnpm plugin check` no longer warns about them, and the plugin needs kit 0.47.0 or later.
