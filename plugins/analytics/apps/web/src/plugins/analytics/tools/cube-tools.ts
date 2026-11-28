@@ -40,18 +40,27 @@ type LibraryToolName = 'discover' | 'validate' | 'load'
 /**
  * The drizzle-cube tools this plugin wraps, keyed by the library's own name. All three only read,
  * so every one is `mcp:read` and listed under the default "all read-only tools" exposure.
+ *
+ * `readsContent` is whether the answer carries this organisation's data: `discover` and `validate`
+ * answer the cube definitions and the query itself, `load` answers rows.
  */
-export const CUBE_TOOLS: Record<LibraryToolName, { title: string; mcp: ToolMcpOptions }> = {
+export const CUBE_TOOLS: Record<
+  LibraryToolName,
+  { title: string; mcp: ToolMcpOptions; readsContent: boolean }
+> = {
   discover: {
     title: 'Discover analytics data',
+    readsContent: false,
     mcp: { title: 'Discover analytics data', annotations: { openWorldHint: false } },
   },
   validate: {
     title: 'Validate an analytics query',
+    readsContent: false,
     mcp: { title: 'Validate an analytics query', annotations: { openWorldHint: false } },
   },
   load: {
     title: 'Run an analytics query',
+    readsContent: true,
     mcp: { title: 'Run an analytics query', annotations: { openWorldHint: false } },
   },
 }
@@ -148,6 +157,9 @@ function cubeTool(
     ) as z.ZodType<Record<string, unknown>>,
     surfaces: ['mcp', 'agents'],
     mcp: CUBE_TOOLS[name].mcp,
+    // Queries this database through the cubes; nothing leaves the app.
+    egress: false,
+    readsContent: CUBE_TOOLS[name].readsContent,
     async handler(input) {
       return withStatementTimeout(ctx.db, CUBE_STATEMENT_TIMEOUT_MS, async tx => {
         const securityContext = toolSecurityContext(ctx)

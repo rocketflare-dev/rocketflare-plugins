@@ -59,6 +59,10 @@ export function searchGuideTool(ctx: GuideSearchCtx, options: SearchGuideToolOpt
       'passages, each tagged with its page path and heading for citation. Issue several focused ' +
       'queries to cover a question. Read-only.',
     schema: searchGuideInputSchema,
+    // Searches the app's own guide pages (shipped with the app, not organisation text) through
+    // the embeddings provider, which is part of the app.
+    egress: false,
+    readsContent: false,
     async handler(input) {
       const { passages, semantic } = await searchGuide(ctx, {
         query: input.query,

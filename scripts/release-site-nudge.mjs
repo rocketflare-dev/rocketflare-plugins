@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * A Claude Code `PreToolUse` hook: when a `git commit` changes the root `package.json` version —
- * which is what a release commit does — remind Claude to update the website (rocketflare-www)
+ * which is what a kit release commit does — or, in the plugins monorepo, a plugin manifest's
+ * version (each plugin releases on its own), remind Claude to update the website (rocketflare-www)
  * once the tag is out. The changelog on rocketflare.dev is synced by hand from the GitHub Releases,
  * and a release that never reaches it is invisible to everybody reading the site.
  *
@@ -67,12 +68,41 @@ function main() {
   const kind = repoKind()
   if (!kind) return
 
-  const before = git(['show', 'HEAD:package.json'])
   // `-a` commits the working tree's tracked changes; otherwise only what is staged.
-  const after = commitsAll(command)
-    ? readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')
-    : git(['show', ':package.json'])
-  const change = versionChange(before, after)
+  const versionMove = file =>
+    versionChange(
+      git(['show', `HEAD:${file}`]),
+      commitsAll(command)
+        ? readFileSync(path.join(REPO_ROOT, file), 'utf8')
+        : git(['show', `:${file}`])
+    )
+
+  if (kind === 'plugins') {
+    // Each plugin releases on its own (`<id>-vX.Y.Z`, rocketflare-dev/rocketflare#181), so a
+    // release commit is one that moves a plugin manifest's version, not the root package.json.
+    const moved = readdirSync(path.join(REPO_ROOT, 'plugins'), { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => `plugins/${d.name}/rocketflare-plugin.json`)
+      .filter(file => existsSync(path.join(REPO_ROOT, file)))
+      .map(file => ({ id: file.split('/')[1], change: versionMove(file) }))
+      .filter(m => m.change)
+    if (moved.length === 0) return
+    const names = moved.map(m => `${m.id} ${m.change.to}`).join(', ')
+    const where = process.env.ROCKETFLARE_WWW_DIR ?? '~/work/rocketflare-www (or $ROCKETFLARE_WWW_DIR)'
+    const message = [
+      `This commit releases ${names} — tags ${moved.map(m => `${m.id}-v${m.change.to}`).join(', ')}.`,
+      'After each tag is pushed and its GitHub Release exists, update the website, rocketflare.dev:',
+      `  1. In ${where}, create a branch.`,
+      '  2. Run `npm run sync:releases` and `npm run sync:plugins` (per-plugin tags), and update',
+      "     src/data/plugins.ts with each released plugin's version and its <id>-vX.Y.Z install command.",
+      '  3. Run `npm run check:releases && npm run build`, then open a PR; merging deploys the site.',
+      'Say so if this release deliberately needs no site change.',
+    ].join('\n')
+    process.stdout.write(hookJson(message, `Release ${names}: update rocketflare-www after tagging.`))
+    return
+  }
+
+  const change = versionMove('package.json')
   if (!change) return
 
   const message = siteReminder({ ...change, kind, wwwDir: process.env.ROCKETFLARE_WWW_DIR })

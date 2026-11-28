@@ -1,44 +1,75 @@
-# Compatibility, proved from this end (D31, decision 5).
+# Compatibility on every push, proved from this end (D31, decision 5).
 #
 # The steps live in the KIT — `.github/workflows/plugin-ci.yml` — so that a change to how
-# compatibility is proved reaches every plugin through one file. For each plugin below it reads
-# that plugin's own `requires.kit`, resolves the OLDEST and the NEWEST kit release inside the
-# range, and for each clones that kit, installs this checkout as a plugin, generates and applies
-# the migrations the host owns, and runs the kit's whole gate. Both ends of the range rather than a
-# midpoint: the floor an adopter may still be on, and the ceiling the kit has just reached.
+# compatibility is proved reaches every plugin through one file. For each plugin below it clones
+# the kit, installs this checkout as a plugin (after the plugins its `requires.plugins` names),
+# generates and applies the migrations the host owns, and runs the kit's whole gate.
 #
-# Failing at the FLOOR means the plugin has started using something the kit only gained later —
-# raise its `requires.kit` and cut a release. Failing at the CEILING means the kit has moved under
-# it: port the plugin (`pnpm plugin upgrade` is the adopter's side of the same change) and widen
-# the range.
+# **Against the NEWEST kit release only** (rocketflare-dev/rocketflare#180, #181). There is no
+# `minKit` floor job: a floor is proven on the day it is raised, because the kit it names is the
+# newest then, and every kit tag re-proves each plugin's latest release through the kit's plugin
+# matrix. So `kit_ref` is always passed — the newest `X.Y.Z` kit tag, or the one a dispatch names —
+# which makes the reusable workflow use it verbatim instead of pairing a floor with a ceiling.
 #
 # `plugin_subdirs` rather than `plugin_subdir`: this repository holds several plugins, and that
-# input proves EVERY one against every kit version its OWN range admits, in one run, off an
-# include-matrix. Adding a plugin is a line in that array — no new job.
+# input proves every one in one run, off an include-matrix. Adding a plugin is a line in that
+# array — no new job.
 name: CI
 on:
   pull_request:
   push:
     branches: [main]
-  workflow_dispatch: # re-run against a kit release cut after the last push
-  # The kit's `notify-plugins.yml` dispatches this on every kit tag, and names this repository
-  # explicitly. Without the trigger the notification arrives and does nothing, which is the failure
-  # mode that workflow exists to remove: a stable plugin otherwise learns the kit moved under it
-  # whenever somebody next happens to push, which can be months.
-  repository_dispatch:
-    types: [kit-released]
+  workflow_dispatch:
+    inputs:
+      kit_ref:
+        description: Kit branch, tag or sha to prove against. Empty = the newest kit release tag.
+        type: string
+        default: ''
+
+permissions:
+  contents: read
 
 jobs:
+  kit:
+    name: Resolve the newest kit release
+    runs-on: ${{ vars.RF_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    outputs:
+      kit_ref: ${{ steps.resolve.outputs.kit_ref }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The newest `X.Y.Z` kit tag (`sort -V`, so 0.10.0 sorts above 0.9.0). Every plugin's
+      # `minKit` must be a released kit version at or below it: the reusable workflow does not
+      # read `minKit` once it is handed a ref, so a floor naming an unreleased kit is caught here.
+      - id: resolve
+        env:
+          INPUT_REF: ${{ inputs.kit_ref }}
+        run: |
+          set -euo pipefail
+          git ls-remote --tags --refs https://github.com/rocketflare-dev/rocketflare.git \
+            | sed 's#.*refs/tags/##' | { grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true; } \
+            | sort -V > "$RUNNER_TEMP/kit-tags.txt"
+          newest="$(tail -n 1 "$RUNNER_TEMP/kit-tags.txt")"
+          if [ -z "$newest" ]; then echo "::error::the kit has no X.Y.Z release tag"; exit 1; fi
+          for manifest in plugins/*/rocketflare-plugin.json; do
+            floor="$(node -p "require('./$manifest').minKit ?? ''")"
+            if ! grep -qxF "$floor" "$RUNNER_TEMP/kit-tags.txt"; then
+              echo "::error file=$manifest::minKit '$floor' is not a released kit version (newest is $newest)"
+              exit 1
+            fi
+          done
+          ref="${INPUT_REF:-$newest}"
+          echo "kit ref: $ref (newest release $newest)"
+          echo "kit_ref=$ref" >> "$GITHUB_OUTPUT"
+
   plugins:
+    needs: kit
     uses: rocketflare-dev/rocketflare/.github/workflows/plugin-ci.yml@main
     with:
       plugin_subdirs: '["plugins/analytics", "plugins/web-knowledge", "plugins/connectors", "plugins/m365", "plugins/issue-reports", "plugins/inbox", "plugins/freeagent", "plugins/guide", "plugins/global-search"]'
-      # On a kit-released dispatch, prove against the ref that was just cut — used verbatim, with
-      # the range NOT consulted. That is what makes the notification worth sending: resolving the
-      # range again would pick the same versions as the last run and prove nothing new. Empty on
-      # every other trigger, which restores the normal range resolution.
-      kit_ref: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.kit_ref || '' }}
+      kit_ref: ${{ needs.kit.outputs.kit_ref }}
     # kit_repo: https://github.com/rocketflare-dev/rocketflare.git  # the default
-    # kit_range: "=0.6.1"   # override the plugins' own requires.kit
     # secrets:
     #   kit_token: ${{ secrets.KIT_READ_TOKEN }}   # only if the kit repository is private

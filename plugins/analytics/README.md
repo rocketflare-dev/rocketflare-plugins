@@ -25,8 +25,9 @@ one is malformed.
 
 ## Requirements
 
-- Rocketflare kit **0.41.0** or later (`minKit`; earlier plugin releases support older kits). Kit
-  0.41.0 owns `/mcp`, so an app upgrading to it upgrades this plugin in the same sitting.
+- Rocketflare kit **0.47.0** or later (`minKit`; earlier plugin releases support older kits). The
+  cube tools answer `egress`, which 0.47.0 added; kit 0.41.0 owns `/mcp`, so an app upgrading past
+  it upgrades this plugin in the same sitting.
 - No other plugin, no bindings and no secrets.
 - npm dependencies the install adds to `apps/web`: `drizzle-cube` (pinned 0.12.2), `recharts`, `d3`,
   `react-grid-layout`, `react-is`.
@@ -36,8 +37,8 @@ one is malformed.
 The first command prints the plan and stops, the second applies it:
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/analytics
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/analytics --apply
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@analytics-v3.15.0 --subdir plugins/analytics
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@analytics-v3.15.0 --subdir plugins/analytics --apply
 pnpm db:generate --name plugin-analytics-3.9.0 && pnpm db:migrate
 ```
 
