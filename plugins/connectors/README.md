@@ -37,8 +37,8 @@ Google Workspace is next. **Install a provider too** — on its own, this plugin
 `connectors` first, then the provider; generate a migration after each:
 
 ```bash
-pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/connectors --apply
-pnpm db:generate --name plugin-connectors-3.4.0
+pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@connectors-v3.15.0 --subdir plugins/connectors --apply
+pnpm db:generate --name plugin-connectors-3.15.0
 pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.0 --subdir plugins/m365 --apply
 pnpm db:migrate
 ```
