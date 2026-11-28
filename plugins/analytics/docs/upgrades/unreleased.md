@@ -1,10 +1,10 @@
 ---
 version: unreleased
-previous: 3.15.0
+previous: 3.16.0
 date: null
 breaking: false
 migrations: []
-areas: [api, shared, docs]
+areas: []
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,23 +12,11 @@ manual: false
 
 ## What changed
 
-Analytics stops for an organisation that turned it off (kit 0.48.0's kill switch), and `pnpm plugin check` no longer warns about it. The plugin needs kit 0.48.0 or later.
-
-- The hourly fact-table rebuild (`analytics.refreshFactTables`, `15 * * * *`) is a `perTenantTask`: the kit calls it once per organisation and never for one where an admin turned analytics off in Settings → Domains. Each call rebuilds that organisation's fact tables, as the `analytics.refresh-facts` job does, and logs only when a table fails.
-- `analyticsExtensions` and `ANALYTICS_EXTENSION_KEYS` now live in the shared half (`@rocketflare/shared/plugins/analytics/index`). `@/plugins/analytics` still exports both, with the same typed signature, so a contributing plugin changes nothing. The builder reads no organisation, so it needs no `definePublic`.
+_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
+file for the fields and for what "How to apply" has to say._
 
 ## How to apply
 
-1. Upgrade the kit to 0.48.0 first.
-2. Run `pnpm plugin upgrade analytics --apply`. No migration, no toml change: the cron expression is unchanged.
-
 ## Conflicts to expect
 
-- `api/scheduled.ts`, if you changed the rebuild: `refreshFactTables` now takes a `TenantCronCtx` and passes `tenantId` to `refreshAllFactTables`. Keep your change inside it.
-- A test of yours that called `refreshFactTables(makeCronCtx({ db }))` passes `{ ...makeCronCtx({ db }), tenantId }`.
-
 ## Verify
-
-1. `pnpm plugin check` prints no `analytics:` warning.
-2. `pnpm test config apps/web/tests/config/units.test.ts` prints no `[units] analytics:` line.
-3. `pnpm test api apps/web/src/plugins/analytics` passes, including "leaves an organisation that turned analytics off alone".

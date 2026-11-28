@@ -9,6 +9,36 @@ release with no note is a permanent gap every copy has to step over.
 tagged `<id>-vX.Y.Z` (rocketflare-dev/rocketflare#181). Up to and including `3.14.0` every plugin
 shipped at one version under a plain `X.Y.Z` tag; those sections below cover every plugin at once.
 
+## analytics 3.16.0 — 2026-11-28
+
+Analytics stops for an organisation that turned it off (kit 0.48.0's kill switch), and `pnpm plugin check` no longer warns about it. The plugin needs kit 0.48.0 or later.
+[Porting note](plugins/analytics/docs/upgrades/3.16.0.md).
+
+## freeagent 3.17.0 — 2026-11-28
+
+FreeAgent stops for an organisation that turned it off (kit 0.48.0's kill switch), including when another plugin calls its service API, and `pnpm plugin check` no longer warns about it. The plugin needs kit 0.48.0 or later.
+[Porting note](plugins/freeagent/docs/upgrades/3.17.0.md).
+
+## web-knowledge 3.16.0 — 2026-11-28
+
+`pnpm plugin check` no longer warns that `webTools` is exported without `definePublic`. The plugin needs kit 0.48.0 or later.
+[Porting note](plugins/web-knowledge/docs/upgrades/3.16.0.md).
+
+## connectors 3.16.0 — 2026-11-28
+
+Connectors stops for an organisation that turned it off (kit 0.48.0's kill switch), and `pnpm plugin check` no longer warns about it. The plugin needs kit 0.48.0 or later (it declared 0.29.0 before).
+[Porting note](plugins/connectors/docs/upgrades/3.16.0.md).
+
+## inbox 3.16.0 — 2026-11-28
+
+The two readers other plugins call stop for an organisation that turned inbox off (kit 0.48.0's kill switch), and `pnpm plugin check` no longer warns about them. The plugin needs kit 0.48.0 or later.
+[Porting note](plugins/inbox/docs/upgrades/3.16.0.md).
+
+## guide 3.16.0 — 2026-11-28
+
+The daily index task says it spans every organisation, so kit 0.48.0's config test no longer warns about it. The plugin needs kit 0.48.0 or later.
+[Porting note](plugins/guide/docs/upgrades/3.16.0.md).
+
 ## connectors 3.15.0 — 2026-11-28
 
 The sync cron runs hourly, at `17 * * * *`, instead of every 15 minutes (`*/15 * * * *`).

@@ -2,7 +2,7 @@
   "id": "analytics",
   "label": "Analytics",
   "description": "Dashboards, a tenant-scoped semantic layer and MCP tools for your app, built on drizzle-cube.",
-  "version": "3.15.0",
+  "version": "3.16.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
   "minKit": "0.48.0",
   "skills": ["analytics", "analytics-cubes", "analytics-queries", "analytics-dashboards"],
