@@ -2,7 +2,7 @@
  * Writes to FreeAgent, and the mirror read other plugins build on — the exported service API.
  *
  * Every write updates the mirror row it touched in the same call, so a matcher that explains a
- * transaction sees it explained at once rather than after the next half-hourly sync: the new
+ * transaction sees it explained at once rather than after the next hourly sync: the new
  * explanation is upserted, and the transaction is re-read from FreeAgent for its new
  * `unexplained_amount` (FreeAgent computes it; we never guess it).
  *

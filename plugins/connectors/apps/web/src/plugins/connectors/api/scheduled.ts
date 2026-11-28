@@ -1,5 +1,5 @@
 /**
- * The quarter-hour tick: reconcile every active installation with its organisation's members, then
+ * The hourly tick: reconcile every active installation with its organisation's members, then
  * enqueue every cursor that is due. Contributed through `ServerPlugin.scheduledTasks`; the cron
  * expression is also `plugin.json`'s `crons`, which `pnpm provision cloudflare <env>` writes into
  * both tomls.
@@ -21,9 +21,18 @@ import { connectorsConnections, connectorsInstallations, connectorsSyncCursors }
 import { connectorProvider } from '../providers'
 import { reconcileInstallation } from '../services/reconcile'
 
-export const CONNECTORS_CRON = '*/15 * * * *'
-/** A cursor that finished less than this long ago is not due yet. */
-export const SYNC_INTERVAL_MS = 15 * 60_000
+/**
+ * Hourly, never faster: the tick reads Postgres even when nothing is installed, and a sub-hourly
+ * read keeps a Neon compute from ever suspending. `:17` wakes the database in the same minutes as
+ * the kit's `16 * * * *` sweep and analytics' `15 * * * *`, without sharing either expression.
+ */
+export const CONNECTORS_CRON = '17 * * * *'
+/**
+ * A cursor that finished less than this long ago is not due yet ("Sync now" a moment ago). Well
+ * under the hour between ticks, so a cursor the last tick synced is due on this one even when its
+ * job finished minutes after that tick.
+ */
+export const SYNC_INTERVAL_MS = 45 * 60_000
 
 export async function enqueueDueSyncs(ctx: CronCtx, now = new Date()): Promise<number> {
   const installations = await ctx.db

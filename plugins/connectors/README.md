@@ -17,7 +17,7 @@ Google Workspace is next. **Install a provider too** — on its own, this plugin
 | Area | What you get |
 |---|---|
 | UI | **Settings → Connections** (connect, consent, sync status, sync now, disconnect) and **My calendar** at `/calendar` |
-| Sync | Directory people, groups and memberships, and the calendars of directory people who are members of your app (matched by email), via delta queries — every 15 minutes by the `*/15 * * * *` cron, or on demand. Cursors resume after every page and a lost cursor restarts a full pass |
+| Sync | Directory people, groups and memberships, and the calendars of directory people who are members of your app (matched by email), via delta queries — hourly by the `17 * * * *` cron, or on demand. Cursors resume after every page and a lost cursor restarts a full pass |
 | API | `/api/connectors` (providers, installations, sync, directory, events) and the public consent callback at `/api/hooks/connectors/<provider>/callback`, which trusts only a signed state |
 | Data | `connectors_installations`, `connectors_connections`, `connectors_sync_cursors`, `connectors_directory_users`, `connectors_directory_groups`, `connectors_group_members`, `connectors_calendar_events` — all tenant-scoped with row-level security; disconnecting deletes everything synced |
 | CLI | `rocketflare connectors status` and `rocketflare connectors sync [--provider] [--resource]` |
@@ -43,7 +43,7 @@ pnpm plugin add https://github.com/rocketflare-dev/rocketflare-plugins.git@3.14.
 pnpm db:migrate
 ```
 
-Drop `--apply` to read each plan first. The install also adds the `*/15 * * * *` cron to both
+Drop `--apply` to read each plan first. The install also adds the `17 * * * *` cron to both
 wrangler tomls (`pnpm provision cloudflare <env>` writes it).
 
 ## First run
@@ -68,7 +68,8 @@ wrangler tomls (`pnpm provision cloudflare <env>` writes it).
 ## Known gaps (phase 1)
 
 - Microsoft 365 only; Google Workspace is designed but not built.
-- Polling every 15 minutes; webhooks (phase 2) are not built.
+- Polling hourly (a faster cron would keep a Neon compute awake); webhooks (phase 2) are not
+  built. **Sync now** or `pnpm cli connectors sync` syncs at once.
 - Directory and calendar only; mail and files (phase 3) and per-user connections (phase 4) are not
   built.
 - Admins can read every synced calendar in their organisation; there is no per-person opt-out.

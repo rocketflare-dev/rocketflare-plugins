@@ -120,7 +120,7 @@
     "apps/cli": {}
   },
   "bindings": [],
-  "crons": ["*/15 * * * *"],
+  "crons": ["17 * * * *"],
   "apiPrefixes": [],
   "coreEdits": [],
   "vars": [],

@@ -30,7 +30,7 @@
     "apps/cli": {}
   },
   "bindings": [],
-  "crons": ["*/30 * * * *"],
+  "crons": ["18 * * * *"],
   "apiPrefixes": [],
   "coreEdits": [],
   "vars": [

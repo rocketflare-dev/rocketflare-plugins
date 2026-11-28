@@ -4,7 +4,7 @@
  * One OAuth connection per organisation. The deployment registers ONE FreeAgent app
  * (`FREEAGENT_CLIENT_ID` / `FREEAGENT_CLIENT_SECRET`, sandbox or production by
  * `FREEAGENT_ENVIRONMENT`); an admin approves it for their company and the callback stores the
- * refresh token sealed. FreeAgent has no webhooks, so a half-hourly cron enqueues `freeagent.sync`
+ * refresh token sealed. FreeAgent has no webhooks, so an hourly cron enqueues `freeagent.sync`
  * per connected organisation, which mirrors bank accounts, transactions, explanations, categories,
  * contacts, bills and invoices into `freeagent_*` tables (incremental by `updated_since`). Agents
  * read the mirror; the two write tools (explain a transaction, create a bill) need approval. After

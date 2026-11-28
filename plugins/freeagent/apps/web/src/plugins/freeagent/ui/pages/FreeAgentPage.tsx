@@ -40,7 +40,7 @@ export default function FreeAgentPage() {
         description={
           status.data?.companyName
             ? `${status.data.companyName} · last synced ${timeAgo(status.data.lastSyncAt)}`
-            : 'Your FreeAgent books, mirrored every 30 minutes. Connect in Settings → FreeAgent.'
+            : 'Your FreeAgent books, mirrored every hour. Connect in Settings → FreeAgent.'
         }
       />
       {status.isPending ? (

@@ -3,7 +3,7 @@
 > Connect each organisation's FreeAgent company (UK accounting) and get its books mirrored into
 > your app — for pages, agents, analytics and the plugins you build on top.
 
-An admin approves your FreeAgent app once, over OAuth. Every 30 minutes the plugin syncs the
+An admin approves your FreeAgent app once, over OAuth. Every hour the plugin syncs the
 company's bank accounts, bank transactions, explanations, categories, contacts, bills and invoices
 into tenant-scoped `freeagent_*` tables, incrementally. Agents read that mirror and can propose an
 explanation or a bill for a person to approve. Other plugins — a receipts matcher, say — explain
@@ -15,7 +15,7 @@ the `freeagent:sync-listeners` extension.
 | Area | What you get |
 |---|---|
 | Connection | One FreeAgent company per organisation. OAuth approval through `POST /api/freeagent/connect` and the public callback `/api/hooks/freeagent/callback` (signed state). Refresh and access tokens stored sealed. A refused refresh token marks the connection **needs reconnecting** |
-| Sync | `freeagent.sync`, queued every 30 minutes per connected organisation, after connecting, and by **Sync now**. Incremental by `updated_since`, paged, across every bank account. The first sync reaches back about 400 days for transactions |
+| Sync | `freeagent.sync`, queued hourly (`18 * * * *`) per connected organisation, after connecting, and by **Sync now**. Incremental by `updated_since`, paged, across every bank account. The first sync reaches back about 400 days for transactions |
 | Client | One typed wrapper: always `X-Api-Version: 2026-09-01`, token refresh 2 minutes before expiry (single-flight), bounded back-off on 429 `Retry-After`, `Link` pagination, typed `FreeAgentError`, and the token never sent off the FreeAgent API host |
 | UI | **Settings → FreeAgent**: connect, reconnect, disconnect, environment, company, last sync, errors, Sync now. **FreeAgent** page: unexplained transactions and invoices (overdue filter) |
 | Agent tools | Read: `freeagent_company`, `freeagent_search_transactions`, `freeagent_list_categories`, `freeagent_list_invoices`, `freeagent_list_bills`. Write, approval required: `freeagent_explain_transaction`, `freeagent_create_bill`, offered only to a requester holding `manage FreeAgent` (owner, admin), and only in agent runs, where the approval gate applies. Chat never offers them. None offered until the organisation is connected |
@@ -45,7 +45,7 @@ Then set the three keys — `FREEAGENT_CLIENT_ID`, `FREEAGENT_CLIENT_SECRET`, `F
 (`sandbox` | `production`, unset means `sandbox`) — in `apps/web/.dev.vars` locally and with
 `wrangler secret put` deployed. All three are declared as secrets so no toml edit is needed; the
 environment is not sensitive and may go under `[vars]` in both tomls instead. `pnpm provision
-cloudflare <env>` writes the `*/30 * * * *` cron. Run `/freeagent` for the walk-through.
+cloudflare <env>` writes the `18 * * * *` cron. Run `/freeagent` for the walk-through.
 
 ## Building on it
 
@@ -96,7 +96,9 @@ tools — each call still waits for a person to approve it.
 ## Known gaps
 
 - One FreeAgent company per organisation; no accountancy-practice (multi-client) API.
-- Polling only (FreeAgent has no webhooks): changes appear within 30 minutes, or on Sync now.
+- Polling only (FreeAgent has no webhooks): changes appear within the hour, or on Sync now. Hourly
+  rather than faster because each tick reads Postgres, and a sub-hourly one keeps a Neon compute
+  awake.
 - The first sync mirrors about 400 days of transactions and explanations; older history is not fetched.
 - A deleted contact, bill or invoice stays in the mirror (FreeAgent's `updated_since` does not report deletions). Explanations deleted in FreeAgent are reconciled through their transaction.
 - No per-user rate-limit budgeting beyond the bounded 429 back-off; a very large first sync may span several queue retries.

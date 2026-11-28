@@ -8,7 +8,7 @@ argument-hint: "[explain | setup | byo | connect | status | troubleshoot <error>
 
 The `connectors` plugin lets an **organisation admin** connect their whole Microsoft 365 tenant to
 this app. After one admin consent, the directory (people, groups, memberships) and the Outlook
-calendars of people who are **members of this app** sync every 15 minutes, app-only — nobody else
+calendars of people who are **members of this app** sync every hour, app-only — nobody else
 signs in to anything. It is **not login**: signing in with Microsoft is the kit's own auth and a
 different app registration entirely (keep them separate). Design: `docs/CONNECTORS.md` in the kit;
 the plugin's rules: `apps/web/src/plugins/connectors/CLAUDE.md`.
@@ -89,7 +89,7 @@ Tell them, briefly:
 - **Who sees what inside this app**: members see only their own events (My calendar); owners and
   admins see all synced calendars and the directory (Settings → Connections); `support` sees
   status only.
-- **What it is not (yet)**: no mail, no files, no webhooks (polling every 15 minutes), no Google
+- **What it is not (yet)**: no mail, no files, no webhooks (polling hourly), no Google
   Workspace, no per-user "connect my own account" — all designed in `docs/CONNECTORS.md`, not built.
 - **Disconnecting** deletes every synced row here; revoking Microsoft's side is a separate step the
   customer admin does in Entra (Mode 4, step 6).
@@ -162,7 +162,7 @@ fails there — see Mode 5). Their secret's expiry is THEIR diary entry.
    Connect again.
 3. **First sync** — the directory syncs immediately; calendars follow once people are matched to
    members. Locally the queue runs inside `pnpm dev`, so it is seconds; to not wait for the next
-   quarter hour: `pnpm cli connectors sync`.
+   hourly tick: `pnpm cli connectors sync`.
 4. **Check** (needs `pnpm cli login --server http://localhost:3001` once, as an owner/admin):
    ```bash
    pnpm cli connectors status          # deployed: rocketflare connectors status
@@ -205,10 +205,10 @@ containing `connectors`. Then:
   or is excluded by an Exchange scope; it never takes the installation down.
 - **Throttling** is handled: a 429/503/504 waits for Microsoft's `Retry-After` and is not counted
   as a failure. Persistent throttling on one mailbox is Outlook's per-mailbox limit.
-- **Nothing happens on the 15-minute tick in a deployed environment** — the `*/15 * * * *` cron
+- **Nothing happens on the hourly tick in a deployed environment** — the `17 * * * *` cron
   must be in both tomls: `pnpm provision cloudflare <env>` writes it (that command is `/rf-provision`
   territory — the user runs it). Locally, fire it by hand:
-  `curl "http://localhost:3001/cdn-cgi/local/scheduled?cron=*%2F15+*+*+*+*"`.
+  `curl "http://localhost:3001/cdn-cgi/local/scheduled?cron=17+*+*+*+*"`.
 
 If a code is not in the tables, look it up in Microsoft's error reference (link in
 `providers/m365.md`), report what it says and that the table lacks it — do not improvise a fix.
