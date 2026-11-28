@@ -4,7 +4,7 @@ previous: 3.15.0
 date: null
 breaking: false
 migrations: []
-areas: []
+areas: [api, docs]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,20 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+`pnpm plugin check` no longer warns that `webTools` is exported without `definePublic`. The plugin needs kit 0.48.0 or later.
+
+- `webTools(ctx, search, fetch?)` moved from the server entry to `tools/web-tools.ts`. Nothing outside the plugin built the tools, and the server entry is what other units may call, so it no longer exports the function. Behaviour is unchanged.
 
 ## How to apply
 
+1. Upgrade the kit to 0.48.0 first.
+2. Run `pnpm plugin upgrade web-knowledge --apply`. No migration, no toml change.
+
 ## Conflicts to expect
 
+- Code of yours that imported `webTools` from `@/plugins/web-knowledge` imports it from `@/plugins/web-knowledge/tools/web-tools` (inside the plugin's tree) instead.
+
 ## Verify
+
+1. `pnpm plugin check` prints no `web-knowledge:` warning.
+2. `pnpm test api apps/web/src/plugins/web-knowledge` passes.

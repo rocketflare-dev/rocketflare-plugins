@@ -4,7 +4,7 @@
   "description": "Inbound email for your app: receipts, invoices and notices forwarded to an address on your domain arrive parsed, with their attachments.",
   "version": "3.15.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.47.0",
+  "minKit": "0.48.0",
   "anchor": "apps/web/src/plugins/inbox/plugin.json",
   "paths": [
     "apps/web/src/plugins/inbox/**",
@@ -29,6 +29,7 @@
     "@/plugins/api": [
       "createRouter",
       "Database",
+      "definePublic",
       "defineTool",
       "deleteIngestedDocument",
       "EMAIL_CATCH_ALL",

@@ -4,7 +4,7 @@ previous: 3.15.0
 date: null
 breaking: false
 migrations: []
-areas: []
+areas: [api, docs]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,21 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+The two readers other plugins call stop for an organisation that turned inbox off (kit 0.48.0's kill switch), and `pnpm plugin check` no longer warns about them. The plugin needs kit 0.48.0 or later.
+
+- `readInboxAttachment` and `readInboxHtml` on `@/plugins/inbox` are wrapped in `definePublic` (`public.ts`). Each keeps its `(ctx, tenantId, id)` signature and answers 404 `domain_unavailable` while inbox is off for `tenantId`'s organisation. The plugin's own code (the download route, knowledge ingest) still calls the unwrapped readers in `services/parse.ts`, which the host already stops.
 
 ## How to apply
 
+1. Upgrade the kit to 0.48.0 first.
+2. Run `pnpm plugin upgrade inbox --apply`. No migration, no toml change.
+3. A consumer plugin of yours changes nothing, but now handles a 404 `domain_unavailable` from a reader where inbox can be turned off.
+
 ## Conflicts to expect
 
+None: the changed files belong to the plugin.
+
 ## Verify
+
+1. `pnpm plugin check` prints no `inbox:` warning.
+2. `pnpm test api apps/web/src/plugins/inbox` passes.

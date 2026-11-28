@@ -1,22 +1,21 @@
 /**
- * The hourly tick: reconcile every active installation with its organisation's members, then
+ * The hourly tick: reconcile each active installation with its organisation's members, then
  * enqueue every cursor that is due. Contributed through `ServerPlugin.scheduledTasks`; the cron
  * expression is also `plugin.json`'s `crons`, which `pnpm provision cloudflare <env>` writes into
  * both tomls.
  *
- * This is the cross-tenant path and the only one — it runs in the Worker's `scheduled` handler with
- * no request behind it, and `CronCtx` deliberately has no `tenantId`. Every write it causes is
- * nevertheless per tenant: it reads (tenant, cursor) pairs and enqueues one job each, and each job
- * re-reads its cursor under the tenant in its payload.
+ * A `perTenantTask` (kit 0.48.0): the kit calls it once per organisation, and never for one where
+ * an admin has turned `connectors` off (Settings → Domains). Every query here names that tenant,
+ * and each job it enqueues re-reads its cursor under the tenant in its payload.
  *
- * A tenant whose `connectors` flag is off is skipped whole (`ctx.features`, resolved per tenant off
- * the request path). One tenant failing to reconcile is logged and does not cost the others their
- * tick.
+ * A tenant whose `connectors` flag is off is skipped too (`ctx.features`). One installation failing
+ * to reconcile is logged and does not cost the others their tick; one organisation failing is
+ * logged by the kit and does not cost the others theirs.
  */
 import { CONNECTORS_FLAG, CONNECTORS_SYNC_JOB } from '@rocketflare/shared/plugins/connectors/index'
 import { and, eq, isNull, lt, or } from 'drizzle-orm'
-import type { CronCtx, JobInput, ScheduledTask } from '@/plugins/api'
-import { cronCtx } from '@/plugins/api'
+import type { JobInput, TenantCronCtx } from '@/plugins/api'
+import { perTenantTask } from '@/plugins/api'
 import { connectorsConnections, connectorsInstallations, connectorsSyncCursors } from '../db/schema'
 import { connectorProvider } from '../providers'
 import { reconcileInstallation } from '../services/reconcile'
@@ -34,24 +33,23 @@ export const CONNECTORS_CRON = '17 * * * *'
  */
 export const SYNC_INTERVAL_MS = 45 * 60_000
 
-export async function enqueueDueSyncs(ctx: CronCtx, now = new Date()): Promise<number> {
+/** One organisation's tick: the cursors it enqueued. */
+export async function enqueueDueSyncs(ctx: TenantCronCtx, now = new Date()): Promise<number> {
+  const { tenantId } = ctx
   const installations = await ctx.db
-    .select({
-      id: connectorsInstallations.id,
-      tenantId: connectorsInstallations.tenantId,
-      provider: connectorsInstallations.provider,
-    })
+    .select({ id: connectorsInstallations.id, provider: connectorsInstallations.provider })
     .from(connectorsInstallations)
-    .where(eq(connectorsInstallations.status, 'active'))
+    .where(
+      and(
+        eq(connectorsInstallations.tenantId, tenantId),
+        eq(connectorsInstallations.status, 'active')
+      )
+    )
+  if (installations.length === 0) return 0
+  if (!(await ctx.features(tenantId)).includes(CONNECTORS_FLAG)) return 0
 
-  const enabled = new Map<string, boolean>()
   const jobs: JobInput[] = []
   for (const installation of installations) {
-    const { tenantId } = installation
-    if (!enabled.has(tenantId)) {
-      enabled.set(tenantId, (await ctx.features(tenantId)).includes(CONNECTORS_FLAG))
-    }
-    if (!enabled.get(tenantId)) continue
     const provider = connectorProvider(installation.provider)
     if (!provider) continue
     try {
@@ -94,11 +92,7 @@ export async function enqueueDueSyncs(ctx: CronCtx, now = new Date()): Promise<n
   return jobs.length
 }
 
-export const enqueueDueSyncsTask: ScheduledTask = {
-  name: 'connectors.enqueueDueSyncs',
-  run: async raw => {
-    const ctx = cronCtx(raw)
-    const queued = await enqueueDueSyncs(ctx)
-    ctx.logger.info({ queued }, 'connectors.enqueueDueSyncs')
-  },
-}
+export const enqueueDueSyncsTask = perTenantTask('connectors.enqueueDueSyncs', async ctx => {
+  const queued = await enqueueDueSyncs(ctx)
+  if (queued > 0) ctx.logger.info({ tenantId: ctx.tenantId, queued }, 'connectors.enqueueDueSyncs')
+})

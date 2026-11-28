@@ -27,7 +27,7 @@ import {
   waitOnExecutionContext,
 } from '@testkit/integration'
 import { makeCronCtx, makeJobCtx, makeToolCtx } from '@testkit/unit'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { tenantUsers } from '@/db/schema/kit'
 import { openSecret, signState } from '@/plugins/api'
@@ -43,6 +43,7 @@ import {
   freeagentInvoices,
   freeagentSyncState,
 } from '../../db/schema'
+import * as publicApi from '../../index'
 import { freeagentClientFor, saveConnection } from '../../services/connection'
 import { type FetchLike, type FreeAgentDeps, freeagentHttp } from '../../services/env'
 import { syncTenant } from '../../services/sync'
@@ -727,12 +728,12 @@ describe('sync', () => {
     })
   })
 
-  it('the cron queues one sync per connected organisation, through the host dispatcher', async () => {
+  it('the cron queues a sync for a connected organisation, through the host dispatcher', async () => {
     const { tenantId, userId } = await tenantWithOwner()
     const env = freeagentEnv()
     await connect(tenantId, userId, env)
-    const queued = await enqueueSyncs(makeCronCtx({ db, env }))
-    expect(queued).toBeGreaterThanOrEqual(1)
+    const queued = await enqueueSyncs({ ...makeCronCtx({ db, env }), tenantId })
+    expect(queued).toBe(1)
     const payloads = stubs(env).queue.messages.map(
       m => m.body as { type: string; payload: { tenantId: string } }
     )
@@ -756,6 +757,37 @@ describe('sync', () => {
         expect.objectContaining({ task: 'freeagent.enqueueSyncs', status: 'ok' }),
       ])
     )
+  })
+
+  it('an organisation that turned freeagent off gets no sync, and its service API refuses', async () => {
+    const { tenantId, userId } = await tenantWithOwner()
+    const env = freeagentEnv()
+    await connect(tenantId, userId, env)
+    await db.execute(
+      sql`insert into domain_settings (tenant_id, domain, enabled) values (${tenantId}, 'freeagent', false)`
+    )
+    const execution = createExecutionContext()
+    const report = await dispatchScheduled(FREEAGENT_CRON, env, execution)
+    await waitOnExecutionContext(execution)
+    expect(report).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ task: 'freeagent.enqueueSyncs', status: 'ok' }),
+      ])
+    )
+    const queuedFor = stubs(env).queue.messages.map(
+      m => (m.body as { payload: { tenantId: string } }).payload.tenantId
+    )
+    expect(queuedFor).not.toContain(tenantId)
+    // What another plugin imports is behind the switch; this plugin's own services are not.
+    const ctx = makeJobCtx({ db, env })
+    await expect(publicApi.listUnexplainedTransactions(ctx, tenantId)).rejects.toMatchObject({
+      statusCode: 404,
+      code: 'domain_unavailable',
+    })
+    await expect(publicApi.freeagentClientFor(ctx, tenantId)).rejects.toMatchObject({
+      code: 'domain_unavailable',
+    })
+    expect(await listUnexplainedTransactions(ctx, tenantId)).toEqual([])
   })
 })
 

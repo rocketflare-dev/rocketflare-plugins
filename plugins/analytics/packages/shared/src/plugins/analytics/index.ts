@@ -48,8 +48,7 @@ export const ANALYTICS_SUBJECT = 'Analytics'
 export const ANALYTICS_REFRESH_FACTS_JOB = 'analytics.refresh-facts'
 
 /**
- * The refresh job's payload. **One tenant, always** — the `:15` cron is the cross-tenant path and
- * it runs in the Worker's own scheduled handler; a job a tenant API key can enqueue must never
+ * The refresh job's payload. **One tenant, always** — a job a tenant API key can enqueue must never
  * rebuild somebody else's rows. `table` narrows it to one fact table (the CLI's `--table`).
  */
 export const analyticsRefreshFactsPayloadSchema = z.object({
@@ -67,6 +66,39 @@ export const analyticsRefreshFactsResponseSchema = z.object({
 export type AnalyticsRefreshFactsResponse = z.infer<typeof analyticsRefreshFactsResponseSchema>
 
 export * from './contracts'
+
+/**
+ * The `extensions` keys another plugin contributes cubes, fact tables, dashboard templates and
+ * cube-isolation cases under, and the builder for its `extensions` record. Here, in the shared
+ * half, because the builder reads no organisation (so it needs no `definePublic`) and is called
+ * at a contributor's MODULE scope, where only a leaf import cannot close the server barrel's
+ * cycle. Untyped: the server entry's `analyticsExtensions` is this same function with the
+ * contribution's types checked.
+ */
+export const ANALYTICS_EXTENSION_KEYS = {
+  cubes: `${ANALYTICS_PLUGIN_ID}:cubes`,
+  factTables: `${ANALYTICS_PLUGIN_ID}:factTables`,
+  dashboardTemplates: `${ANALYTICS_PLUGIN_ID}:dashboardTemplates`,
+  cubeIsolationCases: `${ANALYTICS_PLUGIN_ID}:cubeIsolationCases`,
+} as const
+
+export function analyticsExtensions(contribution: {
+  cubes?: readonly unknown[]
+  factTables?: readonly unknown[]
+  dashboardTemplates?: readonly unknown[]
+  cubeIsolationCases?: readonly unknown[]
+}): Record<string, readonly unknown[]> {
+  const out: Record<string, readonly unknown[]> = {}
+  if (contribution.cubes) out[ANALYTICS_EXTENSION_KEYS.cubes] = contribution.cubes
+  if (contribution.factTables) out[ANALYTICS_EXTENSION_KEYS.factTables] = contribution.factTables
+  if (contribution.dashboardTemplates) {
+    out[ANALYTICS_EXTENSION_KEYS.dashboardTemplates] = contribution.dashboardTemplates
+  }
+  if (contribution.cubeIsolationCases) {
+    out[ANALYTICS_EXTENSION_KEYS.cubeIsolationCases] = contribution.cubeIsolationCases
+  }
+  return out
+}
 
 /**
  * `as const satisfies SharedPlugin` on both halves: `satisfies` checks the shape here, where the

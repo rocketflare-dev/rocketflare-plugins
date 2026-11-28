@@ -4,7 +4,7 @@
   "description": "Organisation-level connections to your customers' workplace tools: an admin connects once, and the directory and members' calendars sync into your app.",
   "version": "3.15.0",
   "repo": "https://github.com/rocketflare-dev/rocketflare-plugins.git",
-  "minKit": "0.29.0",
+  "minKit": "0.48.0",
   "anchor": "apps/web/src/plugins/connectors/plugin.json",
   "paths": [
     "apps/web/src/plugins/connectors/**",
@@ -25,8 +25,6 @@
   "uses": {
     "@/plugins/api": [
       "createRouter",
-      "cronCtx",
-      "CronCtx",
       "Database",
       "isUniqueViolation",
       "jobCtx",
@@ -36,6 +34,7 @@
       "memberCan",
       "openSecret",
       "pageWindow",
+      "perTenantTask",
       "PluginConfig",
       "PluginLogger",
       "publicCtx",
@@ -44,10 +43,10 @@
       "requestCtx",
       "RequestCtx",
       "requireFeature",
-      "ScheduledTask",
       "sealSecret",
       "ServerPlugin",
       "signState",
+      "TenantCronCtx",
       "transaction",
       "validate",
       "verifyState"
@@ -91,10 +90,12 @@
       "requireClient"
     ],
     "@testkit/integration": [
+      "createExecutionContext",
       "createTestEnv",
       "createTestSession",
       "createTestTenant",
       "createTestUser",
+      "dispatchScheduled",
       "json",
       "jsonResponse",
       "linkUserToTenant",
@@ -108,7 +109,8 @@
       "sessionCookieHeader",
       "setupTestDatabase",
       "stubFetch",
-      "stubs"
+      "stubs",
+      "waitOnExecutionContext"
     ],
     "@testkit/unit": ["makeCronCtx", "makeJobCtx"],
     "@rocketflare/shared/jobs": ["JobOf"],

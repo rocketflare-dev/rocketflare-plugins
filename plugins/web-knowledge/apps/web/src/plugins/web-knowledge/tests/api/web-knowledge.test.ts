@@ -21,10 +21,11 @@ import { eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { loadRow, nextSettings } from '../../api/settings'
 import { webSearchSettings } from '../../db/schema'
-import { webKnowledgeServer, webTools } from '../../index'
+import { webKnowledgeServer } from '../../index'
 import { FETCH_PAGE_TOOL, fetchPageTool } from '../../tools/fetch-page'
 import { reachableUrls } from '../../tools/reachable-urls'
 import { WEB_SEARCH_TOOL, webSearchTool } from '../../tools/web-search'
+import { webTools } from '../../tools/web-tools'
 
 const db = setupTestDatabase()
 const BASE = '/api/web-knowledge/settings'

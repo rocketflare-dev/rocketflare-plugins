@@ -273,13 +273,12 @@ export class ConsentError extends Error {
 /**
  * Build the `extensions` record for a provider plugin's `ServerPlugin`, typed. The untyped builder
  * in the shared half is what a provider should call at MODULE scope (see its note on the cycle);
- * this one is the same function with the contract checked, for anywhere else.
+ * this is the same function with the contract checked, for anywhere else. It IS the shared
+ * builder, only narrowed in type: it reads no organisation, so it needs no `definePublic`.
  */
-export function connectorExtensions(contribution: {
+export const connectorExtensions: (contribution: {
   providers: readonly ConnectorProvider[]
-}): Record<string, readonly unknown[]> {
-  return buildExtensions(contribution)
-}
+}) => Record<string, readonly unknown[]> = buildExtensions
 
 // ---- The registry ----------------------------------------------------------------------------------
 

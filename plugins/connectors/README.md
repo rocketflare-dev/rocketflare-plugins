@@ -26,7 +26,7 @@ Google Workspace is next. **Install a provider too** — on its own, this plugin
 
 ## Requirements
 
-- Rocketflare kit **0.29.0** or later.
+- Rocketflare kit **0.48.0** or later (the hourly sync is a `perTenantTask`, so it skips an organisation that turned connectors off).
 - At least one provider plugin (`m365`).
 - `OAUTH_ENCRYPTION_KEY` set in the app — tokens and bring-your-own secrets are sealed with it.
 - The provider's own setup: for Microsoft 365, an app registered in Entra ID (the `connectors`

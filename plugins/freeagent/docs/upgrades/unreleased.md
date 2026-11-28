@@ -4,7 +4,7 @@ previous: 3.16.0
 date: null
 breaking: false
 migrations: []
-areas: []
+areas: [api, shared, docs]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,26 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+FreeAgent stops for an organisation that turned it off (kit 0.48.0's kill switch), including when another plugin calls its service API, and `pnpm plugin check` no longer warns about it. The plugin needs kit 0.48.0 or later.
+
+- The service API on `@/plugins/freeagent` (`freeagentClientFor`, `explainTransaction`, `attachToExplanation`, `deleteExplanation`, `createBill`, `listUnexplainedTransactions`) is wrapped in `definePublic` (`public.ts`). Each keeps its `(ctx, tenantId, …)` signature and answers 404 `domain_unavailable` while FreeAgent is off for `tenantId`'s organisation. The plugin's own routes, jobs and tools still call the unwrapped services, which the host already stops.
+- `FreeAgentError`, `FreeAgentErrorCode`, `FREEAGENT_ERROR_CODES` and `isFreeAgentError` live in the shared half (`@rocketflare/shared/plugins/freeagent/errors`). `@/plugins/freeagent` and `services/errors.ts` re-export them, so there is still one class and `instanceof` holds.
+- The hourly tick (`freeagent.enqueueSyncs`, `18 * * * *`) is a `perTenantTask`: once per organisation, never one where FreeAgent is off, it queues that organisation's sync when it is connected.
 
 ## How to apply
 
+1. Upgrade the kit to 0.48.0 first.
+2. Run `pnpm plugin upgrade freeagent --apply`. No migration, no toml change: the cron expression is unchanged.
+3. A plugin of yours that calls the service API changes nothing, but now handles a 404 `domain_unavailable` from it where FreeAgent can be turned off.
+
 ## Conflicts to expect
 
+- `api/scheduled.ts`, if you changed the tick: `enqueueSyncs` now takes a `TenantCronCtx` and answers 0 or 1.
+- `services/errors.ts`, if you edited `FreeAgentError`: make the change in `packages/shared/src/plugins/freeagent/errors.ts`.
+- A test of yours that called `enqueueSyncs(makeCronCtx(...))` passes `{ ...makeCronCtx(...), tenantId }`.
+
 ## Verify
+
+1. `pnpm plugin check` prints no `freeagent:` warning.
+2. `pnpm test config apps/web/tests/config/units.test.ts` prints no `[units]` line for freeagent.
+3. `pnpm test api apps/web/src/plugins/freeagent` passes, including "an organisation that turned freeagent off gets no sync, and its service API refuses".

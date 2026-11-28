@@ -4,7 +4,7 @@ previous: 3.15.0
 date: null
 breaking: false
 migrations: []
-areas: []
+areas: [api, docs]
 touches_surfaces: []
 requires_surfaces: []
 manual: false
@@ -12,11 +12,20 @@ manual: false
 
 ## What changed
 
-_Nothing yet. Add an entry here in the same pull request as the change — see `README.md` beside this
-file for the fields and for what "How to apply" has to say._
+The daily index task says it spans every organisation, so kit 0.48.0's config test no longer warns about it. The plugin needs kit 0.48.0 or later.
+
+- `guide.sync` (`20 4 * * *`) is marked `allTenants: true`. The guide is platform knowledge (no `tenant_id`), indexed once for every organisation, so the task belongs to none: turning the guide off for one organisation hides it there and never un-indexes it for the rest.
 
 ## How to apply
 
+1. Upgrade the kit to 0.48.0 first.
+2. Run `pnpm plugin upgrade guide --apply`. No migration, no toml change.
+
 ## Conflicts to expect
 
+None: the changed file belongs to the plugin.
+
 ## Verify
+
+1. `pnpm test config apps/web/tests/config/units.test.ts` prints no `[units] guide:` line.
+2. `pnpm test api apps/web/src/plugins/guide` passes.

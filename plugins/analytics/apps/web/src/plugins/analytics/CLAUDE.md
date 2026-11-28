@@ -29,7 +29,7 @@ everything else as injected context* (`docs/plugin-api.md`). In practice:
 | Layer | Entry |
 |---|---|
 | routes | `const ctx: RequestCtx = requestCtx(c)` — **the annotation is required**, or `ctx.notFound(...)` does not narrow |
-| the cron task | `CronCtx` via `cronCtx(raw)`, adapted once in `api/scheduled.ts` |
+| the cron task | `TenantCronCtx` from `perTenantTask`, one organisation per call, in `api/scheduled.ts` |
 | the refresh job | `JobCtx` via `jobCtx(raw)`, adapted once in `jobs/refresh-facts.ts` |
 | hooks | `HookCtx` / `SeedCtx` |
 | table files | `@/db/schema/kit`, **by relative path** — drizzle-kit bundles them and resolves no alias |
@@ -143,7 +143,7 @@ The kit's old `db:refresh-facts` and `db:check-facts` web scripts were `apps/web
 which is not a directory a plugin may own. They are `rocketflare analytics refresh-facts` and
 `check-facts` now: one organisation rather than every tenant, over a route rather than a bare
 `DATABASE_URL`, and the refresh ENQUEUES (`analytics.refresh-facts`) because a route never runs
-long work. The `:15` cron is still the cross-tenant path and is unchanged.
+long work. The `:15` cron is a `perTenantTask`: one organisation per call, never one that turned analytics off.
 
 The fact table is `analytics_tenant_activity_daily_facts` — the `<id>_*` rule. There is no
 compatibility path (D31 decision 7): an app that carried the kit's `tenant_activity_daily_facts`

@@ -1,58 +1,19 @@
 /**
- * `FreeAgentError` — every way talking to FreeAgent can fail, as ONE typed error with a code.
+ * FreeAgent's failures, read on the server: the status → code map and the error-body reader.
  *
- * Callers branch on `code`, never on a message: the sync decides retry-or-stop from it, the routes
- * map it to a status, and a tool turns it into a hint the model can act on. The message is safe to
- * show and to log — it never carries a token, a code or a client secret, because nothing that
- * builds one puts them in.
+ * `FreeAgentError` and `isFreeAgentError` live in the shared half
+ * (`@rocketflare/shared/plugins/freeagent/errors`), because another plugin may test a failure with
+ * them and a pure guard needs no organisation; they are re-exported here so the server imports
+ * one module.
  */
+import {
+  FREEAGENT_ERROR_CODES,
+  FreeAgentError,
+  type FreeAgentErrorCode,
+  isFreeAgentError,
+} from '@rocketflare/shared/plugins/freeagent/errors'
 
-export const FREEAGENT_ERROR_CODES = [
-  /** The deployment has no FreeAgent app (`FREEAGENT_CLIENT_ID` / `_SECRET`). */
-  'not_configured',
-  /** This organisation has no connection. */
-  'not_connected',
-  /** FreeAgent refused the refresh token (`invalid_grant`): an admin must reconnect. */
-  'needs_reconnect',
-  /** The token endpoint said `invalid_grant` — internal; surfaced to callers as `needs_reconnect`. */
-  'invalid_grant',
-  /** 429 after the bounded back-off; `retryAfterSeconds` says when. */
-  'rate_limited',
-  'unauthorized',
-  'forbidden',
-  'not_found',
-  /** 422 / 400: FreeAgent rejected what we sent. The message is FreeAgent's. */
-  'validation',
-  /** 5xx. */
-  'upstream',
-  /** The request never got an answer. */
-  'network',
-  /** An answer we could not read, or a URL outside the connection's API host. */
-  'bad_response',
-] as const
-export type FreeAgentErrorCode = (typeof FREEAGENT_ERROR_CODES)[number]
-
-export class FreeAgentError extends Error {
-  readonly code: FreeAgentErrorCode
-  readonly status: number | null
-  readonly retryAfterSeconds: number | null
-
-  constructor(
-    code: FreeAgentErrorCode,
-    message: string,
-    opts: { status?: number | null; retryAfterSeconds?: number | null } = {}
-  ) {
-    super(message)
-    this.name = 'FreeAgentError'
-    this.code = code
-    this.status = opts.status ?? null
-    this.retryAfterSeconds = opts.retryAfterSeconds ?? null
-  }
-}
-
-export function isFreeAgentError(err: unknown, code?: FreeAgentErrorCode): err is FreeAgentError {
-  return err instanceof FreeAgentError && (code === undefined || err.code === code)
-}
+export { FREEAGENT_ERROR_CODES, FreeAgentError, type FreeAgentErrorCode, isFreeAgentError }
 
 /** The code an HTTP status maps to, for a response that was not OK and not a 429. */
 export function codeForStatus(status: number): FreeAgentErrorCode {
